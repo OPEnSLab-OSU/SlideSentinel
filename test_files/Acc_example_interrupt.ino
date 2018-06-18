@@ -1,5 +1,5 @@
-# Example of how to configure the accelerometer registers to output a signal on I1 whenever quick changes 
-# in horizontal movement (X and Y dimensions) are made.
+// Example of how to configure the accelerometer registers to output a signal on I1 whenever quick changes 
+// in horizontal movement (X and Y dimensions) are made.
 
 /******************************************************************************
 IntUsage.ino
