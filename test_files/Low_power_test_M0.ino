@@ -1,3 +1,5 @@
+// test code that pulls microprocessor out of "stand by" with a signal from the accelerometer
+
 // **** INCLUDES *****
 #include "LowPower.h"
 #include "SparkFunLIS3DH.h"
