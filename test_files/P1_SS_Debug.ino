@@ -1,3 +1,5 @@
+# test code for Phase 1 - Sensor
+
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code
    Author: Marissa Kwon
