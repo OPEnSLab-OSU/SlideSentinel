@@ -1,3 +1,4 @@
+# For Feather M0 needs work on the RTC and accelerometer interrupt routines
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code
    Author: Marissa Kwon
