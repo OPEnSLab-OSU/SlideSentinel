@@ -1,5 +1,5 @@
-# test code for Phase 1 - Sensor
-# For Feather 32u4 - RTC alarm and LoRa
+//# test code for Phase 1 - Sensor
+//# For Feather 32u4 - RTC alarm and LoRa
 
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code

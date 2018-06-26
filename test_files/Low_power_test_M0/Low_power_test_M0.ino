@@ -9,7 +9,7 @@
 LIS3DH myIMU(I2C_MODE, 0x19); //Default constructor is I2C, addr 0x19.
 
 
-// Use pin 2 as wake up pin
+// Use pin 12 as wake up pin
 const int wakeUpPin = 12;
 
 void wakeUp()
