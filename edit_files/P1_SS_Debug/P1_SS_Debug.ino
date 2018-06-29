@@ -1,4 +1,4 @@
-# For Feather M0 needs work on the RTC and accelerometer interrupt routines
+//# For Feather M0 needs work on the RTC and accelerometer interrupt routines
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code
    Author: Marissa Kwon
@@ -14,7 +14,7 @@
 
       Description:
       Interrupt support for the LIS3DH is extremely flexible, so configuration must be left
-      to the user.  This sketch demonstrates how to make a interrupt configuration function.
+      to the user.  This sketch demonstrates how to make a interrupt configuration function
 
       Use configIntterupts() as a template, then comment/uncomment desired options.
       See ST docs for information
@@ -97,7 +97,7 @@ RTC_DS3231 RTC_DS; //instance of DS3231 RTC
 
 int transmitBufLen; // length of transmit buffer
 const int ID = 100; // id unique to device
-String IDString, NEMA_string, X_string, Y_string, Z_string, RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
+String IDString, NMEA_string, X_string, Y_string, Z_string, RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
 
 // Declare RTC/Accelerometer specific variables
 volatile bool TakeSampleFlag = false; // Flag is set with external Pin A0 Interrupt by RTC
@@ -106,7 +106,8 @@ volatile int HR = 8; // Hr of the day we want alarm to go off
 volatile int MIN = 0; // Min of each hour we want alarm to go off
 volatile int WakePeriodMin = 1;  // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min)
 const byte wakeUpPin = 11;  // attach to SQW pin on RTC
-const byte alertPin = 13;  // attach to int1 on accelerometer
+const byte alertPin = 12;  // attach to int1 on accelerometer
+volatile int count = 5; //number of seconds to wait before interrupt configurations
 uint8_t dataRead; // for acceleromter interrupt register
 
 /**********************************************************************************************
@@ -147,6 +148,20 @@ void setup() {
   Serial.begin(9600);
   delay(2000);
 #if DEBUG
+  //delay code used from rocketscream lowpower library M0 standby example
+  while(!Serial);
+    Serial.println("***** Interrupt Test *****");
+    
+    // ***** IMPORTANT *****
+    // Delay is required to allow the USB interface to be active during
+    // sketch upload process
+    Serial.println("Entering standby mode in:");
+    for (count; count > 0; count--)
+    {
+      Serial.print(count);  
+      Serial.println(" s");
+      delay(1000);
+    }
 #ifdef is_M0
   Serial.println("Is M0");
 #endif
