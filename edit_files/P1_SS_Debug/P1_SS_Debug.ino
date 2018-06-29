@@ -123,11 +123,18 @@ void wakeUp_alert()
   AlertFlag = true;
   TakeSampleFlag = true;
   myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
-  Serial.println("Reset");
+#if DEBUG
+  Serial.println("Alert recognized");
+  delay(1000); //time to print
+#endif
 }
 
 void wakeUp_RTC()
 {
+#if DEBUG
+  Serial.println("RTC wake recognized");
+  delay(1000); //time to print
+#endif
   TakeSampleFlag = true;
 }
 /**********************************************************************************************
@@ -262,7 +269,7 @@ void loop() {
   //needed to assign interrupts to pins
   // enable interrupt for PCINT7...
   pciSetup(11);
-  pciSetup(13);
+  pciSetup(12);
   delay(1000);
 
   // Wake up when wakeUp pin is low or on rising edge of alertPin .
@@ -281,7 +288,7 @@ void loop() {
   Serial.println("STANDBY");
 #endif
   delay(100);
-  LowPower.standby();
+  LowPower.idle(IDLE_2);
   // <----  Wait in sleep here until pin interrupt
   // On Wakeup, proceed from here:
   // Disable external pin interrupt on wake up pin.
@@ -672,7 +679,7 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
 {
   if (digitalRead(11) == LOW)  //trigger wake when alarm time
     TakeSampleFlag = true;
-  if (digitalRead(13) == HIGH) // triggers wake when accelerometer interrupt
+  if (digitalRead(12) == HIGH) // triggers wake when accelerometer interrupt
   {
     AlertFlag = true;
     TakeSampleFlag = true;
