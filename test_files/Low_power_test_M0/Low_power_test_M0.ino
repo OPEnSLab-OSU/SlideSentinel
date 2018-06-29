@@ -46,22 +46,23 @@ void setup()
 
 void loop()
 {
+
   Serial.println("TEST!");
   // Allow wake up pin to trigger interrupt on low.
-  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, HIGH);
+  //attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, HIGH);
   delay(1000);
   Serial.println("STANDBY MODE");
   // Wake up when acc input is high
   // For M0
-  LowPower.standby();
+  //LowPower.standby();
 
   // For 32u4
   // Enter power down state with ADC and BOD module disabled.
   // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
   // Disable external pin interrupt on wake up pin.
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
-  
+  //detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+  Serial.begin(9600);
   delay(500);
   Serial.println("AWAKE");
   digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
