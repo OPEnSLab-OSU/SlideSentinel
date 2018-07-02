@@ -158,7 +158,7 @@ void setup() {
   delay(1000);
 #endif
 
-#if DEBUG == 1 && RTC == 1
+#if DEBUG == 1 && RTC_MODE == 1
   Serial.print("Initializing SD card...");
   if (!SD.begin(4)) {
     Serial.println("initialization failed!");
@@ -564,6 +564,7 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
     TakeSampleFlag = true;
 }
 // triggers wake when accelerometer interrupt
+
 
 
 
