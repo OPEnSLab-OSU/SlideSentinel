@@ -121,7 +121,7 @@ http://www.st.com/content/ccc/resource/technical/document/datasheet/3c/ae/50/85/
  *      an interrupt signal from I1
  * Precondoitions: Device is initialized using I2C constructor
  */
-void configIntterupts()
+void configInterrupts()
 {
   //uint8_t dataToWrite = 0;
   
