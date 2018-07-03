@@ -28,7 +28,6 @@ void wakeUp()
   //accelerometer interrupt trigger register
   //uint8_t dataRead;
 
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin)); //must detach interrupt withing ISR on M0
 }
 
 void setup()
