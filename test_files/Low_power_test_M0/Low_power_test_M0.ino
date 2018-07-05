@@ -17,15 +17,15 @@ volatile bool alert_flag = false;
 void setup()
 { // put your setup code here, to run once:
   
-  Serial.begin(9600);
+  //Serial.begin(9600);
   delay(1000); //relax...
   
-  Serial.println("Processor came out of reset.\n");
+  //Serial.println("Processor came out of reset.\n");
   delay(1000); //relax...
 
   // Configure wake up pin as input.
   // This will consume few uA of current.
-  pinMode(wakeUpPin, INPUT);
+  pinMode(wakeUpPin, INPUT_PULLUP);
 
   
   //Accel sample rate and range effect interrupt time and threshold values!!!
@@ -46,7 +46,7 @@ void setup()
   setupPrint(); //wait for serial to open before starting loop() 
 
   Serial.println("Ready for interrupt");
-  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, RISING);
+  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, LOW);
 
 }
 
@@ -56,34 +56,33 @@ void loop()
 
   if(alert_flag)
   {
-    Serial.println("Processor interrupt triggered");    
+    //Serial.println("Processor interrupt triggered");    
     alert_flag = false;
+    attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, LOW);
   }
 
 
   //handle standby here
-  
-  
-    
-
+ 
   //Serial.println("TEST!");
 
-  Serial.println("STANDBY MODE");
-  Serial.end(); //end ALL sercoms before the device goes to sleep
+  //Serial.println("STANDBY MODE");
+  //Serial.end(); //end ALL sercoms before the device goes to sleep
 
   // Allow wake up pin to trigger interrupt on rising edge.
   // Wake up when acc input is returning to idle
-  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, LOW);
+
   delay(1000);
   digitalWrite(LED_BUILTIN, LOW); //LED on when processor is awake
   
   // For M0:
   LowPower.standby();
   //M0 end
+  detachInterrupt(digitalPinToInterrupt(wakeUpPin)); //detaching interrupt in ISR causes issues?
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
   delay(2000);
-  Serial.print("WOKE");
+  //Serial.print("WOKE");
   
   // For 32u4:
   // Enter power down state with ADC and BOD module disabled.
@@ -96,11 +95,10 @@ void loop()
 void wakeUp()
 {
   // Disable external pin interrupt on wake up pin.
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin)); //must detach interrupt within ISR on M0
+
     
   // Just a handler for the pin interrupt.
   alert_flag = true;
-
   uint8_t dataRead;
   myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);   //cleared by reading
 }
@@ -233,18 +231,18 @@ void configInterrupts()
 
 void setupPrint()
 {
-  while(!Serial);     //Won't start anything until serial is open
-    Serial.println("***** Interrupt Test *****");
+  //while(!Serial);     //Won't start anything until serial is open
+    //Serial.println("***** Interrupt Test *****");
     
     // ***** IMPORTANT *****
     // Delay is required to allow the USB interface to be active during
     // sketch upload process
     
-    Serial.println("Entering test mode in:");
+    //Serial.println("Entering test mode in:");
     for (count; count > 0; count--)
     {
-      Serial.print(count);
-      Serial.println(" s");
+      //Serial.print(count);
+      //Serial.println(" s");
       delay(1000);
     }
 }

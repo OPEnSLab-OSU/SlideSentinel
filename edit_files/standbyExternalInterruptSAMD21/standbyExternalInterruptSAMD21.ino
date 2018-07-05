@@ -25,7 +25,7 @@ void setup()
     
   // External interrupt on pin (example: press of an active low button)
   // A pullup resistor is used to hold the signal high when no button press
-  attachInterrupt(pin, blink, LOW);
+  attachInterrupt(digitalPinToInterrupt(11), blink, LOW);
 }
 
 void loop() 
@@ -38,6 +38,7 @@ void loop()
   // Enter standby mode
   LowPower.standby();  
   // Attach USB interface
+  USBDevice.init();
   USBDevice.attach();
   // Wait for serial USB port to open
   while(!Serial);
