@@ -32,7 +32,7 @@
 #include "Wire.h"
 
 // Define macro constants
-#define DEBUG 0  //test to allow print to serial monitor
+#define DEBUG 1  //test to allow print to serial monitor
 #define RTC_MODE 1 //enable RTC 
 #define SD_WRITE 0  //enable SD card logging (too much for 32u4 processor memory)
 
@@ -105,13 +105,15 @@ volatile bool AlertFlag = false; // Flag if an alert is triggered and we need to
 volatile int HR = 8; // Hr of the day we want alarm to go off
 volatile int MIN = 0; // Min of each hour we want alarm to go off
 volatile int WakePeriodMin = 1;  // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min)
+volatile int count = 10; //number of seconds to wait before running loop()
 const byte wakeUpPin = 11;  // attach to SQW pin on RTC
-const byte alertPin = 13;  // attach to int1 on accelerometer
+const byte alertPin = 12;  // attach to int1 on accelerometer
 uint8_t dataRead; // for acceleromter interrupt register
 
 /**********************************************************************************************
    wakeUp()
    Description: function that takes place after device wakes up
+   See: Interrupt Service Routine (ISR)
    wakeUp_alert
    - sets SampleFlag and AlertFlag TRUE;
    wakeUp_RTC
@@ -122,7 +124,6 @@ void wakeUp_alert()
   AlertFlag = true;
   TakeSampleFlag = true;
   myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
-  Serial.println("Reset");
 }
 
 void wakeUp_RTC()
@@ -147,8 +148,10 @@ void setup() {
   Serial.begin(9600);
   delay(2000);
 #if DEBUG
+  setupPrint(); //give the device time to wake up and upload sketch if necessary
 #ifdef is_M0
   Serial.println("Is M0");
+
 #endif
 
 #ifdef is_32u4
@@ -194,9 +197,8 @@ void setup() {
 
   /*initialize accelerometer and configure settings*/
 
-  pinMode(wakeUpPin, INPUT);  // set pin for alarm interrupt
-  pinMode(alertPin, INPUT);  // enable pull up resistor for accelerometer interrupt
-  digitalWrite(alertPin, LOW);  // pull down to read interrupt from accelerometer
+  pinMode(wakeUpPin, INPUT_PULLUP);  // set pin for alarm interrupt
+  pinMode(alertPin, INPUT_PULLUP);  // enable pull up resistor for accelerometer interrupt
 
 #if DEBUG == 1
   Serial.println("Processor came out of reset.\n");
@@ -226,7 +228,6 @@ void setup() {
 #endif
   delay(1000);
 #endif
-
 }
 
 void loop() {
@@ -260,22 +261,38 @@ void loop() {
 
 #ifdef is_M0
   //SETUP FOR RTC AND ACCELEROMETER INTS
-  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, HIGH);
+  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
   attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
 #if DEBUG
   Serial.println("STANDBY");
 #endif
+  Serial.end(); //end ALL sercoms before the device goes to sleep
+  USBDevice.detach();
+ 
   delay(100);
+  digitalWrite(LED_BUILTIN, LOW); //LED off when processor is asleep
   LowPower.standby();
   // <----  Wait in sleep here until pin interrupt
   // On Wakeup, proceed from here:
+  
   // Disable external pin interrupt on wake up pin.
-#if DEBUG
-  Serial.println("AWAKE!");
-#endif
   detachInterrupt(digitalPinToInterrupt(alertPin));
   detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+
+  //reconfigure serial
+  USBDevice.attach();
+  Serial.begin(9600);
+  digitalWrite(LED_BUILTIN, HIGH); //LED active with processor wake
+  
   clearAlarmFunction();
+  
+#if DEBUG
+  //5 seconds for user to restart serial monitor while debugging
+  //this is required due to attach() and detach() of USBDevice
+  delay(5000); 
+  Serial.println("AWAKE!");
+#endif
+  
 #endif //is_M0
 
 #else
@@ -448,116 +465,130 @@ void loop() {
 /* More info about listed data registers on the LISH3DH datasheet: */
 /* http://www.st.com/content/ccc/resource/technical/document/datasheet/3c/ae/50/85/d6/b1/46/fe/CD00274221.pdf/files/CD00274221.pdf/jcr:content/translations/en.CD00274221.pdf */
 
+/* Function: configInterrupts
+ * Use: set the necessary registers on a sparkfun LIS3DH accelerometer to send
+ *      an interrupt signal from I1
+ * Precondoitions: Device is initialized using I2C constructor
+ */
+ 
 void configInterrupts()
 {
-  uint8_t dataToWrite = 0;
-
-  //LIS3DH_INT1_CFG
-  dataToWrite |= 0x80;//AOI, 0 = OR 1 = AND
-  dataToWrite &= 0x40;//6D, 0 = interrupt source, 1 = 6 direction source
+  //uint8_t dataToWrite = 0;
+  
+  //LIS3DH_INT1_CFG   
+  //dataToWrite |= 0x80;//AOI, 0 = OR 1 = AND
+  //dataToWrite |= 0x40;//6D, 0 = interrupt source, 1 = 6 direction source
   //Set these to enable individual axes of generation source (or direction)
   // -- high and low are used generically
   //dataToWrite |= 0x20;//Z high
   //dataToWrite |= 0x10;//Z low
-  dataToWrite |= 0x08;//Y high
+  //dataToWrite |= 0x08;//Y high
   //dataToWrite |= 0x04;//Y low
-  dataToWrite |= 0x02;//X high
+  //dataToWrite |= 0x02;//X high
   //dataToWrite |= 0x01;//X low
-  myIMU.writeRegister(LIS3DH_INT1_CFG, dataToWrite);
-
-  //LIS3DH_INT1_THS
-  dataToWrite = 0;
+  myIMU.writeRegister(LIS3DH_INT1_CFG, 0x5F);
+  
+  //LIS3DH_INT1_THS   
+  //dataToWrite = 0;
   //Provide 7 bit value, 0x7F always equals max range by accelRange setting
-  dataToWrite |= 0x10; //0x10 -> 1/8 range
-  myIMU.writeRegister(LIS3DH_INT1_THS, dataToWrite);
-
-  //LIS3DH_INT1_DURATION
-  dataToWrite = 0;
+  //dataToWrite |= 0x10; //0x10 -> 1/8 range
+  myIMU.writeRegister(LIS3DH_INT1_THS, 0x10);
+  
+  //LIS3DH_INT1_DURATION  
+  //dataToWrite = 0;
   //minimum duration of the interrupt
   //LSB equals 1/(sample rate)
-  dataToWrite |= 0x04; // 1 * 1/50 s = 20ms
-  myIMU.writeRegister(LIS3DH_INT1_DURATION, dataToWrite);
+  //dataToWrite |= 0x01; // 1 * 1/100 s = 10ms
+  myIMU.writeRegister(LIS3DH_INT1_DURATION, 0x0A);
 
-  //LIS3DH_CLICK_CFG
-  dataToWrite = 1;
+  //LIS3DH_CLICK_CFG   
+  //dataToWrite = 0;
   //Set these to enable individual axes of generation source (or direction)
   // -- set = 1 to enable
   //dataToWrite |= 0x20;//Z double-click
-  dataToWrite |= 0x10;//Z click
-  //dataToWrite |= 0x08;//Y double-click
-  dataToWrite |= 0x04;//Y click
+  //dataToWrite |= 0x10;//Z click
+  //dataToWrite |= 0x08;//Y double-click 
+  //dataToWrite |= 0x04;//Y click
   //dataToWrite |= 0x02;//X double-click
-  dataToWrite |= 0x01;//X click
-  myIMU.writeRegister(LIS3DH_CLICK_CFG, dataToWrite);
-
+  //dataToWrite |= 0x01;//X click
+  myIMU.writeRegister(LIS3DH_CLICK_CFG, 0x15);
+  
   //LIS3DH_CLICK_SRC
-  dataToWrite = 1;
+  //dataToWrite = 0;
   //Set these to enable click behaviors (also read to check status)
   // -- set = 1 to enable
   //dataToWrite |= 0x20;//Enable double clicks
-  dataToWrite |= 0x04;//Enable single clicks
+  //dataToWrite |= 0x04;//Enable single clicks
   //dataToWrite |= 0x08;//sine (0 is positive, 1 is negative)
-  dataToWrite |= 0x04;//Z click detect enabled
-  dataToWrite |= 0x02;//Y click detect enabled
-  dataToWrite |= 0x01;//X click detect enabled
-  myIMU.writeRegister(LIS3DH_CLICK_SRC, dataToWrite);
-
-  //LIS3DH_CLICK_THS
-  dataToWrite = 0;
+  //dataToWrite |= 0x04;//Z click detect enabled
+  //dataToWrite |= 0x02;//Y click detect enabled
+  //dataToWrite |= 0x01;//X click detect enabled
+  myIMU.writeRegister(LIS3DH_CLICK_SRC, 0x07);
+  
+  //LIS3DH_CLICK_THS   
+  //dataToWrite = 0;
   //This sets the threshold where the click detection process is activated.
+  //dataToWrite = 0x80 //keep interrupt high for duration of latency window
   //Provide 7 bit value, 0x7F always equals max range by accelRange setting
-  dataToWrite |= 0x07; // ~1/16 range
-  myIMU.writeRegister(LIS3DH_CLICK_THS, dataToWrite);
+  //dataToWrite |= 0x0A; // ~1/16 range
+  myIMU.writeRegister(LIS3DH_CLICK_THS, 0x0A);
 
-  //LIS3DH_TIME_LIMIT
-  dataToWrite = 0;
+  //LIS3DH_TIME_LIMIT  
+  //dataToWrite = 0;
   //Time acceleration has to fall below threshold for a valid click.
   //LSB equals 1/(sample rate)
-  dataToWrite |= 0x08; // 8 * 1/50 s = 160ms
-  myIMU.writeRegister(LIS3DH_TIME_LIMIT, dataToWrite);
-
+  //dataToWrite |= 0x08; // 8 * 1/50 s = 160ms
+  myIMU.writeRegister(LIS3DH_TIME_LIMIT, 0x08);
+  
   //LIS3DH_TIME_LATENCY
-  dataToWrite = 0;
+  //dataToWrite = 0;
+  //hold-off time before allowing detection after click event
+  //1 LSB equals 1/(sample rate)
+  //dataToWrite |= 0x01; // 1 * 1/100 s = 10ms
+  myIMU.writeRegister(LIS3DH_TIME_LATENCY, 0x10);
+  
+  //LIS3DH_TIME_WINDOW 
+  //dataToWrite = 0;
   //hold-off time before allowing detection after click event
   //LSB equals 1/(sample rate)
-  dataToWrite |= 0x08; // 8 * 1/50 s = 160ms
-  myIMU.writeRegister(LIS3DH_TIME_LATENCY, dataToWrite);
+  //dataToWrite |= 0x10; // 16 * 1/100 s = 160ms
+  myIMU.writeRegister(LIS3DH_TIME_WINDOW, 0x10);
 
-  //LIS3DH_TIME_WINDOW
-  dataToWrite = 0;
-  //hold-off time before allowing detection after click event
-  //LSB equals 1/(sample rate)
-  dataToWrite |= 0x10; // 16 * 1/50 s = 320ms
-  myIMU.writeRegister(LIS3DH_TIME_WINDOW, dataToWrite);
-
-  //LIS3DH_CTRL_REG5
-  //Int1 latch interrupt and 4D on  int1 (preserve fifo en)
-  myIMU.readRegister(&dataToWrite, LIS3DH_CTRL_REG5);
-  dataToWrite &= 0xF3; //Clear bits of interest
-  dataToWrite |= 0x08; //Latch interrupt (Cleared by reading int1_src)
-  //dataToWrite |= 0x04; //Pipe 4D detection from 6D recognition to int1?
-  myIMU.writeRegister(LIS3DH_CTRL_REG5, dataToWrite);
+  //LIS3DH_CTRL_REG1   
+  //dataToWrite |= 0x50;// most significant nibble controls data rate, 5 = 100Hz
+  //dataToWrite |= 0x08;//Low power enable
+  //dataToWrite |= 0x04;//Z enable
+  //dataToWrite |= 0x02;//Y enable
+  //dataToWrite |= 0x01;//X enable
+  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x5F);
 
   //LIS3DH_CTRL_REG3
   //Choose source for pin 1
-  dataToWrite = 0;
+  //dataToWrite = 0;
   //dataToWrite |= 0x80; //Click detect on pin 1
-  dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
-  dataToWrite |= 0x20; //AOI2 event ()
+  //dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
+  //dataToWrite |= 0x20; //AOI2 event ()
   //dataToWrite |= 0x10; //Data ready
   //dataToWrite |= 0x04; //FIFO watermark
   //dataToWrite |= 0x02; //FIFO overrun
-  myIMU.writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
+  myIMU.writeRegister(LIS3DH_CTRL_REG3, 0xC0);
 
+  //LIS3DH_CTRL_REG5
+  //Int1 latch interrupt and 4D on  int1 (preserve fifo en)
+  //myIMU.readRegister(&dataToWrite, LIS3DH_CTRL_REG5);
+  //dataToWrite &= 0xF3; //Clear bits of interest
+  //dataToWrite |= 0x08; //Latch interrupt (Cleared by reading int1_src)
+  //dataToWrite |= 0x04; //Pipe 4D detection from 6D recognition to int1?
+  myIMU.writeRegister(LIS3DH_CTRL_REG5, 0x08);
+  
   //LIS3DH_CTRL_REG6
   //Choose source for pin 2 and both pin output inversion state
-  dataToWrite = 0;
-  dataToWrite |= 0x80; //Click int on pin 2
-  dataToWrite |= 0x40; //Generator 1 interrupt on pin 2
+  //dataToWrite = 0;
+  //dataToWrite |= 0x80; //Click int on pin 2
+  //dataToWrite |= 0x40; //Generator 1 interrupt on pin 2
   //dataToWrite |= 0x10; //boot status on pin 2
   //dataToWrite |= 0x02; //invert both outputs
-  myIMU.writeRegister(LIS3DH_CTRL_REG6, dataToWrite);
-
+  myIMU.writeRegister(LIS3DH_CTRL_REG6, 0xC2); //C0 cends HIGH interrupt, C2 sends low interrupt
 }
 
 
@@ -618,6 +649,9 @@ void setAlarmFunction()
   //Set alarm1
   RTC_DS.setAlarm(ALM1_MATCH_HOURS, MIN, HR, 0);   //set your wake-up time here
   RTC_DS.alarmInterrupt(1, true);  //code to pull microprocessor out of sleep is tied to the time -> here
+#if DEBUG == 1
+  Serial.print("Code hang after alarm interrupt");
+#endif
 }
 
 
@@ -636,6 +670,31 @@ void clearAlarmFunction()
   //uint8_t dataRead;
   //myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
 }
+
+/* Debugging and upload helper,
+ * Allow uploads by waiting for serial monitor to open, 
+ * prevent device from going to standby too soon
+ */
+
+void setupPrint()
+{
+  while(!Serial);     //Won't start anything until serial is open, comment these lines out if powering from battery
+    Serial.println("***** Interrupt Test *****");
+    
+    // ***** IMPORTANT *****
+    // Delay is required to allow the USB interface to be active during
+    // sketch upload process
+    
+    Serial.println("Entering test mode in:");
+    for (count; count > 0; count--)
+    {
+      Serial.print(count);
+      Serial.println(" s");
+      delay(1000);
+    }
+}
+
+
 
 /************************************************************************************************
    ISR pin assignments - for 32u4 ONLY
