@@ -17,7 +17,7 @@ volatile bool alert_flag = false;
 void setup()
 { // put your setup code here, to run once:
   
-  //Serial.begin(9600);
+  Serial.begin(9600);
   delay(1000); //relax...
   
   //Serial.println("Processor came out of reset.\n");
@@ -56,7 +56,7 @@ void loop()
 
   if(alert_flag)
   {
-    //Serial.println("Processor interrupt triggered");    
+    Serial.println("Processor interrupt triggered");    
     alert_flag = false;
     attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp, LOW);
   }
@@ -66,8 +66,10 @@ void loop()
  
   //Serial.println("TEST!");
 
-  //Serial.println("STANDBY MODE");
-  //Serial.end(); //end ALL sercoms before the device goes to sleep
+  Serial.println("STANDBY MODE");
+  Serial.flush();
+  Serial.end(); //end ALL sercoms before the device goes to sleep
+  USBDevice.detach();
 
   // Allow wake up pin to trigger interrupt on rising edge.
   // Wake up when acc input is returning to idle
@@ -80,9 +82,10 @@ void loop()
   //M0 end
   detachInterrupt(digitalPinToInterrupt(wakeUpPin)); //detaching interrupt in ISR causes issues?
 
-  //Serial.begin(9600);
+  USBDevice.attach();
+  Serial.begin(9600);
   delay(2000);
-  //Serial.print("WOKE");
+  Serial.print("WOKE");
   
   // For 32u4:
   // Enter power down state with ADC and BOD module disabled.
