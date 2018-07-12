@@ -124,7 +124,7 @@ uint8_t dataRead; // for acceleromter interrupt register
 **********************************************************************************************/
 void wakeUp_alert()
 {
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+//  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
   AlertFlag = true;
   TakeSampleFlag = true;
   TimerFlag = true;
@@ -154,17 +154,23 @@ void wakeUp_RTC()
 void setup() {
   Serial.begin(9600);
   delay(2000);
+  
 #if DEBUG
   setupPrint(); //give the device time to wake up and upload sketch if necessary
-#ifdef is_M0
+  
+  #ifdef is_M0
   Serial.println("Is M0");
+  #endif
 
-#endif
-
-#ifdef is_32u4
+  #ifdef is_32u4
   Serial.println("Is 32u4");
-#endif
-#endif
+  #endif
+
+#else 
+  // when not in debug mode, dont wait for serial to start code segment
+  // delay 15s for sketch upload
+  delay(15000); 
+#endif //DEBUG == 1
 
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
@@ -174,28 +180,32 @@ void setup() {
   digitalWrite(RFM95_RST, HIGH);  delay(10);
 
   /*check LoRa device and set frequency*/
-
   while (!manager.init()) {
 #if DEBUG == 1
     Serial.println("LoRa manager init failed"); //if print wiring may be wrong
 #endif
     while (1);
   }
+  
 #if DEBUG == 1
   Serial.println("LoRa radio init OK!");
 #endif
-  // checks if frequency is initialized
+
+  // check if frequency is initialized
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
   if (!rf95.setFrequency(RF95_FREQ)) {
+    
 #if DEBUG == 1
     Serial.println("setFrequency failed");
 #endif
     while (1);
   }
+  
 #if DEBUG == 1
   Serial.print("Set Freq to: ");
   Serial.println(RF95_FREQ);
 #endif
+
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips / symbol, CRC on
   // The default transmitter power is 13dBm, using PA_BOOST.
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
@@ -203,17 +213,16 @@ void setup() {
   rf95.setTxPower(23, false);
 
   /*initialize accelerometer and configure settings*/
-
-  pinMode(wakeUpPin, INPUT_PULLUP);  // set pin for alarm interrupt
-  pinMode(alertPin, INPUT_PULLUP);  // enable pull up resistor for accelerometer interrupt
+  pinMode(wakeUpPin, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
+  pinMode(alertPin, INPUT_PULLUP);
 
 #if DEBUG == 1
-  Serial.println("Processor came out of reset.\n");
+  Serial.println("Processor Setup Successful.\n");
 #endif
 
-  //Accel sample rate and range effect interrupt time and threshold values!!!
-  myIMU.settings.accelSampleRate = 100;  //Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
-  myIMU.settings.accelRange = 2;      //Max G force readable.  Can be: 2, 4, 8, 16
+  //Accel sample rate and range effect interrupt time and threshold values with device freq.
+  myIMU.settings.accelSampleRate = 100;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
+  myIMU.settings.accelRange = 2;         // Max G force readable.  Can be: 2, 4, 8, 16
   myIMU.settings.adcEnabled = 0;
   myIMU.settings.tempEnabled = 0;
   myIMU.settings.xAccelEnabled = 1;
@@ -230,52 +239,29 @@ void setup() {
 #if RTC_MODE == 1
   //RTC stuff init//
   InitializeRTC();
-#if DEBUG == 1
+  
+  #if DEBUG == 1
   Serial.print("Alarm set to go off every "); Serial.print(WakePeriodMin); Serial.println(" min from program time");
-#endif
-  delay(1000);
-#endif
+  #endif
+
+#endif //RTC_MODE == 1
   timer=millis();
 }
 
 void loop() {
 
   if(TimerFlag){ //triggered with every wake-up interrupt
-    intClearSet(); //clear interrupt registers, attach interrupts
+    
+    //**************** VERY IMPORTANT ****************
+    //clear interrupt registers, attach interrupts EVERY TIME THE INTERRUPT IS CALLED
+    intClearSet();
+    
     timer=millis();
     TimerFlag=false;
   }
-
-  if(millis()-timer > 10000){ //10s delay, then sleep
-    TimerFlag = false;
-    AlertFlag = false;
-    TakeSampleFlag=false;
-
-    #ifdef is_M0
-    Serial.println("STANDBY");    
-    setAlarmFunction(); //reset alarm to go off one wake period from sleeping
-    Serial.end();
-    USBDevice.detach();
-    intClearSet(); //clear interrupt registers, attach interrupts
-    delay(10);
-    #if DEBUG == 1
-    digitalWrite(LED_BUILTIN, LOW);
-    #endif
-    LowPower.standby();
-    USBDevice.attach();
-    #if DEBUG == 1    
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(5000); // give user 5s to close and reopen serial monitor!
-    #endif
-    clearAlarmFunction(); //prevent double trigger of alarm interrupt
-
-    Serial.begin(115200);
-    Serial.println("WAKE");
-    #endif
-  }
-
+  
   if(RTCFlag){
-    clearAlarmFunction();
+    clearRTCAlarm();
     Serial.println("Processor wake from RTC");
     DateTime now = RTC_DS.now();
     uint8_t mo = now.month();
@@ -292,7 +278,6 @@ void loop() {
 #if DEBUG == 1
     Serial.println(RTC_timeString);
 #endif
-    setAlarmFunction();
     delay(75);  // delay so serial stuff has time to print out all the way
     RTCFlag=false;
   }
@@ -301,6 +286,36 @@ void loop() {
     Serial.println("Processor wake from accelerometer");
     delay(20);
     AlertFlag=false;
+  }
+
+  //this is the standby loop, execute last in order
+  if(millis()-timer > 10000){ //10s delay, then sleep
+    //reset all flags
+    TimerFlag = false;
+    AlertFlag = false;
+    TakeSampleFlag=false;
+
+    #ifdef is_M0
+    Serial.println("STANDBY");    
+    setRTCAlarm(); //reset alarm to go off one wake period from sleeping
+    Serial.end();
+    USBDevice.detach();
+    intClearSet(); //clear interrupt registers, attach interrupts
+    delay(10);
+      #if DEBUG == 1
+    digitalWrite(LED_BUILTIN, LOW);
+      #endif
+    LowPower.standby();
+    USBDevice.attach();
+      #if DEBUG == 1    
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000); // give user 5s to close and reopen serial monitor!
+      #endif
+    clearRTCAlarm(); //prevent double trigger of alarm interrupt
+
+    Serial.begin(115200);
+    Serial.println("WAKE");
+    #endif //is_M0
   }
 
 //
@@ -329,7 +344,7 @@ void loop() {
 //  // <----  Wait in sleep here until pin interrupt
 //  // On Wakeup, proceed from here:
 //  PCICR = 0x00;         // Disable PCINT interrupt
-//  clearAlarmFunction(); // Clear RTC Alarm
+//  clearRTCAlarm(); // Clear RTC Alarm
 //#endif //is_32u4
 //
 //#ifdef is_M0
@@ -525,7 +540,7 @@ void loop() {
 //        }
 //    */
 //    // Reset alarm1 for next period
-//    setAlarmFunction();
+//    setRTCAlarm();
 //
 //    delay(75);  // delay so serial stuff has time to print out all the way
 //
@@ -536,7 +551,7 @@ void loop() {
 
 
 /**********************************************************************************************
-   Helper Functions - configInterrupts, InitializeRTC, setAlarmFunction, clearAlarmFunction
+   Helper Functions - configInterrupts, InitializeRTC, setRTCAlarm, clearRTCAlarm
 **********************************************************************************************/
 
 /******************
@@ -696,7 +711,7 @@ void InitializeRTC()
     RTC_DS.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
   //clear any pending alarms
-  clearAlarmFunction();
+  clearRTCAlarm();
 
   // Query Time and print
   DateTime now = RTC_DS.now();
@@ -707,13 +722,13 @@ void InitializeRTC()
   RTC_DS.writeSqwPinMode(DS3231_OFF);
 
   //Set alarm1
-  setAlarmFunction();
+  setRTCAlarm();
 }
 
 
 /* RTC helper function */
 /* Function to query current RTC time and add the period to set next alarm cycle */
-void setAlarmFunction()
+void setRTCAlarm()
 {
   DateTime now = RTC_DS.now(); // Check the current time
   // Calculate new time
@@ -733,7 +748,7 @@ void setAlarmFunction()
 
 /* RTC helper function */
 /* When exiting the sleep mode we clear the alarm */
-void clearAlarmFunction()
+void clearRTCAlarm()
 {
   //clear any pending alarms
   RTC_DS.armAlarm(1, false);
