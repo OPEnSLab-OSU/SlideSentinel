@@ -406,10 +406,13 @@ void loop() {
     // write code for powering on devices here
 
     /* begin transmit section here */
+    //************************************************************
+    //************************************************************
+    
     //concatenate message
     stringTransmit = String(IDString + "," + RTC_timeString + "," + X_string + "," + Y_string + "," + Z_string + "\0"); //our concatenated string for transmit
     Serial.println(stringTransmit);
-    /*
+    
         //calculate the length of the transmitBufLen (needed for LoRa)
         transmitBufLen = 1 + (char)stringTransmit.length();  //+1 to account for the end character
 
@@ -457,7 +460,6 @@ void loop() {
         {
           Serial.println("No reply, is there a listener around?");
         }
-    */
     // Reset alarm1 for next period
     setAlarmFunction();
 
@@ -678,8 +680,8 @@ void clearAlarmFunction()
   RTC_DS.clearAlarm(2);
   RTC_DS.alarmInterrupt(2, false);
   //opens up RTC to interrupts again
-  //uint8_t dataRead;
-  //myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
+  uint8_t dataRead;
+  myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
 }
 
 /* Debugging and upload helper,
@@ -734,6 +736,7 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
 
 }
 #endif //is_32u4
+
 
 
 

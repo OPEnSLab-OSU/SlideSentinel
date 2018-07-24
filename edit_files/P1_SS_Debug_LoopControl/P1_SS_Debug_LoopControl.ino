@@ -124,7 +124,6 @@ uint8_t dataRead; // for acceleromter interrupt register
 **********************************************************************************************/
 void wakeUp_alert()
 {
-//  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
   AlertFlag = true;
   TakeSampleFlag = true;
   TimerFlag = true;
