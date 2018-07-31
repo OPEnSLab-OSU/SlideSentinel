@@ -58,11 +58,12 @@ TinyGPSPlus gps; //instance of GPS parser
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t complete_string[RH_RF95_MAX_MESSAGE_LEN];
+uint8_t buff[1024];
 uint8_t len;
 bool isRead = false, wait_write = false;
 byte lastIn;
 byte nextIn;
-unsigned long bytes_recvd, timer;
+unsigned long bytes_recvd, timer, message_len, buff_len;
 char nmeaChar;
 
 
@@ -72,8 +73,8 @@ void setup()
 {
   //setup code here, to run once:
   Serial.begin(115200);         //Opens the main serial port to communicate with the computer
-  Serial2.begin(56700);        //rx from rover
-  Serial3.begin(115200);         //tx to rover
+  Serial2.begin(56700);        //rx on rover
+  Serial3.begin(115200);         //tx from rover
 
   // Assign pins 10 & 13 SERCOM functionality, internal function
   pinPeripheral(10, PIO_SERCOM);  //Private functions for serial communication
@@ -120,7 +121,7 @@ void setup()
   rf95.setTxPower(23, false);
 
   bytes_recvd = 0;
-
+  message_len = 0;
   // K_30_Serial.begin(9600);    //Opens the virtual serial port with a baud of 9600
 }
 
@@ -136,13 +137,14 @@ void loop()
    */
 
   while (!rf95.available()) {
-    while (Serial3.available()) { //read from serial
+    while (Serial3.available() && !rf95.available()) { //read from serial
       nmeaChar=Serial3.read();
-      Serial.print(nmeaChar);
+      //Serial.print(nmeaChar);
       gps.encode(nmeaChar);
     }
     if(millis() - timer > 500){break;}
   }
+  
   if (rf95.available()) {
 //    if (wait_write) {
 //      wait_write = false;
@@ -161,14 +163,24 @@ void loop()
 //      else {
 //        wait_write = true;
 //      }
-    if (rf95.recv(RTKString, &len))
-    {   bytes_recvd += len;
-        Serial2.write(RTKString, len);
-        for(int i = 0; i < len; i++)
-          Serial.print(RTKString[i], HEX);
-        Serial.println();
-      
-    
+    if (rf95.recv(RTKString, &len)){
+    bytes_recvd += len;
+    for(int i = 0; i < len; i++){
+        buff[buff_len++] = RTKString[i];
+        if(buff_len > 1 && buff[buff_len-1] == 0x0A && buff[buff_len-2] == 0x0D || buff_len >= 1000){
+            Serial2.write(buff, buff_len);
+            Serial.println();
+            Serial.println("Message to rover:");
+            for (int j = 0; j < buff_len; j++) {
+                Serial.print(buff[j], HEX);
+                Serial.print(",");
+            }
+            Serial.println();
+            Serial.print("Payload: ");
+            Serial.println(buff_len-7, DEC);
+            buff_len = 0;
+        }
+    }
 #if DEBUG == 1
       Serial.print("Bytes received = ");
       Serial.println(bytes_recvd);
@@ -176,7 +188,15 @@ void loop()
       Serial.println(len, DEC);
       Serial.println("\nData received:");
       for (int i = 0; i < len; i++) {
-        Serial.print(RTKString[i], HEX);
+          Serial.print(RTKString[i], HEX);
+          Serial.print(",");
+          message_len++;
+          if(i > 1 && RTKString[i] == 0x0A && RTKString[i-1] == 0x0D){
+              Serial.println();
+              Serial.print("Last Payload Len:");
+              Serial.println(message_len-7, DEC);
+              message_len=0;
+          }
       }
       Serial.println();
       Serial.print("RSSI: ");
@@ -195,12 +215,16 @@ void loop()
   }
   #if DEBUG
   if(gps.location.isValid()){
+    Serial.println();
+    Serial.println();
+    Serial.println("************** GPS LOC INFORMATION **************");
     Serial.print("LAT=");  Serial.println(gps.location.lat(), 6);
     Serial.print("LONG="); Serial.println(gps.location.lng(), 6);
   }
   if(gps.time.isValid()){
-    Serial.print("Timestring: ");
+    Serial.println("************** GPS TIME INFORMATION **************");
     Serial.println(gps.time.value()); // Raw time in HHMMSSCC format (u32)
+    Serial.println();
   }
   #endif
 
@@ -216,6 +240,27 @@ void loop()
   //    }
   //  }
 }
+
+bool IsStart(uint8_t* RTKString){
+  uint8_t start_seq[10] = "start_seq";
+  for(int i = 0; i < 10; i++){
+      if(RTKString[i] != start_seq[i]){
+          return false;
+      }
+  }
+  return true;
+}
+
+bool IsEnd(uint8_t* RTKString){
+  uint8_t end_seq[8] = "end_seq";
+  for(int i = 0; i < 8; i++){
+      if(RTKString[i] != end_seq[i]){
+          return false;
+      }
+  }
+  return true;
+}
+
 
 
 
