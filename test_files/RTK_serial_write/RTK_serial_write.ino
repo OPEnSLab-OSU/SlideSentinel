@@ -42,13 +42,10 @@ RHReliableDatagram manager(rf95, SERVER_ADDRESS);  //LoRa message verification
 
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
-uint8_t last, next;
 int len;
 int chars_to_send;
 int first_index;
 bool is_read = false;
-byte lastIn;
-byte nextIn;
 unsigned long bytes_sent, timer_10;
 
 
@@ -126,6 +123,7 @@ void loop()
       chars_to_send = len-first_index;
     }
     rf95.send(&(RTKString[first_index]), chars_to_send);
+    //delay(10);
     bytes_sent += chars_to_send;
     first_index=first_index+chars_to_send;
 #if DEBUG == 1

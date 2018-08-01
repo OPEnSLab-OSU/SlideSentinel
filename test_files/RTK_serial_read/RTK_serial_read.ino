@@ -21,7 +21,7 @@
 
 
 #define BAUD 57600    // 115200 for GPS rover configuration, 57600 for base configuration (no NMEA)
-#define DEBUG 1
+#define DEBUG 0
 
 //===== LoRa Initializations =====
 #define RFM95_CS 8
@@ -211,7 +211,9 @@ void loop()
   }
   else //happens when there is no receiver on the same freq to listen to
   {
+    #if DEBUG
     Serial.println("No reply, is there a listener around?");
+    #endif
   }
   #if DEBUG
   if(gps.location.isValid()){
@@ -227,18 +229,6 @@ void loop()
     Serial.println();
   }
   #endif
-
-  //  if(isRead){
-  //    if( lastIn == 0xA0 && nextIn == 0xA1) //start code
-  //      Serial.println("Sequence Start");
-  //
-  //    Serial.print(lastIn, HEX);
-  //
-  //    if(lastIn == 0x0D && nextIn == 0x0A){
-  //      Serial.print(nextIn, HEX);
-  //      Serial.println("");
-  //    }
-  //  }
 }
 
 bool IsStart(uint8_t* RTKString){
