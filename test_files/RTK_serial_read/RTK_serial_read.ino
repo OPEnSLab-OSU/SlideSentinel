@@ -57,12 +57,8 @@ TinyGPSPlus gps; //instance of GPS parser
 
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN];
-uint8_t complete_string[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t buff[1024];
 uint8_t len;
-bool isRead = false, wait_write = false;
-byte lastIn;
-byte nextIn;
 unsigned long bytes_recvd, timer, message_len, buff_len;
 char nmeaChar;
 
@@ -119,6 +115,8 @@ void setup()
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
+  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); //Enum constant for setting bit rate options, constant configured for hight bitrate, short range
+
 
   bytes_recvd = 0;
   message_len = 0;
@@ -164,23 +162,38 @@ void loop()
 //        wait_write = true;
 //      }
     if (rf95.recv(RTKString, &len)){
-    bytes_recvd += len;
-    for(int i = 0; i < len; i++){
-        buff[buff_len++] = RTKString[i];
-        if(buff_len > 1 && buff[buff_len-1] == 0x0A && buff[buff_len-2] == 0x0D || buff_len >= 1000){
-            Serial2.write(buff, buff_len);
-            Serial.println();
-            Serial.println("Message to rover:");
-            for (int j = 0; j < buff_len; j++) {
-                Serial.print(buff[j], HEX);
-                Serial.print(",");
-            }
-            Serial.println();
-            Serial.print("Payload: ");
-            Serial.println(buff_len-7, DEC);
-            buff_len = 0;
-        }
-    }
+        bytes_recvd += len;
+        Serial2.write(RTKString, len);
+//        for (int j = 0; j < len; j++) {
+//                if(RTKString[j] == 0xA0 && RTKString[j+1] == 0xA1){
+//                    Serial.println();
+//                    Serial.print("Buff Len: ");
+//                    Serial.println(buff_len - 7);
+//                    buff_len = 0;
+//                }
+//                buff_len++;
+//                Serial.print(RTKString[j], HEX);
+//                Serial.print(",");
+        
+//    for(int i = 0; i < len; i++){
+//        buff[buff_len++] = RTKString[i];
+//        if(buff_len > 1 && buff[buff_len-1] == 0x0A && buff[buff_len-2] == 0x0D || buff_len >= 1000){
+//            Serial2.write(buff, buff_len);
+//            Serial.println();
+//            Serial.print("Message to rover:");
+//            for (int j = 0; j < buff_len; j++) {
+//                if(buff[j] == 0xA0 && buff[j+1] == 0xA1){
+//                    Serial.println();
+//                }
+//                Serial.print(buff[j], HEX);
+//                Serial.print(",");
+//            }
+//            Serial.println();
+//            Serial.print("Payload: ");
+//            Serial.println(buff_len-7, DEC);
+//            buff_len = 0;
+//        }
+//    }
 #if DEBUG == 1
       Serial.print("Bytes received = ");
       Serial.println(bytes_recvd);
@@ -193,7 +206,7 @@ void loop()
           message_len++;
           if(i > 1 && RTKString[i] == 0x0A && RTKString[i-1] == 0x0D){
               Serial.println();
-              Serial.print("Last Payload Len:");
+              Serial.print("Last Recd. Payload Len:");
               Serial.println(message_len-7, DEC);
               message_len=0;
           }
@@ -231,25 +244,6 @@ void loop()
   #endif
 }
 
-bool IsStart(uint8_t* RTKString){
-  uint8_t start_seq[10] = "start_seq";
-  for(int i = 0; i < 10; i++){
-      if(RTKString[i] != start_seq[i]){
-          return false;
-      }
-  }
-  return true;
-}
-
-bool IsEnd(uint8_t* RTKString){
-  uint8_t end_seq[8] = "end_seq";
-  for(int i = 0; i < 8; i++){
-      if(RTKString[i] != end_seq[i]){
-          return false;
-      }
-  }
-  return true;
-}
 
 
 

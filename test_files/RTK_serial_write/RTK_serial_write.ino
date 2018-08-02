@@ -42,9 +42,11 @@ RHReliableDatagram manager(rf95, SERVER_ADDRESS);  //LoRa message verification
 
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
+uint8_t dummyString[250];
 int len;
 int chars_to_send;
 int first_index;
+int last_payload;
 bool is_read = false;
 unsigned long bytes_sent, timer_10;
 
@@ -95,6 +97,7 @@ void setup()
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
+  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); //Enum constant for setting bit rate options, constant configured for hight bitrate, short range
   len = 0;
 
   // K_30_Serial.begin(9600);    //Opens the virtual serial port with a baud of 9600
@@ -103,32 +106,61 @@ void setup()
 void loop()
 {
   timer_10 = millis();
-  while (millis()-timer_10 < 5){ //5ms timeout
+  while (millis()-timer_10 < 5){ //50ms timeout
     
     if(Serial2.available()){
         RTKString[len] = Serial2.read();
         len++;
         timer_10 = millis();
     }
-    if (len == 5*RH_RF95_MAX_MESSAGE_LEN) {
+    if (len >= 5*RH_RF95_MAX_MESSAGE_LEN) {
       break;
     }
   }
+  /***********TEST CODE************/
+  for(int i = 0; i < len; i++){
+    if(i < len-1 && RTKString[i] == 0xA0 && RTKString[i+1] == 0xA1){
+        Serial.println();
+        Serial.print("Last String In: ");
+        Serial.println(last_payload-7);
+        last_payload = 0;
+    }
+      Serial.print(RTKString[i], HEX);
+      Serial.print(",");
+      last_payload++;
+  }
+  /***********************/
+  
+  
   first_index = 0;
+  
   while(len-first_index > 0) {
+//    if(Serial2.available()){
+//        break;
+//    }
     if(len-first_index > RH_RF95_MAX_MESSAGE_LEN){
       chars_to_send = RH_RF95_MAX_MESSAGE_LEN;
     }
     else{
       chars_to_send = len-first_index;
+    } 
+
+//    for(int i = 0; i < chars_to_send; i++){
+//        dummyString[i] = RTKString[first_index+i];
+//    }
+    
+    if(rf95.send(&(RTKString[first_index]),chars_to_send)){
+        Serial.println();
+        Serial.println("MESSAGE SENT");
     }
-    rf95.send(&(RTKString[first_index]), chars_to_send);
-    //delay(10);
+  
     bytes_sent += chars_to_send;
     first_index=first_index+chars_to_send;
 #if DEBUG == 1
-    for (int i = 0; i < len; i++)
+    for (int i = first_index; i < first_index+chars_to_send; i++){
       Serial.print(RTKString[i], HEX);
+      Serial.print(",");
+    }
 
     Serial.println();
 
@@ -136,12 +168,19 @@ void loop()
     Serial.println(bytes_sent);
 
 
-    Serial.print("length = "); Serial.println(len);
+    Serial.print("length = "); Serial.println(chars_to_send);
     Serial.println("Sending to rf95_remote (rover station)");
 #endif
   }
   len = 0;
-
+  /*
+  len = len - first_index;
+  if(Serial2.available()){
+      for(int i = 0; i < len; i++){
+          RTKString[i] = RTKString[i+first_index];
+      }
+  }
+  */
   //        if (rf95.waitAvailableTimeout(500))
   //        {
   //          // Should be a reply message for us now
