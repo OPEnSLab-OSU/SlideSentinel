@@ -1,5 +1,5 @@
-# test code for Phase 1 - Sensor
-# For Feather 32u4 - RTC alarm and LoRa
+//# test code for Phase 1 - Sensor
+//# For Feather 32u4 - RTC alarm and LoRa
 
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code
@@ -158,7 +158,7 @@ void setup() {
   delay(1000);
 #endif
 
-#if DEBUG == 1 && RTC == 1
+#if DEBUG == 1 && RTC_MODE == 1
   Serial.print("Initializing SD card...");
   if (!SD.begin(4)) {
     Serial.println("initialization failed!");
@@ -564,6 +564,7 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
     TakeSampleFlag = true;
 }
 // triggers wake when accelerometer interrupt
+
 
 
 
