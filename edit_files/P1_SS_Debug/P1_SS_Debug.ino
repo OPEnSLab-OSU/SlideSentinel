@@ -1,8 +1,4 @@
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 // For Feather M0 needs work on the RTC and accelerometer interrupt routines
-=======
-//# For Feather M0 needs work on the RTC and accelerometer interrupt routines
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 /*******************************************************************************************
    SlideSentinel: Phase 1 Sensor code
    Author: Marissa Kwon
@@ -18,7 +14,7 @@
 
       Description:
       Interrupt support for the LIS3DH is extremely flexible, so configuration must be left
-      to the user.  This sketch demonstrates how to make a interrupt configuration function
+      to the user.  This sketch demonstrates how to make a interrupt configuration function.
 
       Use configIntterupts() as a template, then comment/uncomment desired options.
       See ST docs for information
@@ -101,11 +97,7 @@ RTC_DS3231 RTC_DS; //instance of DS3231 RTC
 
 int transmitBufLen; // length of transmit buffer
 const int ID = 100; // id unique to device
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 String IDString, NEMA_string, X_string, Y_string, Z_string, RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_secString, RTC_timeString = "", stringTransmit = "";
-=======
-String IDString, NMEA_string, X_string, Y_string, Z_string, RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 
 // Declare RTC/Accelerometer specific variables
 volatile bool TakeSampleFlag = false; // Flag is set with external Pin A0 Interrupt by RTC
@@ -113,15 +105,9 @@ volatile bool AlertFlag = false; // Flag if an alert is triggered and we need to
 volatile int HR = 8; // Hr of the day we want alarm to go off
 volatile int MIN = 0; // Min of each hour we want alarm to go off
 volatile int WakePeriodMin = 1;  // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min)
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 volatile int count = 10; //number of seconds to wait before running loop()
 const byte wakeUpPin = 12;  // attach to SQW pin on RTC
 const byte alertPin = 6;  // attach to int1 on accelerometer
-=======
-const byte wakeUpPin = 11;  // attach to SQW pin on RTC
-const byte alertPin = 12;  // attach to int1 on accelerometer
-volatile int count = 5; //number of seconds to wait before interrupt configurations
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 uint8_t dataRead; // for acceleromter interrupt register
 
 /**********************************************************************************************
@@ -138,22 +124,11 @@ void wakeUp_alert()
   AlertFlag = true;
   TakeSampleFlag = true;
   myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
   detachInterrupt(digitalPinToInterrupt(wakeUpPin));
-=======
-#if DEBUG
-  Serial.println("Alert recognized");
-  delay(1000); //time to print
-#endif
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 }
 
 void wakeUp_RTC()
 {
-#if DEBUG
-  Serial.println("RTC wake recognized");
-  delay(1000); //time to print
-#endif
   TakeSampleFlag = true;
   detachInterrupt(digitalPinToInterrupt(wakeUpPin));
   }
@@ -175,24 +150,7 @@ void setup() {
   Serial.begin(9600);
   delay(2000);
 #if DEBUG
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
   setupPrint(); //give the device time to wake up and upload sketch if necessary
-=======
-  //delay code used from rocketscream lowpower library M0 standby example
-  while(!Serial);
-    Serial.println("***** Interrupt Test *****");
-    
-    // ***** IMPORTANT *****
-    // Delay is required to allow the USB interface to be active during
-    // sketch upload process
-    Serial.println("Entering standby mode in:");
-    for (count; count > 0; count--)
-    {
-      Serial.print(count);  
-      Serial.println(" s");
-      delay(1000);
-    }
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
 #ifdef is_M0
   Serial.println("Is M0");
 
@@ -292,7 +250,7 @@ void loop() {
   //needed to assign interrupts to pins
   // enable interrupt for PCINT7...
   pciSetup(11);
-  pciSetup(12);
+  pciSetup(13);
   delay(1000);
 
   // Wake up when wakeUp pin is low or on rising edge of alertPin .
@@ -314,7 +272,6 @@ void loop() {
   USBDevice.detach();
  
   delay(100);
-<<<<<<< HEAD:edit_files/P1_SS_Debug/P1_SS_Debug.ino
   digitalWrite(LED_BUILTIN, LOW); //LED off when processor is asleep
 
   //SETUP FOR RTC AND ACCELEROMETER INTS
@@ -324,9 +281,6 @@ void loop() {
   attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
   
   LowPower.standby();
-=======
-  LowPower.idle(IDLE_2);
->>>>>>> master:edit_files/P1_SS_Debug/P1_SS_Debug.ino
   // <----  Wait in sleep here until pin interrupt
   // On Wakeup, proceed from here:
   
@@ -774,7 +728,7 @@ ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
 {
   if (digitalRead(11) == LOW)  //trigger wake when alarm time
     TakeSampleFlag = true;
-  if (digitalRead(12) == HIGH) // triggers wake when accelerometer interrupt
+  if (digitalRead(13) == HIGH) // triggers wake when accelerometer interrupt
   {
     AlertFlag = true;
     TakeSampleFlag = true;
