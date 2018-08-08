@@ -26,7 +26,7 @@
 #define RFM95_RST 4
 #define RFM95_INT 3
 #define CAPACITY 500
-#define SERVER_ADDRESS 2
+#define SERVER_ADDRESS 1
 #define VBATPIN A7
 #define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
 
@@ -43,10 +43,13 @@ RHReliableDatagram manager(rf95, SERVER_ADDRESS);  //LoRa message verification
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
 uint8_t dummyString[250];
+char nmeaString[100];
+uint8_t nmea_len;
 int len;
 int chars_to_send;
 int first_index;
 int last_payload;
+uint8_t rec_from, rec_to, rec_id, rec_flags;
 bool is_read = false;
 unsigned long bytes_sent, timer_10;
 
@@ -132,12 +135,24 @@ void loop()
   /***********************/
   
   
-  first_index = 0;
+    first_index = 0;
+    nmea_len = 100;
+    if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
+        Serial.println("Received nmea string");
+        for(int i = 0; i<nmea_len; i++){
+            Serial.print(nmeaString[i]);
+        }
+    }
   
   while(len-first_index > 0) {
-//    if(Serial2.available()){
-//        break;
-//    }
+    nmea_len = 100;
+    if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
+        Serial.println("Received nmea string");
+        for(int i = 0; i<nmea_len; i++){
+            Serial.print(nmeaString[i]);
+        }
+    }
+    
     if(len-first_index > RH_RF95_MAX_MESSAGE_LEN){
       chars_to_send = RH_RF95_MAX_MESSAGE_LEN;
     }
@@ -153,6 +168,7 @@ void loop()
         Serial.println();
         Serial.println("MESSAGE SENT");
     }
+
   
     bytes_sent += chars_to_send;
     first_index=first_index+chars_to_send;
@@ -172,15 +188,12 @@ void loop()
     Serial.println("Sending to rf95_remote (rover station)");
 #endif
   }
-  len = 0;
-  /*
+  
   len = len - first_index;
-  if(Serial2.available()){
-      for(int i = 0; i < len; i++){
-          RTKString[i] = RTKString[i+first_index];
-      }
+  for(int i = 0; i < len; i++){
+      RTKString[i] = RTKString[i+first_index];
   }
-  */
+  
   //        if (rf95.waitAvailableTimeout(500))
   //        {
   //          // Should be a reply message for us now

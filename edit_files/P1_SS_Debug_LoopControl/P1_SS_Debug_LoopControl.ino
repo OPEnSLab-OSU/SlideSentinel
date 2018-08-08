@@ -36,55 +36,30 @@
 #define RTC_MODE 1 //enable RTC 
 #define SD_WRITE 0  //enable SD card logging (too much for 32u4 processor memory)
 
-// ======= BOARD SPECIFIC SETTINGS ======
-
 //NOTE: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
 #include <RTClibExtended.h>
-
-#define EI_NOTEXTERNAL
 #include <EnableInterrupt.h>
 
 #ifdef __SAMD21G18A__
 #define is_M0
 #endif
 
-#ifdef __AVR_ATmega32U4__
-#define is_32U4
-#pragma message("Warning: 32u4 can only interface with one Decagon device on pin 10")
-#endif
-
 //===== LoRa Initializations =====
 
-#ifdef is_M0
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
-#endif
-
-#ifdef is_32U4
-#define RFM95_CS 8
-#define RFM95_RST 4
-#define RFM95_INT 7
-#endif
-
 #define SERVER_ADDRESS 2
-
-//battery voltage read pin
-#ifdef is_M0
+#define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
+#define SAMPLE_SIZE 5  // how many samples to take for average value
 #define VBATPIN A7
-#endif
-
-#ifdef is_32U4
-#define VBATPIN A9
-#endif
 
 float measuredvbat;
 
 // ======== General Settings ==========
 
-#define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
-#define SAMPLE_SIZE 5  // how many samples to take for average value
+
 
 // Create instances of sensors
 LIS3DH myIMU(I2C_MODE, 0x19); //Default accel constructor is I2C, addr 0x19.
@@ -109,9 +84,11 @@ volatile int MIN = 0; // Min of each hour we want alarm to go off
 volatile int WakePeriodMin = 1;  // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min)
 volatile int count = 10; //number of seconds to wait before running loop()
 const byte wakeUpPin = 12;  // attach to SQW pin on RTC
-const byte alertPin = 6;  // attach to int1 on accelerometer
+const byte alertPin = 17;  // attach A3 to int1 on accelerometer
 unsigned long timer;
 uint8_t dataRead; // for acceleromter interrupt register
+
+//RTK and serial variables
 
 /**********************************************************************************************
    wakeUp()
@@ -156,15 +133,6 @@ void setup() {
   
 #if DEBUG
   setupPrint(); //give the device time to wake up and upload sketch if necessary
-  
-  #ifdef is_M0
-  Serial.println("Is M0");
-  #endif
-
-  #ifdef is_32u4
-  Serial.println("Is 32u4");
-  #endif
-
 #else 
   // when not in debug mode, dont wait for serial to start code segment
   // delay 15s for sketch upload
@@ -294,258 +262,25 @@ void loop() {
     AlertFlag = false;
     TakeSampleFlag=false;
 
-    #ifdef is_M0
     Serial.println("STANDBY");    
     setRTCAlarm(); //reset alarm to go off one wake period from sleeping
     Serial.end();
     USBDevice.detach();
     intClearSet(); //clear interrupt registers, attach interrupts
     delay(10);
-      #if DEBUG == 1
+    #if DEBUG == 1
     digitalWrite(LED_BUILTIN, LOW);
-      #endif
+    #endif
     LowPower.standby();
     USBDevice.attach();
-      #if DEBUG == 1    
+    #if DEBUG == 1    
     digitalWrite(LED_BUILTIN, HIGH);
     delay(5000); // give user 5s to close and reopen serial monitor!
-      #endif
+    #endif
     clearRTCAlarm(); //prevent double trigger of alarm interrupt
-
     Serial.begin(115200);
     Serial.println("WAKE");
-    #endif //is_M0
   }
-
-//
-//  
-//  //local variables
-//  float acc_x = 0, acc_y = 0, acc_z = 0;
-//  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-//  uint8_t len = sizeof(buf);
-//
-//  /* prep for sleep - don't go to sleep if RTC not set*/
-//#if RTC_MODE == 1 //set up RTC interrupts
-//  // Enter into Low Power mode here[RTC]:
-//  // Enter power down state with ADC and BOD module disabled.
-//  // Enable SQW pin interrupt
-//
-//#ifdef is_32u4
-//  //CURRENTLY ONLY SET UP FOR RTC INTS
-//  //needed to assign interrupts to pins
-//  // enable interrupt for PCINT7...
-//  pciSetup(11);
-//  pciSetup(13);
-//  delay(1000);
-//
-//  // Wake up when wakeUp pin is low or on rising edge of alertPin .
-//  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
-//  // <----  Wait in sleep here until pin interrupt
-//  // On Wakeup, proceed from here:
-//  PCICR = 0x00;         // Disable PCINT interrupt
-//  clearRTCAlarm(); // Clear RTC Alarm
-//#endif //is_32u4
-//
-//#ifdef is_M0
-////  //SETUP FOR RTC AND ACCELEROMETER INTS
-////  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
-////  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
-//#if DEBUG
-//  Serial.println("STANDBY");
-//#endif
-//  Serial.end(); //end ALL sercoms before the device goes to sleep
-//  USBDevice.detach();
-// 
-//  delay(100);
-//  digitalWrite(LED_BUILTIN, LOW); //LED off when processor is asleep
-//
-//  //SETUP FOR RTC AND ACCELEROMETER INTS
-//  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
-//  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
-//  
-//  LowPower.standby();
-//  // <----  Wait in sleep here until pin interrupt
-//  // On Wakeup, proceed from here:
-//  
-//  // Disable external pin interrupt on wake up pin.
-// 
-//  detachInterrupt(digitalPinToInterrupt(alertPin));
-//
-//
-//  //reconfigure serial
-//  USBDevice.attach();
-//  Serial.begin(9600);
-//  digitalWrite(LED_BUILTIN, HIGH); //LED active with processor wake
-//  
-//
-//  
-//#if DEBUG
-//  //5 seconds for user to restart serial monitor while debugging
-//  //this is required due to attach() and detach() of USBDevice
-//  delay(5000); 
-//  Serial.println("AWAKE!");
-//#endif
-//  
-//#endif //is_M0
-//
-//#else
-//  // no sleep mode and reset the TakeSampleFlag to true
-//  delay(3000); // period in DEBUG mode to wait between samples
-//  TakeSampleFlag = 1;
-//#endif  //RTC_MODE
-//
-//  /*while awake do the following*/
-//  if (TakeSampleFlag)
-//  {
-//    /* wake up devices here if previously in low-power mode */
-//#if RTC_MODE == 1
-//    //write power-on functions here
-//
-//    // get RTC timestamp and ID string
-//    DateTime now = RTC_DS.now();
-//    uint8_t mo = now.month();
-//    uint8_t d = now.day();
-//    uint8_t h = now.hour();
-//    uint8_t mm = now.minute();
-//
-//    RTC_monthString = String(mo, DEC);
-//    RTC_dayString = String(d, DEC);
-//    RTC_hrString = String(h, DEC);
-//    RTC_minString = String(mm, DEC);
-//    RTC_timeString = RTC_hrString + ":" + RTC_minString + "_" + RTC_monthString + "/" + RTC_dayString;
-//
-//#if DEBUG == 1
-//    Serial.println(RTC_timeString);
-//#endif
-//
-//#endif
-//
-//    IDString = String(ID, DEC);  //changes ID int into string
-//
-//    //get accelerometer data - all parameters
-//    if (AlertFlag) {
-//      //can do something special here if woken up by accelerometer
-//      acc_x = myIMU.readFloatAccelX();
-//      acc_y = myIMU.readFloatAccelY();
-//      acc_z = myIMU.readFloatAccelZ();
-//      AlertFlag = false; //Clear Accelerometer Interrupt Flag
-//#if DEBUG == 1
-//      Serial.println("Microprocessor was awakened by accelerometer!");
-//      delay(1000);
-//
-//#endif
-//    }
-//    else {
-//      //take an average acceleration
-//      for (int i = 0; i < SAMPLE_SIZE; i++) {
-//        acc_x += myIMU.readFloatAccelX();
-//        acc_y += myIMU.readFloatAccelY();
-//        acc_z += myIMU.readFloatAccelZ();
-//      }
-//      acc_x = acc_x / SAMPLE_SIZE;
-//      acc_y = acc_y / SAMPLE_SIZE;
-//      acc_z = acc_z / SAMPLE_SIZE;
-//    } // end of typical accelerometer measurements
-//
-//#if DEBUG == 1
-//    // Check registers and interrupt status
-//    uint8_t dataRead;
-//    Serial.print("LIS3DH_INT1_SRC: 0x");
-//    myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
-//    Serial.println(dataRead, HEX);
-//    Serial.println("Decoded events:");
-//    if (dataRead & 0x40) Serial.println("Interrupt Active");
-//    if (dataRead & 0x20) Serial.println("Z high");
-//    if (dataRead & 0x10) Serial.println("Z low");
-//    if (dataRead & 0x08) Serial.println("Y high");
-//    if (dataRead & 0x04) Serial.println("Y low");
-//    if (dataRead & 0x02) Serial.println("X high");
-//    if (dataRead & 0x01) Serial.println("X low");
-//    Serial.println();
-//#endif // Debug
-//
-//    // assign data values to string
-//    X_string = String(acc_x, 4);
-//    Y_string = String(acc_y, 4);
-//    Z_string = String(acc_z, 4);
-//
-//#if DEBUG == 1
-//    Serial.print("\nAccelerometer:\n");
-//    Serial.print(" X = ");
-//    Serial.println(acc_x, 4);
-//    Serial.print(" Y = " );
-//    Serial.println(acc_y, 4);
-//    Serial.print(" Z = ");
-//    Serial.println(acc_z, 4);
-//
-//#endif // Debug
-//
-//    //get NEMA data - add code here
-//
-//    /* power down devices before transmit */
-//    // write code for powering on devices here
-//
-//    /* begin transmit section here */
-//    //concatenate message
-//    stringTransmit = String(IDString + "," + RTC_timeString + "," + X_string + "," + Y_string + "," + Z_string + "\0"); //our concatenated string for transmit
-//    Serial.println(stringTransmit);
-//    /*
-//        //calculate the length of the transmitBufLen (needed for LoRa)
-//        transmitBufLen = 1 + (char)stringTransmit.length();  //+1 to account for the end character
-//
-//        // instantiate a transmit buffer of x len based on len of concat string above
-//        char transmitBuf[transmitBufLen];
-//
-//        // converts long string of data into a character array to be transmitted
-//        stringTransmit.toCharArray(transmitBuf, transmitBufLen);
-//
-//      #if DEBUG == 1
-//        Serial.println(stringTransmit);
-//        Serial.println(transmitBufLen);
-//        Serial.println("Reading...");
-//        Serial.println(transmitBuf); // print to confirm transmit buff matches above string
-//        Serial.println("Sending to rf95_server (base station)");
-//      #endif
-//
-//        // begin sending to data to receiver and listen using ReliableDatagram
-//        if (manager.sendtoWait((uint8_t*)transmitBuf, transmitBufLen, SERVER_ADDRESS))
-//          Serial.println("Ok");
-//        else
-//          Serial.println("Send Failure");
-//
-//        // receive message later for GPS position correction (Phase 2)
-//        if (rf95.waitAvailableTimeout(500))
-//        {
-//          // Should be a reply message for us now
-//          if (rf95.recv(buf, &len))
-//          {
-//      #if DEBUG == 1
-//            Serial.println("Got reply: ");
-//            Serial.println("\nData received:");
-//            Serial.println((char*)buf);
-//            Serial.print("RSSI: ");
-//            Serial.println(rf95.lastRssi(), DEC); // prints RSSI as decimal value
-//            Serial.println();
-//      #endif
-//          }
-//          else //happens when there is a receiver but bad message
-//          {
-//            Serial.println("Receive failed");
-//          }
-//        }
-//        else //happens when there is no receiver on the same freq to listen to
-//        {
-//          Serial.println("No reply, is there a listener around?");
-//        }
-//    */
-//    // Reset alarm1 for next period
-//    setRTCAlarm();
-//
-//    delay(75);  // delay so serial stuff has time to print out all the way
-//
-//    TakeSampleFlag = false; // Clear Alarm Flag
-//
-//  } // end of TakeSampleFlag tasks
 }
 
 
@@ -783,36 +518,6 @@ void setupPrint()
       delay(1000);
     }
 }
-
-
-
-/************************************************************************************************
-   ISR pin assignments - for 32u4 ONLY
-************************************************************************************************/
-/* Wakeup in SQW ISR */
-/* Function to init PCI interrupt pin */
-/* Pulled from: https://playground.arduino.cc/Main/PinChangeInterrupt */
-
-#ifdef is_32u4
-void pciSetup(byte pin) // allows you to change variables
-{
-  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
-  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
-  PCICR  |= bit (digitalPinToPCICRbit(pin)); // enable interrupt for the group
-}
-
-ISR (PCINT0_vect) // handle pin change interrupt for D8 to D13 here
-{
-  if (digitalRead(11) == LOW)  //trigger wake when alarm time
-    TakeSampleFlag = true;
-  if (digitalRead(13) == HIGH) // triggers wake when accelerometer interrupt
-  {
-    AlertFlag = true;
-    TakeSampleFlag = true;
-  }
-
-}
-#endif //is_32u4
 
 void intClearSet(){
     detachInterrupt(digitalPinToInterrupt(alertPin));

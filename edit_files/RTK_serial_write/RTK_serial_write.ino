@@ -42,12 +42,10 @@ RHReliableDatagram manager(rf95, SERVER_ADDRESS);  //LoRa message verification
 
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
-uint8_t dummyString[250];
 int len;
 int chars_to_send;
 int first_index;
 int last_payload;
-bool is_read = false;
 unsigned long bytes_sent, timer_10;
 
 
@@ -94,13 +92,16 @@ void setup()
 #endif
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips / symbol, CRC on
   // The default transmitter power is 13dBm, using PA_BOOST.
+  
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
-  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); //Enum constant for setting bit rate options, constant configured for hight bitrate, short range
+  
+  // Enum constant for setting bit rate options, constant configured for hight bitrate, short range
+  // Bw = 500 KHz, Cr = 4/5, Sf = 128 chips/symbol
+  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); 
   len = 0;
 
-  // K_30_Serial.begin(9600);    //Opens the virtual serial port with a baud of 9600
 }
 
 void loop()
@@ -117,11 +118,22 @@ void loop()
       break;
     }
   }
-  /***********TEST CODE************/
+
+  #if DEBUG 
+  // show the result of the last read from serial along with the payload length
+  // payload length should be equal to the value represented by bytes 2,3 in the RTK string preceeding it
+  // string should look like A0,A1,01,C0,...,D,A
+  // A0,A1 is the start of sequence delimeter
+  // 01,C0 is the VARIABLE payload length, in this example "Last Payload In = 448" 448d==1C0h
+  // D,A is the end of sequence delimeter
+
+  // If all of these parts are not present or matching, the RTK string is not being properly read from serial
+  // Likely because the code is blocking while sending the string vis LoRa, need higher bitrate or to accept all RTK data wont be transmitted
+  
   for(int i = 0; i < len; i++){
     if(i < len-1 && RTKString[i] == 0xA0 && RTKString[i+1] == 0xA1){
         Serial.println();
-        Serial.print("Last String In: ");
+        Serial.print("Last Payload In = ");
         Serial.println(last_payload-7);
         last_payload = 0;
     }
@@ -129,25 +141,20 @@ void loop()
       Serial.print(",");
       last_payload++;
   }
-  /***********************/
+  #endif
+
   
   
   first_index = 0;
   
   while(len-first_index > 0) {
-//    if(Serial2.available()){
-//        break;
-//    }
+
     if(len-first_index > RH_RF95_MAX_MESSAGE_LEN){
       chars_to_send = RH_RF95_MAX_MESSAGE_LEN;
     }
     else{
       chars_to_send = len-first_index;
     } 
-
-//    for(int i = 0; i < chars_to_send; i++){
-//        dummyString[i] = RTKString[first_index+i];
-//    }
     
     if(rf95.send(&(RTKString[first_index]),chars_to_send)){
         Serial.println();
@@ -173,49 +180,6 @@ void loop()
 #endif
   }
   len = 0;
-  /*
-  len = len - first_index;
-  if(Serial2.available()){
-      for(int i = 0; i < len; i++){
-          RTKString[i] = RTKString[i+first_index];
-      }
-  }
-  */
-  //        if (rf95.waitAvailableTimeout(500))
-  //        {
-  //          // Should be a reply message for us now
-  //          if (rf95.recv(buf, &len))
-  //          {
-  //      #if DEBUG == 1
-  //            Serial.println("Got reply: ");
-  //            Serial.println("\nData received:");
-  //            Serial.println((char*)buf);
-  //            Serial.print("RSSI: ");
-  //            Serial.println(rf95.lastRssi(), DEC); // prints RSSI as decimal value
-  //            Serial.println();
-  //      #endif
-  //          }
-  //          else //happens when there is a receiver but bad message
-  //          {
-  //            Serial.println("Receive failed");
-  //          }
-  //        }
-  //        else //happens when there is no receiver on the same freq to listen to
-  //        {
-  //          Serial.println("No reply, is there a listener around?");
-  //        }
-
-//    if(is_read){
-//      if( lastIn == 0xA0 && nextIn == 0xA1) //start code
-//        Serial.println("Sequence Start");
-//  
-//      Serial.print(lastIn, HEX);
-//  
-//      if(lastIn == 0x0D && nextIn == 0x0A){
-//        Serial.print(nextIn, HEX);
-//        Serial.println("");
-//      }
-//    }
 }
 
 
