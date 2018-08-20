@@ -37,8 +37,7 @@ void SERCOM1_Handler()
 
 //define string for reading RTK data
 uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
-uint8_t dummyString[250];
-char nmeaString[100];
+char nmeaString[150];
 uint8_t nmea_len;
 int len;
 int chars_to_send;
@@ -46,7 +45,7 @@ int first_index;
 int last_payload;
 uint8_t rec_from, rec_to, rec_id, rec_flags;
 bool is_read = false;
-unsigned long bytes_sent, timer_10;
+unsigned long bytes_sent, timer_10, bndl_time;
 // ================================================================ 
 // ===                           SETUP                          ===
 // ================================================================ 
@@ -101,6 +100,7 @@ void setup()
   rf95.setTxPower(23, false);
   rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); //Enum constant for setting bit rate options, constant configured for hight bitrate, short range
   len = 0;
+  bndl_time = millis();
 	// Any custom setup code
 }
 
@@ -109,16 +109,15 @@ void setup()
 // ================================================================ 
 void loop() 
 {
-  OSCMessage msg;
-  msg.add(String())
-  sendToPushingBox(&msg);
   
-	additional_loop_checks();
+
+
   timer_10 = millis();
-  while (millis()-timer_10 < 5){ //50ms timeout
+  while (millis()-timer_10 < 5){ //5ms timeout
     
     if(Serial2.available()){
         RTKString[len] = Serial2.read();
+        Serial.print(RTKString[len]);
         len++;
         timer_10 = millis();
     }
@@ -142,21 +141,52 @@ void loop()
   
   
     first_index = 0;
-    nmea_len = 100;
+
+
+    
+    nmea_len = 150;
     if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
-        Serial.println("Received nmea string");
+        Serial.println("Received string");
         for(int i = 0; i<nmea_len; i++){
             Serial.print(nmeaString[i]);
+            if(i >= 149) break;
         }
+        if(nmea_len < 151){
+            nmeaString[nmea_len] = '\0';
+        }
+        else{
+            nmeaString[150] = '\0';
+        }
+            if(timer_10-bndl_time > 10000){
+                OSCBundle bndl;
+                bndl.empty();
+                bndl.add("/nmea").add("key1").add(nmeaString);
+                log_bundle(&bndl, PUSHINGBOX);
+                bndl_time = millis();
+            }
     }
   
   while(len-first_index > 0) {
-    nmea_len = 100;
+    nmea_len = 150;
     if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
-        Serial.println("Received nmea string");
+        Serial.println("Received string");
         for(int i = 0; i<nmea_len; i++){
             Serial.print(nmeaString[i]);
+            if(i >= 149) break;
         }
+        if(nmea_len < 151){
+            nmeaString[nmea_len] = '\0';
+        }
+        else{
+            nmeaString[150] = '\0';
+        }
+            if(timer_10-bndl_time > 10000){
+                OSCBundle bndl;
+                bndl.empty();
+                bndl.add("/nmea").add("key1").add(nmeaString);
+                log_bundle(&bndl, PUSHINGBOX);
+                bndl_time = millis();
+            }
     }
     
     if(len-first_index > RH_RF95_MAX_MESSAGE_LEN){
@@ -166,7 +196,7 @@ void loop()
       chars_to_send = len-first_index;
     } 
     
-    if(rf95.send(&(RTKString[first_index]),chars_to_send)){
+    if(chars_to_send > 0 && rf95.send(&(RTKString[first_index]),chars_to_send)){
         Serial.println();
         Serial.println("MESSAGE SENT");
     }
@@ -195,7 +225,8 @@ void loop()
   for(int i = 0; i < len; i++){
       RTKString[i] = RTKString[i+first_index];
   }	
-  
+  additional_loop_checks();
+
 } // End loop section
 
 

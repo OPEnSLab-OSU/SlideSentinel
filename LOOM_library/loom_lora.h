@@ -112,7 +112,7 @@ void lora_receive_bundle(OSCBundle *bndl)
 			// This is done just in case the compressed string
 			// uncompresses to more than 251 characters
 			char larger_buf[512];
-			strcpy(larger_buf, (const char*)buf)
+			strcpy(larger_buf, (const char*)buf);
 			convert_OSC_string_to_bundle((char*)larger_buf, bndl); 
 
 			// convert_OSC_string_to_bundle((char*)buf, bndl); 

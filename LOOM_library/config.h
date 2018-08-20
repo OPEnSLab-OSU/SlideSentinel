@@ -25,8 +25,8 @@
 #define LOOM_FAMILY_NUM       4		// Specifies the subnet of the family that the device is on. 0 for elevated permissions (can communicate with any subnet), 1-9 for normal
 #define LOOM_CHANNEL          7		// Channel to use. Set to 1-8 for channels A-H, respectively. Alternatively can define to -1 to used advanced option INIT_INST
 #define REQUEST_SETTINGS 0		// 1 to request channel settings from Max Channel Manager, 0 to not
-#define AUTO_NAME        1		// 1 to enable naming device based on configured settings (if not set manual name in advanced options)
-#define CUSTOM_NAME "Custom"	// This is only used if Auto_name is set to be 0
+#define AUTO_NAME        0		// 1 to enable naming device based on configured settings (if not set manual name in advanced options)
+#define CUSTOM_NAME "SS_Base"	// This is only used if Auto_name is set to be 0
 
 // --- Debugging --- 
 #define LOOM_DEBUG    1		// Set to 1 if you want Serial statements from various functions to print
