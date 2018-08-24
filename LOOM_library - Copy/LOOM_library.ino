@@ -105,7 +105,6 @@ void setup()
   rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); //Enum constant for setting bit rate options, constant configured for hight bitrate, short range
   len = 0;
   bndl_time = millis();
-  memset(nmeaString, '\0', MAX_LEN);
 	// Any custom setup code
 }
 
@@ -151,7 +150,19 @@ void loop()
 
     
     nmea_len = MAX_LEN;
+    
     if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
+        Serial.println("Received string");
+        for(int i = 0; i<nmea_len; i++){
+            Serial.print(nmeaString[i]);
+            if(i >= MAX_LEN-1) break;
+        }
+        if(nmea_len < MAX_LEN){
+            nmeaString[nmea_len] = '\0';
+        }
+        else{
+            nmeaString[MAX_LEN] = '\0';
+        }
         #if CELLULAR
         if(timer_10-bndl_time > 10000){
             pushString(nmeaString, nmea_len);
@@ -213,14 +224,12 @@ void loop()
 void pushString(char* nmea, uint8_t string_len){
   if(millis() - bndl_time > 10000){
     Serial.println("Received string");
-    Serial.print("String length: "); 
-    Serial.print(string_len);
     for(int i = 0; i<string_len; i++){
         Serial.print(nmea[i]);
         if(i >= MAX_LEN-1) break;
     }
     if(string_len < MAX_LEN){
-        nmea[string_len-4] = '\0';
+        nmea[string_len] = '\0';
     }
     else{
         nmea[MAX_LEN] = '\0';
@@ -248,7 +257,6 @@ void pushString(char* nmea, uint8_t string_len){
     }
     #endif //CELLULAR
     bndl_time = millis();
-  memset(nmea, '\0', MAX_LEN);
   }
 }
 

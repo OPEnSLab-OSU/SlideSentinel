@@ -262,7 +262,7 @@
 	#define spreadsheet_id "1Hv2oME5sjumUXv36GtFV1Q7I83xnXu-f-ZrxUNsXS_U"  // This is Luke's Arduino Test spreadsheet
 
 	// Google Spreadsheet Sheet/Tab number. Sent as parameter to PushingBox/Google Scripts
-	char tab_id[20] =  "SS_test";   
+	char tab_id[20] = "SS_basic"; 
 
 	// Required by PushingBox, specific to each scenario
 	char device_id[]   = "v7ECCEF7A460E57A";

@@ -54,7 +54,8 @@
 #define RTC_WAKE_PERIOD 1   // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
 #define STANDARD_WAKE 60    // Period of time to take measurements under periodic wake condition,
 #define ALERT_WAKE 180      // Period of time to take measurements under acceleration wake condition
-#define ACCEL_SAMPLE_PERIOD 60
+#define ACCEL_SAMPLE_PERIOD 5
+#define ACCEL_EN_PIN A1
 
 //Holds an NMEA string
 struct loraString {
@@ -106,16 +107,17 @@ String RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeStri
 // Declare RTC/Accelerometer specific variables
 volatile bool TakeSampleFlag = false; // Flag is set with external Pin A0 Interrupt by RTC
 volatile bool alertFlag = false;      // Flag if an alert is triggered and we need to speed up some processes (Phase 2)
+volatile bool accelEnFlag = false;
 volatile bool TimerFlag = false;
 volatile bool RTCFlag = false;
-  
+
 volatile int HR = 8;        // Hr of the day we want alarm to go off
 volatile int MIN = 0;       // Min of each hour we want alarm to go off
 volatile int count = 10;    // number of seconds to wait before running loop()
 volatile int awakeFor = 20; // number of seconds to stay awake and take measurements for
 
 const byte wakeUpPin = 12;  // attach to SQW pin on RTC
-const byte alertPin = 17;   // attach A2 to int1 on accelerometer
+const byte alertPin = A3;   // attach A2 to int1 on accelerometer
 
 unsigned long timer;  // time (in ms) interrupt was triggered
 uint8_t dataRead;     // for acceleromter interrupt register
@@ -130,10 +132,12 @@ struct loraString input_string;
 struct loraString last_string;
 struct loraString accel_string;
 
-unsigned long bytes_recvd, message_timer, buff_len, psti30_timer, psti32_timer, alert_timer;
+unsigned long bytes_recvd, message_timer, buff_len, psti30_timer, psti32_timer, alert_timer, temp_timer;
 
 char nmeaChar;
 bool lastUpdated;
+bool alertOff;
+bool accelEn;
 
 /**********************************************************************************************
    wakeUp_()
@@ -158,6 +162,11 @@ void wakeUp_RTC()
   TimerFlag = true;
   RTCFlag = true;
 }
+
+//no need to detach interrupt because interrupt is rising/falling
+void accel_toggle(){
+  accelEnFlag = true;
+}
 /**********************************************************************************************
    setup()
    States: setup
@@ -176,7 +185,7 @@ void setup() {
   //setup code here, to run once:
   // Open the main serial port to communicate with the computer
   Serial.begin(115200);
-  
+
   // pins 13(rx), 10(tx)
   Serial2_setup();
 
@@ -188,19 +197,15 @@ void setup() {
   lora_setup();
 
   set_globals();
-  
+
 #if DEBUG
   setupPrint(); //give the device time to wake up and upload sketch if necessary
-#else 
+#else
   // when not in debug mode, dont wait for serial to start code segment
   // delay 15s for sketch upload
-  delay(15000); 
+  delay(15000);
 #endif //DEBUG == 1
-
-  /*initialize accelerometer and configure settings*/
-  pinMode(wakeUpPin, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
-  pinMode(alertPin, INPUT_PULLUP);
-
+  
 #if DEBUG == 1
   Serial.println("Processor Setup Successful.\n");
 #endif
@@ -223,43 +228,52 @@ void setup() {
   /*initialize RTC*/
 #if RTC_MODE == 1
   //RTC stuff init//
+  Serial.println("Setting up RTC");
   InitializeRTC();
-  
-  #if DEBUG == 1
-  Serial.print("Alarm set to go off every "); 
-  Serial.print(RTC_WAKE_PERIOD); 
+
+#if DEBUG == 1
+  Serial.print("Alarm set to go off every ");
+  Serial.print(RTC_WAKE_PERIOD);
   Serial.println(" min from program time");
-  #endif
+#endif
 
 #endif //RTC_MODE == 1
 
 
-  timer=millis();
+  timer = millis();
+  temp_timer = timer;
+  /*initialize accelerometer and configure settings*/
+  pinMode(wakeUpPin, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
+  pinMode(alertPin, INPUT_PULLUP);
+  pinMode(ACCEL_EN_PIN, INPUT_PULLUP); //connect to pull down switch
+  accelEn = digitalRead(ACCEL_EN_PIN);
+  accelInt(accelEn);
 }
 
 void loop() {
 
-    timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
-    RTCFlagCheck();   // reset RTC interrupts
-    alertFlagCheck(); // reset accelerometer interrupts
+  timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
+  RTCFlagCheck();   // reset RTC interrupts
+  enCheck();
+  alertFlagCheck(); // reset accelerometer interrupts
 
 
 
-    //when passing recv, len is max message size, then updated to size of meassage received
-    len = RH_RF95_MAX_MESSAGE_LEN; 
-    message_timer = millis();
-    if(message_timer - alert_timer < 1000 * ACCEL_SAMPLE_PERIOD){
-        readNMEA();         // BOTTLENECK: block until lora is received or TIMEOUT occurs
-        sampleSendAccel();  // read the accelerometer registers and send to waiting base
-    }
-    else{
-        readNMEA(); // BOTTLENECK: block until lora is received or TIMEOUT occurs
-        recvLORA(); // non-blocking, reads a single lora string
-    }
-    
-    //this is the standby loop, always execute last in order
-    //check the timer against millis() and sleep if difference is greater than "awakeFor"
-    tryStandby();
+  //when passing recv, len is max message size, then updated to size of meassage received
+  len = RH_RF95_MAX_MESSAGE_LEN;
+  message_timer = millis();
+  if (message_timer - alert_timer < 1000 * ACCEL_SAMPLE_PERIOD) {
+    readNMEA();         // BOTTLENECK: block until lora is received or TIMEOUT occurs
+    sampleSendAccel();  // read the accelerometer registers and send to waiting base
+  }
+  else {
+    readNMEA(); // BOTTLENECK: block until lora is received or TIMEOUT occurs
+    recvLORA(); // non-blocking, reads a single lora string
+  }
+
+  //this is the standby loop, always execute last in order
+  //check the timer against millis() and sleep if difference is greater than "awakeFor"
+  tryStandby();
 }
 
 /**********************************************************************************************
@@ -273,16 +287,16 @@ void loop() {
 /* http://www.st.com/content/ccc/resource/technical/document/datasheet/3c/ae/50/85/d6/b1/46/fe/CD00274221.pdf/files/CD00274221.pdf/jcr:content/translations/en.CD00274221.pdf */
 
 /* Function: configInterrupts
- * Use: set the necessary registers on a sparkfun LIS3DH accelerometer to send
- *      an interrupt signal from I1
- * Precondoitions: Device is initialized using I2C constructor
- */
- 
+   Use: set the necessary registers on a sparkfun LIS3DH accelerometer to send
+        an interrupt signal from I1
+   Precondoitions: Device is initialized using I2C constructor
+*/
+
 void configInterrupts()
 {
   //uint8_t dataToWrite = 0;
-  
-  //LIS3DH_INT1_CFG   
+
+  //LIS3DH_INT1_CFG
   //dataToWrite |= 0x80;//AOI, 0 = OR 1 = AND
   //dataToWrite |= 0x40;//6D, 0 = interrupt source, 1 = 6 direction source
   //Set these to enable individual axes of generation source (or direction)
@@ -294,32 +308,32 @@ void configInterrupts()
   //dataToWrite |= 0x02;//X high
   //dataToWrite |= 0x01;//X low
   myIMU.writeRegister(LIS3DH_INT1_CFG, 0x5F);
-  
-  //LIS3DH_INT1_THS   
+
+  //LIS3DH_INT1_THS
   //dataToWrite = 0;
   //Provide 7 bit value, 0x7F always equals max range by accelRange setting
   //dataToWrite |= 0x10; //0x10 -> 1/8 range
   myIMU.writeRegister(LIS3DH_INT1_THS, 0x10);
-  
-  //LIS3DH_INT1_DURATION  
+
+  //LIS3DH_INT1_DURATION
   //dataToWrite = 0;
   //minimum duration of the interrupt
   //LSB equals 1/(sample rate)
   //dataToWrite |= 0x01; // 1 * 1/100 s = 10ms
   myIMU.writeRegister(LIS3DH_INT1_DURATION, 0x0A);
 
-  //LIS3DH_CLICK_CFG   
+  //LIS3DH_CLICK_CFG
   //dataToWrite = 0;
   //Set these to enable individual axes of generation source (or direction)
   // -- set = 1 to enable
   //dataToWrite |= 0x20;//Z double-click
   //dataToWrite |= 0x10;//Z click
-  //dataToWrite |= 0x08;//Y double-click 
+  //dataToWrite |= 0x08;//Y double-click
   //dataToWrite |= 0x04;//Y click
   //dataToWrite |= 0x02;//X double-click
   //dataToWrite |= 0x01;//X click
   myIMU.writeRegister(LIS3DH_CLICK_CFG, 0x15);
-  
+
   //LIS3DH_CLICK_SRC
   //dataToWrite = 0;
   //Set these to enable click behaviors (also read to check status)
@@ -331,37 +345,37 @@ void configInterrupts()
   //dataToWrite |= 0x02;//Y click detect enabled
   //dataToWrite |= 0x01;//X click detect enabled
   myIMU.writeRegister(LIS3DH_CLICK_SRC, 0x07);
-  
-  //LIS3DH_CLICK_THS   
+
+  //LIS3DH_CLICK_THS
   //dataToWrite = 0;
   //This sets the threshold where the click detection process is activated.
   //dataToWrite = 0x80 //keep interrupt high for duration of latency window
   //Provide 7 bit value, 0x7F always equals max range by accelRange setting
   //dataToWrite |= 0x0A; // ~1/16 range
-  myIMU.writeRegister(LIS3DH_CLICK_THS, 0x0A);
+  myIMU.writeRegister(LIS3DH_CLICK_THS, 0x30);
 
-  //LIS3DH_TIME_LIMIT  
+  //LIS3DH_TIME_LIMIT
   //dataToWrite = 0;
   //Time acceleration has to fall below threshold for a valid click.
   //LSB equals 1/(sample rate)
   //dataToWrite |= 0x08; // 8 * 1/50 s = 160ms
   myIMU.writeRegister(LIS3DH_TIME_LIMIT, 0x08);
-  
+
   //LIS3DH_TIME_LATENCY
   //dataToWrite = 0;
   //hold-off time before allowing detection after click event
   //1 LSB equals 1/(sample rate)
   //dataToWrite |= 0x01; // 1 * 1/100 s = 10ms
   myIMU.writeRegister(LIS3DH_TIME_LATENCY, 0x10);
-  
-  //LIS3DH_TIME_WINDOW 
+
+  //LIS3DH_TIME_WINDOW
   //dataToWrite = 0;
   //hold-off time before allowing detection after click event
   //LSB equals 1/(sample rate)
   //dataToWrite |= 0x10; // 16 * 1/100 s = 160ms
   myIMU.writeRegister(LIS3DH_TIME_WINDOW, 0x10);
 
-  //LIS3DH_CTRL_REG1   
+  //LIS3DH_CTRL_REG1
   //dataToWrite |= 0x50;// most significant nibble controls data rate, 5 = 100Hz
   //dataToWrite |= 0x08;//Low power enable
   //dataToWrite |= 0x04;//Z enable
@@ -387,7 +401,7 @@ void configInterrupts()
   //dataToWrite |= 0x08; //Latch interrupt (Cleared by reading int1_src)
   //dataToWrite |= 0x04; //Pipe 4D detection from 6D recognition to int1?
   myIMU.writeRegister(LIS3DH_CTRL_REG5, 0x08);
-  
+
   //LIS3DH_CTRL_REG6
   //Choose source for pin 2 and both pin output inversion state
   //dataToWrite = 0;
@@ -475,49 +489,49 @@ void clearRTCAlarm()
 }
 
 /* Debugging and upload helper,
- * Allow uploads by waiting for serial monitor to open, 
- * prevent device from going to standby too soon
- */
+   Allow uploads by waiting for serial monitor to open,
+   prevent device from going to standby too soon
+*/
 
 void setupPrint()
 {
-  while(!Serial);     //Won't start anything until serial is open, comment these lines out if powering from battery
-    Serial.println("***** Interrupt Test *****");
-    
-    // Delay is required to allow the USB interface to be active during
-    // sketch upload process
-    
-    Serial.println("Entering test mode in:");
-    for (count; count > 0; count--)
-    {
-      Serial.print(count);
-      Serial.println(" s");
-      delay(1000);
-    }
-}
+  while (!Serial);    //Won't start anything until serial is open, comment these lines out if powering from battery
+  Serial.println("***** Interrupt Test *****");
 
-void intClearSet(){
-    detachInterrupt(digitalPinToInterrupt(alertPin));
-    detachInterrupt(digitalPinToInterrupt(wakeUpPin));
-    delay(20);
-    attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
-    attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
-}
+  // Delay is required to allow the USB interface to be active during
+  // sketch upload process
 
-void timerFlagCheck(){
-  if(TimerFlag){ //triggered with every wake-up interrupt
-    
-    //**************** VERY IMPORTANT ****************
-    //clear interrupt registers, attach interrupts EVERY TIME THE INTERRUPT IS CALLED
-    intClearSet();
-    
-    timer=millis();
-    TimerFlag=false;
+  Serial.println("Entering test mode in:");
+  for (count; count > 0; count--)
+  {
+    Serial.print(count);
+    Serial.println(" s");
+    delay(1000);
   }
 }
 
-void RTCFlagCheck(){
-  if(RTCFlag){
+void intClearSet() {
+  detachInterrupt(digitalPinToInterrupt(alertPin));
+  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+  delay(20);
+  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
+  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
+}
+
+void timerFlagCheck() {
+  if (TimerFlag) { //triggered with every wake-up interrupt
+
+    //**************** VERY IMPORTANT ****************
+    //clear interrupt registers, attach interrupts EVERY TIME THE INTERRUPT IS CALLED
+    intClearSet();
+
+    timer = millis();
+    TimerFlag = false;
+  }
+}
+
+void RTCFlagCheck() {
+  if (RTCFlag) {
     clearRTCAlarm();
     Serial.println("Processor wake from RTC");
     DateTime now = RTC_DS.now();
@@ -535,45 +549,57 @@ void RTCFlagCheck(){
 #if DEBUG == 1
     Serial.println(RTC_timeString);
 #endif
-    RTCFlag=false;
-    awakeFor = STANDARD_WAKE;    
+    RTCFlag = false;
+    awakeFor = STANDARD_WAKE;
   }
 }
 
-void alertFlagCheck(){
-    if(alertFlag){
-        Serial.println("Processor wake from accelerometer");
-        alertFlag=false;
-        alert_timer = millis();
-        awakeFor = ALERT_WAKE;
+void alertFlagCheck() {
+  if (alertFlag && accelEn) {
+    Serial.println("Processor wake from accelerometer");
+    alertFlag = false;
+    alert_timer = millis();
+    awakeFor = ALERT_WAKE;
+  }
+  if(alertFlag){
+      alertFlag = false;
+  }
+}
+
+void enCheck(){
+    if(accelEnFlag){
+        detachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN));
+        accelInt(digitalRead(ACCEL_EN_PIN));
+        Serial.println("Enable switch interrupt activated");
+        accelEnFlag = false;
     }
 }
 
-void resetFlags(){
-    TimerFlag = false;
-    alertFlag = false;
-    TakeSampleFlag=false;
+void resetFlags() {
+  TimerFlag = false;
+  alertFlag = false;
+  TakeSampleFlag = false;
 }
 
-void tryStandby(){
-  if(millis()-timer > 1000*awakeFor){ //delay, then sleep
+void tryStandby() {
+  if (millis() - timer > 1000 * awakeFor) { //delay, then sleep
     //reset all flags
     resetFlags();
 
-    Serial.println("STANDBY");    
+    Serial.println("STANDBY");
     setRTCAlarm(); //reset alarm to go off one wake period from sleeping
     Serial.end();
     USBDevice.detach();
     intClearSet(); //clear interrupt registers, attach interrupts
-    #if DEBUG == 1
+#if DEBUG == 1
     //digitalWrite(LED_BUILTIN, LOW);
-    #endif
+#endif
     LowPower.standby();
     USBDevice.attach();
-    #if DEBUG == 1    
+#if DEBUG == 1
     //digitalWrite(LED_BUILTIN, HIGH);
     delay(5000); // give user 5s to close and reopen serial monitor!
-    #endif
+#endif
     clearRTCAlarm(); //prevent double trigger of alarm interrupt
     Serial.begin(115200);
     Serial.println("WAKE");
@@ -583,79 +609,96 @@ void tryStandby(){
 
 
 /*****************************************************
-* read nmea data from serial port 3 when there is no lora transmission to receive
-* will send NMEA to base if particular string has been read
+  read nmea data from serial port 3 when there is no lora transmission to receive
+  will send NMEA to base if particular string has been read
 *****************************************************/
-void readNMEA(){
-    while (!rf95.available()) {
-        while (Serial3.available() && !rf95.available()) { //read from serial
-            nmeaChar = Serial3.read();
-            loadNmeaString(&input_string, &last_string, nmeaChar, &lastUpdated);
-            if (lastUpdated) {
-                unsigned long int current_time = millis();
-                if(current_time - psti30_timer > 10000){
-                    if(trySend30(last_string)){
-                        psti30_timer = millis();
-                    }
-                }
-                if(current_time - psti32_timer > 10000){
-                    if(trySend32(last_string)){
-                        psti32_timer = millis();
-                    }
-                }
-                lastUpdated = false;
-            }
+void readNMEA() {
+  while (!rf95.available()) {
+    while (Serial3.available() && !rf95.available()) { //read from serial
+      nmeaChar = Serial3.read();
+      loadNmeaString(&input_string, &last_string, nmeaChar, &lastUpdated);
+      if (lastUpdated) {
+        unsigned long int current_time = millis();
+        if (current_time - psti30_timer > 10000) {
+          if (trySend30(last_string)) {
+            psti30_timer = millis();
+          }
         }
-        if (millis() - message_timer > TIMEOUT) {
-            break;
+        if (current_time - psti32_timer > 10000) {
+          if (trySend32(last_string)) {
+            psti32_timer = millis();
+          }
         }
-    }
-}
-
-/*****************************************************
- * 
-* receive transmission from lora and write it to the serial port
-* need to rewrite with RHRelibleDatagram so only messages from base written to serial port
-*****************************************************/
-void recvLORA(){
-  if (rf95.available()) {
-    if (rf95.recv(RTKString, &len)) {
-      bytes_recvd += len;
-      Serial2.write(RTKString, len);
-      #if DEBUG
-      Serial.println();
-      Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC); // prints RSSI as decimal value
-      Serial.println();
-      for (int j = 0; j < len; j++) {
-              if(RTKString[j] == 0xA0 && RTKString[j+1] == 0xA1){
-                  Serial.println();
-                  Serial.print("Buff Len: ");
-                  Serial.println(buff_len - 7);
-                  buff_len = 0;
-              }
-              buff_len++;
-              Serial.print(RTKString[j], HEX);
-              Serial.print(",");
+        lastUpdated = false;
       }
-      #endif
     }
-    else //happens when there is a receiver but bad message
-    {
-      Serial.println("Receive failed");
+    if (millis() - message_timer > TIMEOUT) {
+      break;
     }
-  }
-  else //happens when there is no receiver on the same freq to listen to
-  {
-#if DEBUG
-    Serial.println("No reply, is there a listener around?");
-#endif
   }
 }
 
 /*****************************************************
-* load next character into loraString struct
-* write new string to last_string struct if input_string is complete
+
+  receive transmission from lora and write it to the serial port
+  need to rewrite with RHRelibleDatagram so only messages from base written to serial port
+*****************************************************/
+void recvLORA() {
+  temp_timer = millis();
+  char buffr[1024];
+  int avail = 1023;
+  int buffer_len = 0;
+  while (millis() - temp_timer < 5) {
+    while (rf95.available()) {
+      if (rf95.recv(RTKString, &len)) {
+        bytes_recvd += len; //total received ever
+        if (buffer_len + len >= 1024) {
+          break;
+        }
+        copyString(&(buffr[buffer_len]), (char*)RTKString, avail, len);
+        buffer_len += len;    //total received in a chunk
+        avail -= len;
+        temp_timer = millis();
+#if DEBUG
+        Serial.println();
+        Serial.print("RSSI: ");
+        Serial.println(rf95.lastRssi(), DEC); // prints RSSI as decimal value
+        Serial.println();
+        for (int j = 0; j < len; j++) {
+          if (RTKString[j] == 0xA0 && RTKString[j + 1] == 0xA1) {
+            Serial.println();
+            Serial.print("Buff Len: ");
+            Serial.println(buff_len - 7);
+            buff_len = 0;
+          }
+          buff_len++;
+          Serial.print(RTKString[j], HEX);
+          Serial.print(",");
+        }
+#endif
+      }
+      else //happens when there is a receiver but bad message
+      {
+        Serial.println("Receive failed");
+      }
+    }
+    if (!rf95.available()) //happens when there is no receiver on the same freq to listen to
+    {
+      /*
+        #if DEBUG
+          Serial.println("No reply, is there a listener around?");
+        #endif
+      */
+    }
+  }
+  if (buffer_len > 0) {
+    Serial2.write(buffr, buffer_len);
+  }
+}
+
+/*****************************************************
+  load next character into loraString struct
+  write new string to last_string struct if input_string is complete
 *****************************************************/
 
 void loadNmeaString(struct loraString* input_string, struct loraString* last_string, char nmeaChar, bool* lastUpdated) {
@@ -671,24 +714,24 @@ void loadNmeaString(struct loraString* input_string, struct loraString* last_str
   input_string->len += 1;
 }
 
-void sampleSendAccel(){
-    char lora_send[40];
-    int temp_length = 40;
-    String accel_out = "";
-    accel_out += "X:";
-    accel_out += String(myIMU.readFloatAccelX(), 4);
-    accel_out += ",Y:";
-    accel_out += String(myIMU.readFloatAccelY(), 4);
-    accel_out += ",Z:";
-    accel_out += String(myIMU.readFloatAccelZ(), 4);
-    accel_out.toCharArray(lora_send, temp_length);
-    manager.sendtoWait((uint8_t*)lora_send, accel_out.length(), LORA_HUB_ADDRESS);
-    
+void sampleSendAccel() {
+  char lora_send[40];
+  int temp_length = 40;
+  String accel_out = "";
+  accel_out += "X:";
+  accel_out += String(myIMU.readFloatAccelX(), 4);
+  accel_out += ",Y:";
+  accel_out += String(myIMU.readFloatAccelY(), 4);
+  accel_out += ",Z:";
+  accel_out += String(myIMU.readFloatAccelZ(), 4);
+  //    accel_out.toCharArray(lora_send, temp_length);
+  manager.sendtoWait((uint8_t*) accel_out.c_str(), accel_out.length(), LORA_HUB_ADDRESS);
+  //
 }
 
 /*****************************************************
-* send the newest nmea string for type PSTI 30
-* string is minimal 3D GPS fix info
+  send the newest nmea string for type PSTI 30
+  string is minimal 3D GPS fix info
 *****************************************************/
 
 bool trySend30(struct loraString last_string) {
@@ -709,8 +752,8 @@ bool trySend30(struct loraString last_string) {
 
 
 /*****************************************************
-* send the newest nmea string for type PSTI 32
-* string is RTK information
+  send the newest nmea string for type PSTI 32
+  string is RTK information
 *****************************************************/
 
 bool trySend32(struct loraString last_string) {
@@ -729,22 +772,22 @@ bool trySend32(struct loraString last_string) {
   return 0;
 }
 
-void Serial2_setup(){
-    Serial2.begin(56700);           //rx on rover to pin 10
-    // Assign pins 10 & 13 SERCOM functionality, internal function
-    pinPeripheral(10, PIO_SERCOM);  //Private functions for serial communication
-    pinPeripheral(13, PIO_SERCOM);
+void Serial2_setup() {
+  Serial2.begin(56700);           //rx on rover to pin 10
+  // Assign pins 10 & 13 SERCOM functionality, internal function
+  pinPeripheral(10, PIO_SERCOM);  //Private functions for serial communication
+  pinPeripheral(13, PIO_SERCOM);
 }
 
-void Serial3_setup(){
-    Serial3.begin(115200);          //tx from rover to pin 6
-    
-    // Assign pins 6 & A5 SERCOM functionality, internal function
-    pinPeripheral(6, PIO_SERCOM);  //Private functions for serial communication
-    pinPeripheral(A5, PIO_SERCOM_ALT);
+void Serial3_setup() {
+  Serial3.begin(115200);          //tx from rover to pin 6
+
+  // Assign pins 6 & A5 SERCOM functionality, internal function
+  pinPeripheral(6, PIO_SERCOM);  //Private functions for serial communication
+  pinPeripheral(A5, PIO_SERCOM_ALT);
 }
 
-void lora_setup(){
+void lora_setup() {
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
@@ -782,17 +825,50 @@ void lora_setup(){
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 20 dBm:
   rf95.setTxPower(20, false);
-  
+
   //Enum constant for setting bit rate options, constant configured for high bitrate, short range
-  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); 
+  rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128);
 }
 
-void set_globals(){
-    bytes_recvd = 0;
-    psti30_timer = millis(); 
-    psti32_timer = millis();
-    input_string.len = 0;
-    last_string.len = 0;
-    lastUpdated = false;
+void set_globals() {
+  bytes_recvd = 0;
+  psti30_timer = millis();
+  psti32_timer = millis();
+  input_string.len = 0;
+  last_string.len = 0;
+  lastUpdated = false;
 }
+
+//copy characters from s2 into buffer at s1
+int copyString(char* s1, char* s2, int s1_avail, int s2_len) {
+  int len;
+  if (s2_len > s1_avail) {
+    len = s1_avail;
+  }
+  else {
+    len = s2_len;
+  }
+  for (int i = 0; i < len; i++) {
+    s1[i] = s2[i];
+  }
+}
+
+void accelInt(bool switch_state){
+    detachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN));
+    delay(10);
+    if(switch_state){
+        attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), accel_toggle, FALLING);
+        Serial.println("Switch on, interrupt falling");
+        accelEn = true;
+        //intClearSet();
+    }
+    else{
+        //detachInterrupt(digitalPinToInterrupt(alertPin));
+        attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), accel_toggle, RISING);
+        Serial.println("Switch off, interrupt rising");        
+        accelEn = false;
+    }
+    
+}
+
 
