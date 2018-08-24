@@ -1,10 +1,15 @@
 /*******************************************************************************************
-   SlideSentinel: Phase 1 Sensor code
-   Author: Marissa Kwon, Grayland Lunn
-   8/13/18
+    SlideSentinel: Phase 1 Sensor code
+    Author: Marissa Kwon, Grayland Lunn
+    8/24/18
 
-   info on devices can be found here:
-   LIS3DH: https://learn.sparkfun.com/tutorials/lis3dh-hookup-guide
+    Use ctrl-f and search for every "IMPORTANT" comment before compiling and running, 
+    these include notes for operation and compilation.
+
+    Slide Sentinel master code, fully operational, configure using preprocessor definitions
+
+    info on devices can be found here:
+    LIS3DH: https://learn.sparkfun.com/tutorials/lis3dh-hookup-guide
       SOURCE CODE FROM EXAMPLE: "IntUsage.ino"
       Marshall Taylor @ SparkFun Electronics
       Nov 16, 2016
@@ -21,7 +26,7 @@
       Doc ID 17530: LIS3DH datasheet
 **********************************************************************************************/
 
-// Add necessary libraries here
+// necessary libraries here
 #include <Arduino.h>
 #include <SPI.h>
 #include <RH_RF95.h> // Important Example code found at https://learn.adafruit.com/adafruit-rfm69hcw-and-rfm96-rfm95-rfm98-lora-packet-padio-breakouts/rfm9x-test
@@ -32,30 +37,44 @@
 #include "wiring_private.h" // pinPeripheral() function
 #include "Wire.h"
 
-//NOTE: Must include the following line in the RTClibExtended.h file to use with M0:
+//IMPORTANT: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
 #include <RTClibExtended.h>
 #include <EnableInterrupt.h>
 
-// Define macro constants
-#define DEBUG 1  //test to allow print to serial monitor
-#define RTC_MODE 1 //enable RTC 
-#define SD_WRITE 0  //enable SD card logging (too much for 32u4 processor memory)
+// Define mode constants
+#define DEBUG 1       // allow printing to serial monitor,
+                      // serial monitor must be opened before device will start to function in debug mode
+#define RTC_MODE 1    // enable RTC interrupts
+#define SD_WRITE 0    // enable SD card logging, not yuet implemented
 
-// Define static constants
-#define TIMEOUT 150 //LoRa timeout in ms
-#define RFM95_CS 8
-#define RFM95_RST 4
-#define RFM95_INT 3
+// Define LoRa constants
+#define TIMEOUT 150           // LoRa timeout in ms
 #define SERVER_ADDRESS 12
 #define LORA_HUB_ADDRESS 1
-#define RF95_FREQ 915.0     // Change to 434.0 or other frequency, must match RX's freq!
+#define RF95_FREQ 915.0
+
+// ======== Timer periods for different measurement conditions ==========
+// Feel free to edit or change these
+#define RTC_WAKE_PERIOD 1     // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 60      // Period of time to take measurements under periodic wake condition,
+#define ALERT_WAKE 180        // Period of time to take measurements under acceleration wake condition
+#define ACCEL_SAMPLE_PERIOD 5 // Number of seconds to take and send acceleration measurements
+
+
+// ======== Pin Assignments, no need to change ==========
+// Other pins in use: 13, 10, 6, A5 for UARTs 
+// (can possibly use A5 and/or 13, they are defined as UART but unused in this implementation)
+#define ACCEL_EN_PIN A1     // Interrupt driven, connect to switch for toggle
+#define GPS_EN_PIN A2       // Hold high for 10ms to enable
+#define ALERT_WAKE_PIN A3   // attach A3 to int1 on accelerometer
+#define GPS_DISABLE_PIN A4  // Hold high for 10ms to disable
 #define VBATPIN A7
-#define RTC_WAKE_PERIOD 1   // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 60    // Period of time to take measurements under periodic wake condition,
-#define ALERT_WAKE 180      // Period of time to take measurements under acceleration wake condition
-#define ACCEL_SAMPLE_PERIOD 5
-#define ACCEL_EN_PIN A1
+#define RTC_WAKE_PIN 12     // attach to SQW pin on RTC
+#define RFM95_CS 8          // LORA PINS
+#define RFM95_RST 4
+#define RFM95_INT 3
+
 
 //Holds an NMEA string
 struct loraString {
@@ -116,8 +135,6 @@ volatile int MIN = 0;       // Min of each hour we want alarm to go off
 volatile int count = 10;    // number of seconds to wait before running loop()
 volatile int awakeFor = 20; // number of seconds to stay awake and take measurements for
 
-const byte wakeUpPin = 12;  // attach to SQW pin on RTC
-const byte alertPin = A3;   // attach A2 to int1 on accelerometer
 
 unsigned long timer;  // time (in ms) interrupt was triggered
 uint8_t dataRead;     // for acceleromter interrupt register
@@ -158,7 +175,7 @@ void wakeUp_alert()
 
 void wakeUp_RTC()
 {
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+  detachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN));
   TimerFlag = true;
   RTCFlag = true;
 }
@@ -243,8 +260,8 @@ void setup() {
   timer = millis();
   temp_timer = timer;
   /*initialize accelerometer and configure settings*/
-  pinMode(wakeUpPin, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
-  pinMode(alertPin, INPUT_PULLUP);
+  pinMode(RTC_WAKE_PIN, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
+  pinMode(ALERT_WAKE_PIN, INPUT_PULLUP);
   pinMode(ACCEL_EN_PIN, INPUT_PULLUP); //connect to pull down switch
   accelEn = digitalRead(ACCEL_EN_PIN);
   accelInt(accelEn);
@@ -511,17 +528,17 @@ void setupPrint()
 }
 
 void intClearSet() {
-  detachInterrupt(digitalPinToInterrupt(alertPin));
-  detachInterrupt(digitalPinToInterrupt(wakeUpPin));
+  detachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN));
+  detachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN));
   delay(20);
-  attachInterrupt(digitalPinToInterrupt(alertPin), wakeUp_alert, LOW);
-  attachInterrupt(digitalPinToInterrupt(wakeUpPin), wakeUp_RTC, LOW);
+  attachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN), wakeUp_alert, LOW);
+  attachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN), wakeUp_RTC, LOW);
 }
 
 void timerFlagCheck() {
   if (TimerFlag) { //triggered with every wake-up interrupt
 
-    //**************** VERY IMPORTANT ****************
+    //**************** IMPORTANT, DO NOT EDIT INTERRUPT ISRs ****************
     //clear interrupt registers, attach interrupts EVERY TIME THE INTERRUPT IS CALLED
     intClearSet();
 
@@ -863,7 +880,7 @@ void accelInt(bool switch_state){
         //intClearSet();
     }
     else{
-        //detachInterrupt(digitalPinToInterrupt(alertPin));
+        //detachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN));
         attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), accel_toggle, RISING);
         Serial.println("Switch off, interrupt rising");        
         accelEn = false;

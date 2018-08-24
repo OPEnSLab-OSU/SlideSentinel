@@ -7,7 +7,7 @@
 // Config has to be first has it hold all user specified options
 #include "config.h"
 
-// Preamble includes any relevant subroutine files based 
+// Preamble includes any relevant subroutine files based
 // on options specified in the above config
 #include "loom_preamble.h"
 
@@ -20,7 +20,7 @@
 #define DEBUG 1       // turn on debug mode
 #define DEBUG_RTK 0   // debug rtk corrections, lot of character output
 #define DEBUG_LORA 0
-#define CELLULAR 1
+#define CELLULAR 0
 
 //===== LoRa Initializations =====
 #define RFM95_CS 8
@@ -40,7 +40,7 @@ void SERCOM1_Handler()
 }
 
 //define string for reading RTK data
-uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
+uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN * 5];
 char nmeaString[150];
 uint8_t nmea_len;
 int len;
@@ -50,14 +50,14 @@ int last_payload;
 uint8_t rec_from, rec_to, rec_id, rec_flags;
 bool is_read = false;
 unsigned long bytes_sent, timer_10, bndl_time;
-// ================================================================ 
+// ================================================================
 // ===                           SETUP                          ===
-// ================================================================ 
+// ================================================================
 
-void setup() 
+void setup()
 {
-	// LOOM_begin calls any relevant (based on config) LOOM device setup functions
-	Loom_begin();	
+  // LOOM_begin calls any relevant (based on config) LOOM device setup functions
+  Loom_begin();
   //setup code here, to run once:
   Serial.begin(115200);         //Opens the main serial port to communicate with the computer
   Serial2.begin(BAUD);        //rate of serial communication via UART
@@ -106,149 +106,149 @@ void setup()
   len = 0;
   bndl_time = millis();
   memset(nmeaString, '\0', MAX_LEN);
-	// Any custom setup code
+  // Any custom setup code
 }
 
-// ================================================================ 
+// ================================================================
 // ===                        MAIN LOOP                         ===
-// ================================================================ 
-void loop() 
+// ================================================================
+void loop()
 {
-  
+
 
 
   timer_10 = millis();
-  while (millis()-timer_10 < 5){ //5ms timeout
-    
-    if(Serial2.available()){
-        RTKString[len] = Serial2.read();
-        len++;
-        timer_10 = millis();
+  while (millis() - timer_10 < 5) { //5ms timeout
+
+    if (Serial2.available()) {
+      RTKString[len] = Serial2.read();
+      len++;
+      timer_10 = millis();
     }
-    if (len >= 5*RH_RF95_MAX_MESSAGE_LEN) {
+    if (len >= 5 * RH_RF95_MAX_MESSAGE_LEN) {
       break;
     }
   }
   /***********TEST CODE************/
-  #if DEBUG_RTK
-  for(int i = 0; i < len; i++){
-    if(i < len-1 && RTKString[i] == 0xA0 && RTKString[i+1] == 0xA1){
-        Serial.println();
-        Serial.print("Last String In: ");
-        Serial.println(last_payload-7);
-        last_payload = 0;
+#if DEBUG_RTK
+  for (int i = 0; i < len; i++) {
+    if (i < len - 1 && RTKString[i] == 0xA0 && RTKString[i + 1] == 0xA1) {
+      Serial.println();
+      Serial.print("Last String In: ");
+      Serial.println(last_payload - 7);
+      last_payload = 0;
     }
-      Serial.print(RTKString[i], HEX);
-      Serial.print(",");
-      last_payload++;
+    Serial.print(RTKString[i], HEX);
+    Serial.print(",");
+    last_payload++;
   }
-  #endif //DEBUG_RTK
+#endif //DEBUG_RTK
   /***********************/
-  
-  
-    first_index = 0;
 
 
-    
+  first_index = 0;
+
+
+
+  nmea_len = MAX_LEN;
+  if (manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)) {
+#if CELLULAR
+    if (timer_10 - bndl_time > 10000) {
+      pushString(nmeaString, nmea_len);
+    }
+#endif //CELLULAR
+  }
+
+
+
+  while (len - first_index > 0) {
     nmea_len = MAX_LEN;
-    if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
-        #if CELLULAR
-        if(timer_10-bndl_time > 10000){
-            pushString(nmeaString, nmea_len);
-        }
-        #endif //CELLULAR
+    if (manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)) {
+      pushString(nmeaString, nmea_len);
     }
 
-    
-  
-  while(len-first_index > 0) {
-    nmea_len = MAX_LEN;
-    if(manager.recvfromAck((uint8_t*)nmeaString, &nmea_len, &rec_from, &rec_to, &rec_id, &rec_flags)){
-        pushString(nmeaString, nmea_len);
-    }
-    
-    if(len-first_index > RH_RF95_MAX_MESSAGE_LEN){
+    if (len - first_index > RH_RF95_MAX_MESSAGE_LEN) {
       chars_to_send = RH_RF95_MAX_MESSAGE_LEN;
     }
-    else{
-      chars_to_send = len-first_index;
-    } 
-    
-    if(chars_to_send > 0 && rf95.send(&(RTKString[first_index]),chars_to_send)){
-        #if DEBUG_LORA
-        Serial.println();
-        Serial.println("MESSAGE SENT");
-        #endif // DEBUG_LORA
+    else {
+      chars_to_send = len - first_index;
     }
 
-  
+    if (chars_to_send > 0 && rf95.send(&(RTKString[first_index]), chars_to_send)) {
+#if DEBUG_LORA
+      Serial.println();
+      Serial.println("MESSAGE SENT");
+#endif // DEBUG_LORA
+    }
+
+
     bytes_sent += chars_to_send;
-    first_index=first_index+chars_to_send;
+    first_index = first_index + chars_to_send;
 #if DEBUG == 1
-//    for (int i = first_index; i < first_index+chars_to_send; i++){
-//      Serial.print(RTKString[i], HEX);
-//      Serial.print(",");
-//    }
-//
-//    Serial.println();
-//
-//    Serial.print("Bytes sent = ");
-//    Serial.println(bytes_sent);
-//
-//
-//    Serial.print("length = "); Serial.println(chars_to_send);
-//    Serial.println("Sending to rf95_remote (rover station)");
+    //    for (int i = first_index; i < first_index+chars_to_send; i++){
+    //      Serial.print(RTKString[i], HEX);
+    //      Serial.print(",");
+    //    }
+    //
+    //    Serial.println();
+    //
+    //    Serial.print("Bytes sent = ");
+    //    Serial.println(bytes_sent);
+    //
+    //
+    //    Serial.print("length = "); Serial.println(chars_to_send);
+    //    Serial.println("Sending to rf95_remote (rover station)");
 #endif
-  }      
-  
+  }
+
   len = len - first_index;
-  for(int i = 0; i < len; i++){
-      RTKString[i] = RTKString[i+first_index];
-  }	
+  for (int i = 0; i < len; i++) {
+    RTKString[i] = RTKString[i + first_index];
+  }
   additional_loop_checks();
 
 } // End loop section
 
 
-void pushString(char* nmea, uint8_t string_len){
-  if(millis() - bndl_time > 10000){
+void pushString(char* nmea, uint8_t string_len) {
+  if (millis() - bndl_time > 10000) {
     Serial.println("Received string");
-    Serial.print("String length: "); 
+    Serial.print("String length: ");
     Serial.print(string_len);
-    for(int i = 0; i<string_len; i++){
-        Serial.print(nmea[i]);
-        if(i >= MAX_LEN-1) break;
+    for (int i = 0; i < string_len; i++) {
+      Serial.print(nmea[i]);
+      if (i >= MAX_LEN - 1) break;
     }
-    if(string_len < MAX_LEN){
-        nmea[string_len-4] = '\0';
+    if (string_len < MAX_LEN) {
+      nmea[string_len - 4] = '\0';
     }
-    else{
-        nmea[MAX_LEN] = '\0';
+    else {
+      nmea[MAX_LEN] = '\0';
     }
-    #if CELLULAR
-    if(timer_10-bndl_time > 10000){
-        OSCBundle bndl;
-        OSCMessage msg;
-        if(nmea[0] == '$'){
-            sprintf(tab_id,"SS_GPS");
-            msg.setAddress("/nmea");
-            msg.add("NMEA_Data").add(nmea);
-        }
-        else{
-            sprintf(tab_id, "SS_ACCEL");
-            msg.setAddress("/accel");
-            msg.add("ACCEL_Data").add(nmea);
-        }
-        bndl.add(msg);
-        Serial.println("Added message to bundle");
-        log_bundle(&bndl, PUSHINGBOX);
-        bndl_time = millis();
-        Serial.println("OSCMessage: ");
-        print_bundle(&bndl);
+#if CELLULAR
+    if (timer_10 - bndl_time > 10000) {
+      OSCBundle bndl;
+      OSCMessage msg;
+      if (nmea[0] == '$') {
+        sprintf(tab_id, "SS_GPS");
+        msg.setAddress("/nmea");
+        msg.add("NMEA_Data").add(nmea);
+      }
+      else {
+        sprintf(tab_id, "SS_ACCEL");
+        msg.setAddress("/accel");
+        msg.add("ACCEL_Data").add(nmea);
+      }
+      bndl.add(msg);
+      Serial.println("Added message to bundle");
+      log_bundle(&bndl, PUSHINGBOX);
+      bndl_time = millis();
+      Serial.println("OSCMessage: ");
+      print_bundle(&bndl);
     }
-    #endif //CELLULAR
+#endif //CELLULAR
     bndl_time = millis();
-  memset(nmea, '\0', MAX_LEN);
+    memset(nmea, '\0', MAX_LEN);
   }
 }
 
