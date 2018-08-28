@@ -18,9 +18,9 @@
 
 #define BAUD 57600    // reading and writing occurs at 
 #define DEBUG 1       // turn on debug mode
-#define DEBUG_RTK 0   // debug rtk corrections, lot of character output
-#define DEBUG_LORA 0
-#define CELLULAR 0
+#define DEBUG_RTK 1   // debug rtk corrections, lot of character output
+#define DEBUG_LORA 1
+#define CELLULAR 1
 
 //===== LoRa Initializations =====
 #define RFM95_CS 8
@@ -31,6 +31,8 @@
 #define VBATPIN A7
 #define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
 #define MAX_LEN 200
+#define GSM_TIMEOUT 200
+
 
 // RX pin 11, TX pin 10, configuring for UART
 Uart Serial2 (&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -211,7 +213,7 @@ void loop()
 
 
 void pushString(char* nmea, uint8_t string_len) {
-  if (millis() - bndl_time > 10000) {
+  if (millis() - bndl_time > GSM_TIMEOUT*1000) {
     Serial.println("Received string");
     Serial.print("String length: ");
     Serial.print(string_len);
@@ -226,7 +228,7 @@ void pushString(char* nmea, uint8_t string_len) {
       nmea[MAX_LEN] = '\0';
     }
 #if CELLULAR
-    if (timer_10 - bndl_time > 10000) {
+    if (timer_10 - bndl_time > GSM_TIMEOUT*1000) {
       OSCBundle bndl;
       OSCMessage msg;
       if (nmea[0] == '$') {
@@ -251,11 +253,3 @@ void pushString(char* nmea, uint8_t string_len) {
     memset(nmea, '\0', MAX_LEN);
   }
 }
-
-
-
-
-
-
-
-

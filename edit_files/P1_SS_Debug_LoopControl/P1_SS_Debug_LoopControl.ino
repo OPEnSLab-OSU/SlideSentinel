@@ -56,19 +56,19 @@
 
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these
-#define RTC_WAKE_PERIOD 1     // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 60      // Period of time to take measurements under periodic wake condition,
+#define RTC_WAKE_PERIOD 15     // Period of time to take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 120      // Period of time to take measurements under periodic wake condition,
 #define ALERT_WAKE 180        // Period of time to take measurements under acceleration wake condition
-#define ACCEL_SAMPLE_PERIOD 5 // Number of seconds to take and send acceleration measurements
+#define ACCEL_SAMPLE_PERIOD 15 // Number of seconds to take and send acceleration measurements
 
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10, 6, A5 for UARTs 
 // (can possibly use A5 and/or 13, they are defined as UART but unused in this implementation)
 #define ACCEL_EN_PIN A1     // Interrupt driven, connect to switch for toggle
-#define GPS_EN_PIN A2       // Hold high for 10ms to enable
+#define GPS_EN_PIN A2       // Attach to RESET on relay
 #define ALERT_WAKE_PIN A3   // attach A3 to int1 on accelerometer
-#define GPS_DISABLE_PIN A4  // Hold high for 10ms to disable
+#define GPS_DISABLE_PIN A4  // Attach to SET on relay
 #define VBATPIN A7
 #define RTC_WAKE_PIN 12     // attach to SQW pin on RTC
 #define RFM95_CS 8          // LORA PINS
@@ -203,7 +203,7 @@ void setup() {
   // Open the main serial port to communicate with the computer
   Serial.begin(115200);
 
-  // pins 13(rx), 10(tx)
+  // pins 13(rx), 10(tx) 
   Serial2_setup();
 
   // pins 6(rx), A5(tx)
@@ -212,7 +212,7 @@ void setup() {
   // lora pinmodes and manager initialization
   // pins 8, 4, 3
   lora_setup();
-
+  
   set_globals();
 
 #if DEBUG
@@ -227,26 +227,13 @@ void setup() {
   Serial.println("Processor Setup Successful.\n");
 #endif
 
-  //Accel sample rate and range effect interrupt time and threshold values with device freq.
-  myIMU.settings.accelSampleRate = 100;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
-  myIMU.settings.accelRange = 2;         // Max G force readable.  Can be: 2, 4, 8, 16
-  myIMU.settings.adcEnabled = 0;
-  myIMU.settings.tempEnabled = 0;
-  myIMU.settings.xAccelEnabled = 1;
-  myIMU.settings.yAccelEnabled = 1;
-  myIMU.settings.zAccelEnabled = 1;
-
-  //Call .begin() to configure the IMU
-  myIMU.begin();
-  configInterrupts();
-
-  myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
-
+  initializeAcceleromter();
+  
   /*initialize RTC*/
 #if RTC_MODE == 1
   //RTC stuff init//
   Serial.println("Setting up RTC");
-  InitializeRTC();
+  initializeRTC();
 
 #if DEBUG == 1
   Serial.print("Alarm set to go off every ");
@@ -260,11 +247,12 @@ void setup() {
   timer = millis();
   temp_timer = timer;
   /*initialize accelerometer and configure settings*/
-  pinMode(RTC_WAKE_PIN, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
-  pinMode(ALERT_WAKE_PIN, INPUT_PULLUP);
-  pinMode(ACCEL_EN_PIN, INPUT_PULLUP); //connect to pull down switch
+
+  initializePins();
+
   accelEn = digitalRead(ACCEL_EN_PIN);
   accelInt(accelEn);
+  gps_off();
 }
 
 void loop() {
@@ -294,7 +282,7 @@ void loop() {
 }
 
 /**********************************************************************************************
-   Helper Functions - configInterrupts, InitializeRTC, setRTCAlarm, clearRTCAlarm
+   Helper Functions - configInterrupts, initializeRTC, setRTCAlarm, clearRTCAlarm
 **********************************************************************************************/
 
 /******************
@@ -429,14 +417,39 @@ void configInterrupts()
   myIMU.writeRegister(LIS3DH_CTRL_REG6, 0xC2); //C0 cends HIGH interrupt, C2 sends low interrupt
 }
 
+void initializeAcceleromter(){
+    //Accel sample rate and range effect interrupt time and threshold values with device freq.
+    myIMU.settings.accelSampleRate = 100;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
+    myIMU.settings.accelRange = 2;         // Max G force readable.  Can be: 2, 4, 8, 16
+    myIMU.settings.adcEnabled = 0;
+    myIMU.settings.tempEnabled = 0;
+    myIMU.settings.xAccelEnabled = 1;
+    myIMU.settings.yAccelEnabled = 1;
+    myIMU.settings.zAccelEnabled = 1;
+  
+    //Call .begin() to configure the IMU
+    myIMU.begin();
+    configInterrupts();
+  
+    myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
 
+}
 
+void initializePins(){
+    pinMode(RTC_WAKE_PIN, INPUT_PULLUP);  // pull up resistors required for Active-Low interrupts
+    pinMode(ALERT_WAKE_PIN, INPUT_PULLUP);
+    pinMode(ACCEL_EN_PIN, INPUT_PULLUP); //connect to pull down switch
+    pinMode(GPS_EN_PIN, OUTPUT);
+    digitalWrite(GPS_EN_PIN, LOW);
+    pinMode(GPS_DISABLE_PIN, OUTPUT);
+    digitalWrite(GPS_DISABLE_PIN, LOW);
+}
 
 /******************
   RTC Subroutines
 ******************/
 
-void InitializeRTC()
+void initializeRTC()
 {
   // RTC Timer settings here
   if (! RTC_DS.begin()) {
@@ -527,7 +540,7 @@ void setupPrint()
   }
 }
 
-void intClearSet() {
+void interruptReset() {
   detachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN));
   detachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN));
   delay(20);
@@ -540,7 +553,7 @@ void timerFlagCheck() {
 
     //**************** IMPORTANT, DO NOT EDIT INTERRUPT ISRs ****************
     //clear interrupt registers, attach interrupts EVERY TIME THE INTERRUPT IS CALLED
-    intClearSet();
+    interruptReset();
 
     timer = millis();
     TimerFlag = false;
@@ -607,12 +620,14 @@ void tryStandby() {
     setRTCAlarm(); //reset alarm to go off one wake period from sleeping
     Serial.end();
     USBDevice.detach();
-    intClearSet(); //clear interrupt registers, attach interrupts
+    interruptReset(); //clear interrupt registers, attach interrupts
 #if DEBUG == 1
     //digitalWrite(LED_BUILTIN, LOW);
 #endif
+    gps_off();
     LowPower.standby();
     USBDevice.attach();
+    gps_on();
 #if DEBUG == 1
     //digitalWrite(LED_BUILTIN, HIGH);
     delay(5000); // give user 5s to close and reopen serial monitor!
@@ -639,11 +654,6 @@ void readNMEA() {
         if (current_time - psti30_timer > 10000) {
           if (trySend30(last_string)) {
             psti30_timer = millis();
-          }
-        }
-        if (current_time - psti32_timer > 10000) {
-          if (trySend32(last_string)) {
-            psti32_timer = millis();
           }
         }
         lastUpdated = false;
@@ -877,7 +887,7 @@ void accelInt(bool switch_state){
         attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), accel_toggle, FALLING);
         Serial.println("Switch on, interrupt falling");
         accelEn = true;
-        //intClearSet();
+        //interruptReset();
     }
     else{
         //detachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN));
@@ -888,4 +898,18 @@ void accelInt(bool switch_state){
     
 }
 
+// Turn the GPS module on (consumes ~150 mA)
+void gps_on(){
+    digitalWrite(GPS_EN_PIN, HIGH);
+    delay(10);
+    digitalWrite(GPS_EN_PIN, LOW);
+}
+
+// Turn off the gps module, save power during sleep
+// Functions affect physical latch on feather relay
+void gps_off(){
+    digitalWrite(GPS_DISABLE_PIN, HIGH);
+    delay(10);
+    digitalWrite(GPS_DISABLE_PIN, LOW);
+}
 
