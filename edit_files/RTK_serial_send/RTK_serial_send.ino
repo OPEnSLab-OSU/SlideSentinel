@@ -26,9 +26,10 @@
 #define RFM95_RST 4
 #define RFM95_INT 3
 #define CAPACITY 500
-#define SERVER_ADDRESS 2
+#define SERVER_ADDRESS 21   // equal to RTK_SERVER in Hub code and node code
+#define HUB_ADDRESS 20
 #define VBATPIN A7
-#define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
+#define RF95_FREQ 915.0     // Change to 434.0 or other frequency, must match RX's freq!
 
 // RX pin 11, TX pin 10, configuring for UART
 Uart Serial2 (&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -37,11 +38,11 @@ void SERCOM1_Handler()
   Serial2.IrqHandler();
 }
 
-RH_RF95 rf95(RFM95_CS, RFM95_INT);  //instance of LoRA
-RHReliableDatagram manager(rf95, SERVER_ADDRESS);  //LoRa message verification
+RH_RF95 rf95(RFM95_CS, RFM95_INT);                  // instance of LoRA
+RHReliableDatagram manager(rf95, SERVER_ADDRESS);   // LoRa message verification
 
 //define string for reading RTK data
-uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*5];
+uint8_t RTKString[RH_RF95_MAX_MESSAGE_LEN*10];
 int len;
 int chars_to_send;
 int first_index;
@@ -106,15 +107,20 @@ void setup()
 
 void loop()
 {
+  //don't set any timers before these, they wait for a significant period of time
+  serialWaitIdle();               // flush the buffer and wait until current RTK string has been read out
+  while(!Serial2.available()){}   // wait for nex RTK string to arrive at the serial port
+
+  
   timer_10 = millis();
-  while (millis()-timer_10 < 5){ //50ms timeout
+  while (millis()-timer_10 < 200){ // 50ms timeout
     
     if(Serial2.available()){
         RTKString[len] = Serial2.read();
         len++;
         timer_10 = millis();
     }
-    if (len >= 5*RH_RF95_MAX_MESSAGE_LEN) {
+    if (len >= 10*RH_RF95_MAX_MESSAGE_LEN) {
       break;
     }
   }
@@ -156,7 +162,7 @@ void loop()
       chars_to_send = len-first_index;
     } 
     
-    if(rf95.send(&(RTKString[first_index]),chars_to_send)){
+    if(manager.sendtoWait(&(RTKString[first_index]),chars_to_send, RH_BROADCAST_ADDRESS)){
         Serial.println();
         Serial.println("MESSAGE SENT");
     }
@@ -181,5 +187,20 @@ void loop()
   }
   len = 0;
 }
+
+// Flush serial and wait until there is no serial for a short period. This ensures reading from the beginning of a RTK string
+void serialWaitIdle(){
+  byte flushchar;
+  unsigned long idle_time = millis();
+  Serial2.flush();
+  while(millis()-idle_time <= 2){
+    if(Serial2.available()){
+      idle_time = millis();
+      flushchar = Serial2.read();
+    }
+  }
+  Serial2.flush();
+}
+
 
 

@@ -337,10 +337,10 @@ void convert_OSC_bundle_to_string(OSCBundle *bndl, char *osc_string)
 	// strcpy(osc_string, (const char*)larger_buf);
 	// original_convert_OSC_bundle_to_string(bndl, osc_string);
 
-	// LOOM_DEBUG_Println4("Larger Buf – [Len: ", strlen(larger_buf), "]\n", larger_buf);
+	// LOOM_DEBUG_Println4("Larger Buf â€“ [Len: ", strlen(larger_buf), "]\n", larger_buf);
 
 
-	// LOOM_DEBUG_Println4("Before Compression – [Len: ", strlen(osc_string), "]\n", osc_string);
+	// LOOM_DEBUG_Println4("Before Compression â€“ [Len: ", strlen(osc_string), "]\n", osc_string);
 
 	const char* cPtr = nth_strchr(larger_buf, '/', 3);
 	char buf[30];
@@ -349,7 +349,7 @@ void convert_OSC_bundle_to_string(OSCBundle *bndl, char *osc_string)
 
 	snprintf(osc_string, 251, "%s", larger_buf);
 
-	// LOOM_DEBUG_Println4("After Compression – [Len: ", strlen(osc_string), "]\n", osc_string);
+	// LOOM_DEBUG_Println4("After Compression â€“ [Len: ", strlen(osc_string), "]\n", osc_string);
 }
 
 
@@ -372,7 +372,7 @@ void convert_OSC_string_to_bundle(char *osc_string, OSCBundle* bndl)
 
 void uncompress_OSC_string(char* osc_string) 
 {
-	// LOOM_DEBUG_Println4("Before Restore – [Len: ", strlen(osc_string), "]\n", osc_string);
+	// LOOM_DEBUG_Println4("Before Restore â€“ [Len: ", strlen(osc_string), "]\n", osc_string);
 
 
 	// char* restored_str = new char[512];
@@ -397,7 +397,7 @@ void uncompress_OSC_string(char* osc_string)
 	// osc_string = restored_str;
 
 
-	// LOOM_DEBUG_Println4("After Restore – [Len: ", strlen(osc_string), "]\n", osc_string);
+	// LOOM_DEBUG_Println4("After Restore â€“ [Len: ", strlen(osc_string), "]\n", osc_string);
 }
 
 
@@ -1149,6 +1149,7 @@ void append_to_bundle(OSCBundle *bndl, T elements [], int count)
 	for (int i = 0; i < count; i++) 
 		append_to_bundle(bndl, elements[i]); 
 }
+
 
 
 

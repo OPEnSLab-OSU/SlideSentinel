@@ -116,6 +116,7 @@ void sd_list_files()
 }
 
 
+
 // --- SD DUMP FILE --- 
 //
 // Attempts to read all of the contents of a file
@@ -130,7 +131,7 @@ bool sd_dump_file(char* file)
 	#if is_lora == 1
 		digitalWrite(8, HIGH); 	// if using LoRa
 	#endif
-	SD.begin(chipSelect) // It seems that SD card may become 'unsetup' sometimes, so re-setup
+	SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
 
 	sdFile = SD.open(file);
 	if (sdFile) {
@@ -195,7 +196,7 @@ bool sd_save_elem(char *file, T data, char endchar)
 	#if is_lora == 1
 		digitalWrite(8, HIGH); 	// if using LoRa
 	#endif
-	SD.begin(chipSelect) // It seems that SD card may become 'unsetup' sometimes, so re-setup
+	SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
 	
 	sdFile = SD.open(file, FILE_WRITE);
 
@@ -227,7 +228,7 @@ bool sd_save_array(char *file, T data [], int len, char delimiter, int timestamp
 	#if is_lora == 1
 		digitalWrite(8, HIGH); 	// if using LoRa
 	#endif
-	SD.begin(chipSelect) // It seems that SD card may become 'unsetup' sometimes, so re-setup
+	SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
 	
 	sdFile = SD.open(file, FILE_WRITE);
 
@@ -279,7 +280,7 @@ bool sd_save_bundle(char * file, OSCBundle *bndl, int format, int timestamp)
 	#if is_lora == 1
 		digitalWrite(8, HIGH); 	// if using LoRa
 	#endif
-	SD.begin(chipSelect) // It seems that SD card may become 'unsetup' sometimes, so re-setup
+	SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
 
 	sdFile = SD.open(file, FILE_WRITE);
 	if (sdFile) {
@@ -478,6 +479,7 @@ void printDirectory(File dir, int numTabs)
 		entry.close();
 	}
 }
+
 
 
 

@@ -53,7 +53,7 @@
 #define is_pushingbox 0		// 1 to enable PushingBox (currently requires Ethernet) (Auto enabled if using LoRa hub) (currently does not appear to work with WiFi)
 #define is_adafruitio 0		// 1 to enable Adafruit IO (currently requires WiFi)
 
-#define is_sd         0		// 1 to enable SD card 
+#define is_sd         1		// 1 to enable SD card 
 #define is_rtc        0		// Enable RTC functionality
 
 // --- Device Telemetry Type ---
@@ -191,11 +191,11 @@
 
 // --- LoRa Options ---
 #if is_lora == 1
-	#define LORA_HUB_ADDRESS 1			// Use 0-9 for SERVER_ADDRESSes
+	#define LORA_HUB_ADDRESS 20			// Use 0-9 for SERVER_ADDRESSes
 	#define RF95_FREQ      915.0		// Hardware specific, Tx must match Rx
 
 	// #if hub_node_type == 1 					// If Node
-		#define LORA_NODE_ADDRESS 10			// 10 CLIENT_ADDRESSes belong to each SERVER_ADDRESS, 
+		#define LORA_NODE_ADDRESS 12			// 10 CLIENT_ADDRESSes belong to each SERVER_ADDRESS, 
 	// #endif								// 10-19 for 0, 20 - 29 for 1, etc.
 	
 	// #define lora_bundle_fragment 0		// Splits bundles into smaller bundles to avoid overflowing size LoRa can send
@@ -308,4 +308,5 @@
 #else
 	#define is_sleep_interrupt 11			// Uncomment to use Low-Power library to sit in idle sleep until woken by pin interrupt, parameter is pin to interrupt
 #endif
+
 

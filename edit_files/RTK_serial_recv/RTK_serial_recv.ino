@@ -20,7 +20,7 @@
 #include <RHReliableDatagram.h>
 
 //print statements for debugging
-#define DEBUG 0
+#define DEBUG 1
 #define TIMEOUT 500 //LoRa timeout in ms
 
 //===== LoRa Initializations =====
@@ -29,7 +29,7 @@
 #define RFM95_INT 3
 #define CAPACITY 500
 #define SERVER_ADDRESS 12
-#define LORA_HUB_ADDRESS 1
+#define LORA_HUB_ADDRESS 20
 #define VBATPIN A7
 #define RF95_FREQ 915.0  // Change to 434.0 or other frequency, must match RX's freq!
 
