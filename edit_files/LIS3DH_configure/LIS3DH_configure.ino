@@ -1,14 +1,14 @@
 /*******************************************************************************************
     SlideSentinel: Phase 1 Sensor code
-    Author: Marissa Kwon, 
+    Author: Marissa Kwon,
     9/14/18
        This code is meant to compare accelerometer sensitivity to expected sensitivity based on configuration settings.
        This code can also be used to observe current consumption related to high and low resolution settings and sample rates
-    Use ctrl-f and search for every "IMPORTANT" comment before compiling and running, 
+    Use ctrl-f and search for every "IMPORTANT" comment before compiling and running,
     these include notes for libraries and edits to dependant files.
-   
+
     IMPORTANT: compatible with edited version of LIS3DH source code supporting changes for enabling/disabling low power mode
-   
+
     Slide Sentinel master code, fully operational, configure using preprocessor definitions
     info on devices can be found here:
     LIS3DH: https://learn.sparkfun.com/tutorials/lis3dh-hookup-guide
@@ -26,18 +26,24 @@
 #include <SPI.h>
 #include <SparkFunLIS3DH.h> // from sparkfun accelerometer library found here https://github.com/sparkfun/SparkFun_LIS3DH_Arduino_Library
 #include <Wire.h>
+#include <SD.h>
 
-#define DUMP_REG 1
-// decide if you want to "hardcode" own accelerometer settings
-#define DEFAULT 1 // Prioritized over CUSTOM
-#define CUSTOM 0 
+// Pins
+#define SD_CS 10
+
+// Device Settings
+#define DUMP_REG 1 // useful for debugging - gives hex values for all registers
+// use these if you want to "hardcode" own accelerometer settings or use macros and default configuration function
+#define DEFAULT 1
+#define CUSTOM_LOW 0 // if true will override default
+#define CUSTOM_HIGH 0  // if true will override all other settings
 // consts and macros below will be ignored if CUSTOM is set to 1
-#define LOW_RES 0 //
-#define HI_RES 1 // currently does nothing in code
+#define LOW_RES 1 //
+#define HI_RES 0 // currently does nothing in code
 // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
 const int freq = 100;
 
-uint8_t dataRead; 
+uint8_t dataRead;
 LIS3DH myIMU(I2C_MODE, 0x19); //Default constructor is I2C, addr 0x19.
 
 /**********************************************************************************************
@@ -48,46 +54,93 @@ LIS3DH myIMU(I2C_MODE, 0x19); //Default constructor is I2C, addr 0x19.
         - assign IMU settings (LIS3DH), init, and configure IMU
 **********************************************************************************************/
 void setup() {
-    Serial.begin(9600);
-    delay(1000);
-    initializeAccelerometer();
-    
-    #if DUMP_REG // edit later to read other registers needed
-    for( int i = LIS3DH_INT_COUNTER_REG; i <= LIS3DH_INT1_DURATION; i++) {
-  Serial.print("0x");
-  Serial.print(i,HEX);
-  Serial.print(": 0x");
-  myIMU.readRegister(&dataRead, i);
-  Serial.println(dataRead, HEX);
-    }
-    #endif
+  Serial.begin(9600);
+  delay(1000);
+  initializeAccelerometer();
+
+  if (!SD.begin(SD_CS)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  Serial.println("SD card initialized.");
+
+#if DUMP_REG // edit later to read other registers needed
+  for ( int i = LIS3DH_INT_COUNTER_REG; i <= LIS3DH_INT1_DURATION; i++) {
+    Serial.print("0x");
+    Serial.print(i, HEX);
+    Serial.print(": 0x");
+    myIMU.readRegister(&dataRead, i);
+    Serial.println(dataRead, HEX);
+  }
+#endif
 }
 
 /**********************************************************************************************
    loop()
-   Description:   
+   Description:
 **********************************************************************************************/
 void loop() {
+  Serial.println("creating filenames");
+  unsigned long startmillis, endmillis;
+
+  startmillis = millis();
+
   // Get all parameters
+  String x_axis = String(myIMU.readFloatAccelX(), 6);
+  String y_axis = String(myIMU.readFloatAccelY(), 6);
+  String z_axis = String(myIMU.readFloatAccelZ(), 6);
+
+  endmillis =  millis();
+
+  Serial.print("elapsed time to read/convert: ");
+  Serial.println(endmillis - startmillis);
+
   Serial.print("\nAccelerometer:\n");
   Serial.print(" X = ");
-  Serial.println(myIMU.readFloatAccelX(), 6);
+  Serial.println(x_axis);
   Serial.print(" Y = ");
-  Serial.println(myIMU.readFloatAccelY(), 6);
+  Serial.println(y_axis);
   Serial.print(" Z = ");
-  Serial.println(myIMU.readFloatAccelZ(), 6);
+  Serial.println(z_axis);
+
+  String myfile = get_filename(); // make SD file based on freq and settings
+
+  startmillis = millis();
+
+  File dataFile = SD.open(myfile, FILE_WRITE);
+  if (dataFile) {
+    dataFile.print(x_axis);
+    dataFile.print(",");
+    dataFile.print(y_axis);
+    dataFile.print(",");
+    dataFile.println(z_axis);
+    dataFile.close();
+  }
+
+  // if the file isn't open, pop up an error:
+  else {
+    Serial.println("error opening datalog.txt");
+  }
+
+  endmillis =  millis();
+
+  Serial.print("elapsed time to write:");
+  Serial.println(endmillis - startmillis);
+  Serial.println(freq);
+
 
   Serial.print("LIS3DH_INT1_SRC: 0x");
   clearInterrupts();
   Serial.println(dataRead, HEX);
   Serial.println("Decoded events:");
-  if(dataRead & 0x40) Serial.println("Interrupt Active");
-  if(dataRead & 0x20) Serial.println("Z high");
-  if(dataRead & 0x10) Serial.println("Z low");
-  if(dataRead & 0x08) Serial.println("Y high");
-  if(dataRead & 0x04) Serial.println("Y low");
-  if(dataRead & 0x02) Serial.println("X high");
-  if(dataRead & 0x01) Serial.println("X low");
+  if (dataRead & 0x40) Serial.println("Interrupt Active");
+  if (dataRead & 0x20) Serial.println("Z high");
+  if (dataRead & 0x10) Serial.println("Z low");
+  if (dataRead & 0x08) Serial.println("Y high");
+  if (dataRead & 0x04) Serial.println("Y low");
+  if (dataRead & 0x02) Serial.println("X high");
+  if (dataRead & 0x01) Serial.println("X low");
   Serial.println();
 
   delay(1000);
@@ -203,7 +256,7 @@ void configInterrupts()
   //dataToWrite |= 0x02;//Y enable
   //dataToWrite |= 0x01;//X enable
   //myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power and sample at 1.344 kHz
-    
+
   //LIS3DH_CTRL_REG3
   //Choose source for pin 1
   //dataToWrite = 0;
@@ -234,44 +287,64 @@ void configInterrupts()
 }
 
 void clearInterrupts() {
-    uint8_t dataRead;
-    myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
+  uint8_t dataRead;
+  myIMU.readRegister(&dataRead, LIS3DH_INT1_SRC);//cleared by reading
 }
 
-void initializeAccelerometer(){
-    #if CUSTOM == 0 // pay attention to macros to set REG1 and REG4
-    // Replaced by single write to CTRL_REG1 to disable low power mode
-    // Accel sample rate and range effect interrupt time and threshold values with device freq.
-        myIMU.settings.accelSampleRate = freq;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
-        myIMU.settings.accelRange = 2;         // Max G force readable.  Can be: 2, 4, 8, 16
-        myIMU.settings.adcEnabled = 0;
-        myIMU.settings.tempEnabled = 0;
-        myIMU.settings.xAccelEnabled = 1;
-        myIMU.settings.yAccelEnabled = 1;
-        myIMU.settings.zAccelEnabled = 1;
-    #if LOW_RES == 1
-        myIMU.settings.lowPowerEnabled = 1;
-    #endif
-    #if LOW_RES == 0
-        myIMU.settings.lowPowerEnabled = 0;
-    #endif 
-    // high resolution enabled by default ???
-    #endif
-    
-    // Call .begin() to configure the IMU and apply settings made 
-    myIMU.begin(); // NOTE: applies changes made to REG1 and REG4 when myIMU.settings members are changed
-    
-    //myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x5F); //default
-    #if DEFAULT == 1 // apply original settings to REG1 and REG4
-    myIMU.writeRegister(LIS3DH_CTRL_REG4, 0x00); //disable Hi Res
-    myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x5F); //enable low power and sample at 100 Hz
-    #endif
-    
-    #if CUSTOM == 1 // apply custom settings to REG1 and REG4
-    myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power and sample at 1.344 kHz
-    myIMU.writeRegister(LIS3DH_CTRL_REG4, 0x08); //enable high resolution reads
-    #endif
-    
-    configInterrupts(); // see function for interrupt settings
-    clearInterrupts(); // start fresh
+void initializeAccelerometer() {
+  // Replaced by single write to CTRL_REG1 to disable low power mode
+  // Accel sample rate and range effect interrupt time and threshold values with device freq.
+  myIMU.settings.accelSampleRate = freq;  // Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz
+  myIMU.settings.accelRange = 2;         // Max G force readable.  Can be: 2, 4, 8, 16
+  myIMU.settings.adcEnabled = 0;
+  myIMU.settings.tempEnabled = 0;
+  myIMU.settings.xAccelEnabled = 1;
+  myIMU.settings.yAccelEnabled = 1;
+  myIMU.settings.zAccelEnabled = 1;
+#if LOW_RES == 1
+  myIMU.settings.lowPowerEnabled = 1;
+#endif
+#if LOW_RES == 0
+  myIMU.settings.lowPowerEnabled = 0;
+#endif
+  // high resolution in CTRL_REG4 enabled by default ???
+
+  // Call .begin() to configure the IMU and apply settings made
+  myIMU.begin(); // NOTE: applies changes made to REG1 and REG4 when myIMU.settings members are changed
+
+  //myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x5F); //default
+#if CUSTOM_LOW == 1 // apply no HI RES settings to REG1 and REG4
+  myIMU.writeRegister(LIS3DH_CTRL_REG4, 0x00); //disable Hi Res
+  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x5F); //enable low power and sample at 100 Hz
+#endif
+
+#if CUSTOM_HIGH == 1 // apply custom settings to REG1 and REG4
+  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power and sample at 1.344 kHz
+  myIMU.writeRegister(LIS3DH_CTRL_REG4, 0x08); //enable high resolution reads
+#endif
+
+  configInterrupts(); // see function for interrupt settings
+  clearInterrupts(); // start fresh
 }
+
+//IMPORTANT: filename before extension CANNOT exceed 8 characters
+String get_filename() {
+  String temp = "";
+  temp += String(freq);
+  if (LOW_RES && DEFAULT) {
+    temp += "_DLO";
+  }
+  else if (CUSTOM_LOW) {
+    temp += "_CLO";
+  }
+  else if (CUSTOM_HIGH) {
+    temp += "_CHI";
+  }
+  else {
+    temp += "_DEF";
+  }
+
+  temp += ".txt";
+  return temp;
+}
+
