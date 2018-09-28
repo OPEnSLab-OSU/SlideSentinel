@@ -397,7 +397,7 @@ void configInterrupts()
   //dataToWrite |= 0x04;//Z enable
   //dataToWrite |= 0x02;//Y enable
   //dataToWrite |= 0x01;//X enable
-  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power and sample at 1.344 kHz
+  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power 
   
   //LIS3DH_CTRL_REG4 
   //all default values 00
