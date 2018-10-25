@@ -3,22 +3,7 @@
     Author: Marissa Kwon, Grayland Lunn
     8/24/18
 
-    Use ctrl-f and search for every "IMPORTANT" comment before compiling and running, 
-    these include notes for libraries and edits to dependant files.
-
-    Slide Sentinel master code, fully operational, configure using preprocessor definitions
-
-    info on devices can be found here:
-    LIS3DH: https://learn.sparkfun.com/tutorials/lis3dh-hookup-guide
-      SOURCE CODE FROM EXAMPLE: "IntUsage.ino"
-      Marshall Taylor @ SparkFun Electronics
-      Nov 16, 2016
-      https://github.com/sparkfun/LIS3DH_Breakout
-      https://github.com/sparkfun/SparkFun_LIS3DH_Arduino_Library
-
-      See ST docs for information
-      Doc ID 18198 (AN3308): LIS3DHpplication information
-      Doc ID 17530: LIS3DH datasheet
+    This is a thinner version of the P1_SS_Loop_Control file
 **********************************************************************************************/
 
 // necessary libraries here
@@ -40,12 +25,11 @@
 // Define mode constants
 #define DEBUG 1       // allow printing to serial monitor,
                       // serial monitor must be opened before device will start to function in debug mode
-#define RTC_MODE 1    // enable RTC interrupts
-#define SD_WRITE 0    // enable SD card logging, not yuet implemented
+#define RTC_MODE 0    // enable RTC interrupts
 
 // Define LoRa constants
 #define TIMEOUT 15            // Serial NMEA timeout in ms
-#define SERVER_ADDRESS 12     // IMPORTANT: should be between 0 and N_NODES constant in the HUB code (not including N_NODES)
+#define SERVER_ADDRESS 1     // IMPORTANT: should be between 0 and N_NODES constant in the HUB code (not including N_NODES)
 #define LORA_HUB_ADDRESS 20   // IMPORTANT: set equal to the N_NODES constant in the HUB code
 #define RTK_SERVER 21         // IMPORTANT: must be same as RTK server in HUB and server code
 #define RF95_FREQ 915.0
@@ -229,7 +213,7 @@ void setup() {
   Serial.println("Processor Setup Successful.\n");
 #endif
 
-  initializeAcceleromter();
+  //initializeAcceleromter();
   
   /*initialize RTC*/
 #if RTC_MODE == 1
@@ -258,39 +242,41 @@ void setup() {
   accelEn = digitalRead(ACCEL_EN_PIN);
   accelInt(accelEn);
   gps_off();
+  gps_on();
 }
 
 void loop() {
 
-  timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
-  RTCFlagCheck();   // reset RTC interrupts
-  enCheck();
-  alertFlagCheck(); // reset accelerometer interrupts, 
+  //timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
+  //RTCFlagCheck();   // reset RTC interrupts
+  //enCheck();
+  //alertFlagCheck(); // reset accelerometer interrupts, 
                     // for some reason RTC flag is triggering every time device is woken from standby,
                     // shouldn't be an issue, I'm in a timecrunch now, plan to debug later
 
-
-
-  //when passing recv, len is max message size, then updated to size of meassage received
-  len = RH_RF95_MAX_MESSAGE_LEN;
-  message_timer = millis();
-  if (message_timer - alert_timer < 1000 * ACCEL_SAMPLE_PERIOD) {
-    readNMEA();         // BOTTLENECK: block until lora is received or TIMEOUT occurs
-    sampleSendAccel();  // read the accelerometer registers and send to waiting base (3 retries if base can't be reached)
-  }
-  else {
     readNMEA(); // BOTTLENECK: block until lora is received or TIMEOUT occurs
     recvLORA(); // non-blocking, reads a single lora string
-  }
 
-  if(message_timer - accel_timer > 200){
-    accel_timer = millis();
-    Serial.println(buildAccelString());
-  }
-
-  //this is the standby loop, always execute last in order
-  //check the timer against millis() and sleep if difference is greater than "awakeFor"
-  tryStandby();
+//  //when passing recv, len is max message size, then updated to size of meassage received
+//  len = RH_RF95_MAX_MESSAGE_LEN;
+//  message_timer = millis();
+//  if (message_timer - alert_timer < 1000 * ACCEL_SAMPLE_PERIOD) {
+//    readNMEA();         // BOTTLENECK: block until lora is received or TIMEOUT occurs
+//    sampleSendAccel();  // read the accelerometer registers and send to waiting base (3 retries if base can't be reached)
+//  }
+//  else {
+//    readNMEA(); // BOTTLENECK: block until lora is received or TIMEOUT occurs
+//    recvLORA(); // non-blocking, reads a single lora string
+//  }
+//
+//  if(message_timer - accel_timer > 200){
+//    accel_timer = millis();
+//    Serial.println(buildAccelString());
+//  }
+//
+//  //this is the standby loop, always execute last in order
+//  //check the timer against millis() and sleep if difference is greater than "awakeFor"
+//  tryStandby();
 }
 
 /**********************************************************************************************
@@ -691,6 +677,7 @@ void tryStandby() {
 *****************************************************/
 void readNMEA() {
   while (!rf95.available()) {
+    unsigned long int serial_timer = millis();
     while (Serial3.available()) { //read from serial
       nmeaChar = Serial3.read();
       loadNmeaString(&input_string, &last_string, nmeaChar, &lastUpdated);

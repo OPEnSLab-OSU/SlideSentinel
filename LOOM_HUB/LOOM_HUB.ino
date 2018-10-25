@@ -30,7 +30,7 @@
 #define BAUD 57600    // reading and writing occurs at 
 #define DEBUG 1       // turn on debug mode
 #define DEBUG_SD 1
-#define CELLULAR 1
+#define CELLULAR 0
 
 //===== LoRa Initializations =====
 #define RFM95_CS 8
