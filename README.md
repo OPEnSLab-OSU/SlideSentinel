@@ -9,4 +9,4 @@ Contents of "test files"
 	- acc_example... is a working interrupt configuration for change in position (instead of acceleration)
 
 Contents of "edit files"
-- files the are kinda/sorta working or under development
+- files in this area are under development

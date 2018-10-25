@@ -412,9 +412,15 @@ void configInterrupts()
   //dataToWrite |= 0x04;//Z enable
   //dataToWrite |= 0x02;//Y enable
   //dataToWrite |= 0x01;//X enable
-  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97);
-  Serial.println(x++);
+
+  myIMU.writeRegister(LIS3DH_CTRL_REG1, 0x97); //disable low power 
   
+  //LIS3DH_CTRL_REG4 
+  //all default values 00
+  //dataToWrite |= 0x08;//enable HI RESOLUTION mode
+  myIMU.writeRegister(LIS3DH_CTRL_REG4, 0x08); //enable high resolution reads
+
+
   //LIS3DH_CTRL_REG3
   //Choose source for pin 1
   //dataToWrite = 0;
