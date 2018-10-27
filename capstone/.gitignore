@@ -1,0 +1,7 @@
+# ignore files used in building tex docs
+/**/*.log
+/**/*.aux
+/**/*.gz
+
+# ignore all .pdfs in src directories
+**/src/**/*.pdf

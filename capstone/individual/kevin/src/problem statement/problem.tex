@@ -1,0 +1,54 @@
+% set 10pt font, no footer, one column
+\documentclass[draftclsnofoot,onecolumn, 10pt]{IEEEtran}
+
+% packages
+% pstricks for figures
+\usepackage[pdf]{pstricks}
+% allow setting of line spacing
+\usepackage{setspace}
+% remove centering from \section (default center by ieeetran) 
+\usepackage{etoolbox}
+	\patchcmd{\section}{\centering}{}{}{}
+% specify margins and page type
+\usepackage{geometry}
+	\geometry{
+		letterpaper,
+		top=0.75in,
+		bottom=0.75in,
+		right=0.75in,
+		left=0.75in
+	}
+
+
+
+\fontfamily{serif}
+
+\author{Kevin Koos \\ CS 461, Fall Term}
+\date{\today}
+\title{Slide Sentinel - Open-Source Landslide Detection and Tracking Sensor Network}
+
+\singlespacing
+\begin{document}
+	\maketitle
+	
+	\begin{abstract}
+		Landslides are natural disasters which are extremely costly to clean up and can cause some serious damage to infrastructure. These landslides are not only costly in their clean-up, but also cost organizations much in loss of operations due to delays. Large land owners such as Weyerhauser are at particular risk to delays in logging operations due to land slides being found long after they have occurred and operations are in motion. Our goal is to develop a landslide sensor detection network which can be utilized to track different possible sites of landslides for shifts in land. To achieve this, Arduino sensors will be developed to track and relay information back to a central hub where the data can be shown visually in an online client. The product will be extensively tested for use in the field. The finished product will consist of a set of design documents for the sensor and the source code for the sensor, server application, and online client.
+		
+		
+	\end{abstract}
+
+
+	\section{Problem Description}
+	Mass flows of soil, otherwise known as landslides, are classified as a type of mass wasting where a large mass flows down a downward slope. Landslides develop overtime due to an accumulation of water in the soil and a lack of support structures in the ground. These landslides occur naturally along slopes but changes in the local geography, such as road construction, can weaken slopes and increase the likelihood of a landslide. These landslides occur abruptly and quickly without warning so care must be taken to minimize their likelihood and track possible sites. While a landslide might start out small, as they flow down the slope they can gain mass and travel farther further picking up more material. Landslides will even carry large rocks and boulders further compounding possible damages. Due to the sheer size of these landslides, clean-up and repair of the natural disaster sites are a costly endeavor. Current assessments of landslides damages worldwide are high but since there are no overall methods or organizations tracking landslides , they are inaccurate and neglect undeveloped areas. Timberland owners, such as Weyerhauser, are particularly concerned about landslides due to the possible damages they can cause to logging roads and the interruptions to logging operations. If these landslides could be tracked, organizations can more readily respond and handle these situations minimizing potential losses in operations. \\
+	The goal of the Slide Sentinel project is to develop a sensor network which can detect shifts in position and relay these changes back to a central data hub where the data can be analyzed and presented. The sensors will collect data periodically on position and orientation using an accelerometer and GPS. This data will be collected and presented in an online client on Google maps, tracking the sensor node statuses and their individual movements. We aim for this project to be easily deployable in a variety of outdoor conditions so as to help land managers better understand and track landslides on their property.
+	
+	\section{Proposed Solution}
+	This project is broken up into three major segments, the sensors, the network, and the online client. The sensors will be powered by an Arduino which will be programmed in C/C++. A prototype will be provided which can detect positional shifts and send a signal. These sensors nodes will use GPS and an accelerometer to track position and communicate to the central data hub over long range radio. The sensors will be enclosed in a 3D-printed case designed to both reliably protected the internal components as well as keep material costs low. The design for the enclosure as well as a bill of materials will be provided in the final design. Since the sensors will be limited by their battery life, special care will be taken to ensure the sensor is energy efficient and can last a reasonably long time without replacement. A data hub will collect the information from the sensors over long range radio and transmit that information over 4G LTE mobile internet for the online client. The online client will store data from the data hub to display information to users such as the current status of the sensors, as well as any positional shifts. The online client will use the Google maps API to visualize any shifts the sensors detect and display them on the maps for the users.
+	
+	
+	\section{Performance Metrics}
+	The sensors will need to be tested extensively on a number of metrics as the conditions of where the sensors will be located is not inclusive to electronics and the forces they will experience during the landslides. The sensors will be tested for their durability to general wear and tear in the outdoors as well as their ability to weather the forces during a landslide. This will be achieved through testing in controlled environments as well as in the field. Sensors will be tested for longevity so an accurate estimate can be made to lifetime an individual sensor should be expected to last. The firmware for which the sensors will run on will need to tested for accuracy, reliability, and efficiency. The central data hub will need to be tested for reliability and ideally should never run into any problems during normal operation. The online client, as a user interface for the data, will need to be readily usable and easy to understand. 
+	
+	
+
+\end{document}
