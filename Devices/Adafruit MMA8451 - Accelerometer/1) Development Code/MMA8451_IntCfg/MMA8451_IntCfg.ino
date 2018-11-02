@@ -19,19 +19,20 @@ Adafruit_MMA8451 mma = Adafruit_MMA8451();
 bool accelFlag = false;
 int dataRead;
 int counter = 0;
+unsigned long int read_time;
 sensors_event_t event; 
 
 // Interrupt service routine
 void wakeUpAccel()
 {
   accelFlag = true;
-  mma.readRegister8(MMA8451_REG_TRANSIENT_SRC);//cleared by reading
+  detachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN));
 }
 
 void setup(void) {
   Serial.begin(9600);
 
-  while(!Serial);
+  while(!Serial);   // wait for the serial monitor to open before executing any code
   
   Serial.println("Adafruit MMA8451 test!");
   
@@ -40,8 +41,10 @@ void setup(void) {
     Serial.println("Couldnt start");
     while (1);
   }
-  Serial.println("MMA8451 found!");
   
+  Serial.println("MMA8451 found!");
+
+  // built in configurations
   mma.setRange(MMA8451_RANGE_2_G);
   mma.setDataRate(MMA8451_DATARATE_6_25HZ);
   Serial.print("Range = "); Serial.print(2 << mma.getRange()); Serial.println("G");
@@ -62,19 +65,25 @@ void setup(void) {
   attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), wakeUpAccel, LOW);
   Serial.println("Int attached");
   mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+  read_time = millis();
 }
 
 void loop() {
   // Read the 'raw' data in 14-bit counts
-//        mma.getEvent(&event);
-//        Serial.print(millis()); Serial.print(","); 
-//        Serial.print(mma.x); Serial.print(",");
-//        Serial.print(mma.y); Serial.print(",");
-//        Serial.println(mma.z);
+
+    if(millis() - read_time > 500 && !accelFlag){ 
+        mma.getEvent(&event);
+        Serial.print(millis()); Serial.print(","); 
+        Serial.print(mma.x); Serial.print(",");
+        Serial.print(mma.y); Serial.print(",");
+        Serial.println(mma.z);
+        read_time = millis();
+    }
     if(accelFlag){
-    
         Serial.println("Interrupt triggered");   
         accelFlag = false;
+        mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+        attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), wakeUpAccel, LOW);
     }
 }
 
