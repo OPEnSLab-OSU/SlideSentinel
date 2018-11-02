@@ -12,11 +12,12 @@ Must use the updated MMA8451 Library included within this repo
 #include <EnableInterrupt.h>
 #include "wiring_private.h" // pinPeripheral() function
 
-#define ACCEL_EN_PIN 10
+#define ACCEL_INT_PIN 10
 
 /* function declarations */ 
 void mmaCSVRead(Adafruit_MMA8451 device);
 void configInterrupts(Adafruit_MMA8451 device);
+void mmaPrintIntSRC(uint8_t dataRead);
 void mmaSetupSlideSentinel();
 
 
@@ -30,7 +31,7 @@ sensors_event_t event;
 void wakeUpAccel()
 {
   accelFlag = true;
-  detachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN));
+  detachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN));
 }
 
 void setup(void) {
@@ -45,8 +46,8 @@ void setup(void) {
   accelFlag = false;
   configInterrupts(mma);
 
-  digitalWrite(ACCEL_EN_PIN, INPUT_PULLUP); // pulldown interrupt
-  attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), wakeUpAccel, LOW);
+  digitalWrite(ACCEL_INT_PIN, INPUT_PULLUP); // pulldown interrupt
+  attachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN), wakeUpAccel, LOW);
   Serial.println("Interrupt attached");
   
   mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
@@ -64,10 +65,14 @@ void loop() {
     if(accelFlag){
         Serial.println("Interrupt triggered");   
         accelFlag = false; // reset flag, clear the interrupt
-        mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
         
+        uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+        mmaPrintIntSRC(dataRead);
+
+        digitalWrite(ACCEL_INT_PIN, INPUT_PULLUP);
+        detachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN));
         // reattach the interrupt, can be done anywhere in code, but only after the interrupt has triggered and detached
-        attachInterrupt(digitalPinToInterrupt(ACCEL_EN_PIN), wakeUpAccel, LOW);
+        attachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN), wakeUpAccel, LOW);
     }
 }
 
@@ -165,5 +170,24 @@ void mmaSetupSlideSentinel(){
   Serial.print("Range = "); Serial.print(2 << mma.getRange()); Serial.println("G");
 
   while (mma.readRegister8(MMA8451_REG_CTRL_REG2) & 0x40);
+}
+
+void mmaPrintIntSRC(uint8_t dataRead){
+    if(dataRead & 0x40) Serial.println("Event Active");
+    if(dataRead & 0x20){
+        Serial.println("\tZ event");
+        if(dataRead & 0x10) Serial.println("\t\tZ Negative g");
+        else Serial.println("\t\tZ Positive g");
+    }
+    if(dataRead & 0x08){
+        Serial.println("\tY event");
+        if(dataRead & 0x04) Serial.println("\t\tY Negative g");
+        else Serial.println("\t\tY Positive g");
+    }
+    if(dataRead & 0x02){
+        Serial.println("\tX event");
+        if(dataRead & 0x01) Serial.println("\t\tX Negative g");
+        else Serial.println("\t\tX Positive g");
+    }
 }
 
