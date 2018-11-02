@@ -64,13 +64,12 @@ void loop() {
     // perform any bigger interrupt related actions here, this will just print some info to show what interrupted the accel
     if(accelFlag){
         Serial.println("Interrupt triggered");   
-        accelFlag = false; // reset flag, clear the interrupt
         
         uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
         mmaPrintIntSRC(dataRead);
 
         digitalWrite(ACCEL_INT_PIN, INPUT_PULLUP);
-        detachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN));
+        accelFlag = false; // reset flag, clear the interrupt
         // reattach the interrupt, can be done anywhere in code, but only after the interrupt has triggered and detached
         attachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN), wakeUpAccel, LOW);
     }
