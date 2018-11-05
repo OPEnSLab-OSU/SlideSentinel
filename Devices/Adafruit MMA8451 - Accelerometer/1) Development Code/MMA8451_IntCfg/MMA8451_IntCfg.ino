@@ -30,8 +30,11 @@ sensors_event_t event;
 /* Interrupt service routine for accelerometer interrupts */
 void wakeUpAccel()
 {
-  accelFlag = true;
   detachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN));
+  uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+  mmaPrintIntSRC(dataRead);
+  mmaCSVRead(mma);
+  accelFlag = true;
 }
 
 void setup(void) {
@@ -65,8 +68,7 @@ void loop() {
     if(accelFlag){
         Serial.println("Interrupt triggered");   
         
-        uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
-        mmaPrintIntSRC(dataRead);
+        
 
         digitalWrite(ACCEL_INT_PIN, INPUT_PULLUP);
         accelFlag = false; // reset flag, clear the interrupt
@@ -170,6 +172,7 @@ void mmaSetupSlideSentinel(){
 
   while (mma.readRegister8(MMA8451_REG_CTRL_REG2) & 0x40);
 }
+
 
 void mmaPrintIntSRC(uint8_t dataRead){
     if(dataRead & 0x40) Serial.println("Event Active");
