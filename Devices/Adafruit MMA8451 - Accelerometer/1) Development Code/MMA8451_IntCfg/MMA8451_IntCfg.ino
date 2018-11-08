@@ -9,7 +9,7 @@ Must use the updated MMA8451 Library included within this repo
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
-#include <EnableInterrupt.h>
+//#include <EnableInterrupt.h>
 #include "wiring_private.h" // pinPeripheral() function
 
 #define ACCEL_INT_PIN 10
@@ -24,16 +24,13 @@ void mmaSetupSlideSentinel();
 /* global variable declarations */ 
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 bool accelFlag = false;
-unsigned long int read_time;    // timeout for reading strings as not to overload serial monitor
+unsigned long int read_time, interrupt_time;    // timeout for reading strings as not to overload serial monitor
 sensors_event_t event; 
 
 /* Interrupt service routine for accelerometer interrupts */
 void wakeUpAccel()
 {
   detachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN));
-  uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
-  mmaPrintIntSRC(dataRead);
-  mmaCSVRead(mma);
   accelFlag = true;
 }
 
@@ -55,6 +52,7 @@ void setup(void) {
   
   mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
   read_time = millis();
+  interrupt_time = millis();
 }
 
 void loop() {
@@ -67,12 +65,14 @@ void loop() {
     // perform any bigger interrupt related actions here, this will just print some info to show what interrupted the accel
     if(accelFlag){
         Serial.println("Interrupt triggered");   
-        
-        
+        uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+        mmaPrintIntSRC(dataRead);
 
         digitalWrite(ACCEL_INT_PIN, INPUT_PULLUP);
         accelFlag = false; // reset flag, clear the interrupt
         // reattach the interrupt, can be done anywhere in code, but only after the interrupt has triggered and detached
+        //EIC->INTFLAG.reg = 1 << ACCEL_INT_PIN; // clear interrupt flag pending
+        EIC->INTFLAG.reg = 0x01ff; // clear interrupt flag pending
         attachInterrupt(digitalPinToInterrupt(ACCEL_INT_PIN), wakeUpAccel, LOW);
     }
 }
