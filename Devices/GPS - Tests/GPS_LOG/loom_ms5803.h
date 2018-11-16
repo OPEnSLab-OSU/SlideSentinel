@@ -145,6 +145,3 @@ void measure_ms5803()
 		Serial.print("MS5803 Temperature: ");  Serial.print(state_ms5803.temp,  4);		Serial.println(" C");
 	#endif
 }
-
-
-

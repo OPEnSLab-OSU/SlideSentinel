@@ -174,5 +174,3 @@ void msg_router(OSCMessage &msg, int addrOffset)
 // 			// where # is the number of characters taken up by the device name, number, and '/'' 
 
 // }
-
-

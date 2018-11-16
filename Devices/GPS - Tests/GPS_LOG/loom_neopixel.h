@@ -97,13 +97,3 @@ void set_color(OSCMessage &msg)
 			state_neopixel.pixels[i]->show();
 	}
 }
-
-
-
-
-
-
-
-
-
-

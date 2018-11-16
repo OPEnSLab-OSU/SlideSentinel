@@ -220,10 +220,3 @@ void print_time()
 	LOOM_DEBUG_Println2("Day : ", get_weekday());
 }
 #endif
-
-
-
-
-
-
-

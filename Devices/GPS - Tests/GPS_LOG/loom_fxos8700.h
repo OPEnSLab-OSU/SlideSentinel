@@ -190,15 +190,3 @@ void details_fxos8700()
 	delay(500);
 }
 #endif //if LOOM_DEBUG == 1
-
-
-
-
-
-
-
-
-
-
-
-

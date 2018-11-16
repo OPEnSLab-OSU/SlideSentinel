@@ -32,11 +32,19 @@
 #define CELLULAR 0
 
 
+
 char nmea_data[1024];
 bool is_read;
 
+// RX pin 6, TX pin A5, configuring for rover to GPS UART
+Uart Serial3 (&sercom5, 6, A5, SERCOM_RX_PAD_2, UART_TX_PAD_0);
+void SERCOM5_Handler()
+{
+  Serial3.IrqHandler();
+}
+
 void busyWait(){
-  
+  while(1);
 }
 
 // ================================================================
@@ -44,10 +52,12 @@ void busyWait(){
 // ================================================================
 void setup()
 {
+  while(!Serial);
   // LOOM_begin calls any relevant (based on config) LOOM device setup functions
   Loom_begin();
   //setup code here, to run once:
   Serial.begin(115200);         //Opens the main serial port to communicate with the computer
+  Serial3_setup();
 //  digitalWrite(13, INPUT);
 //  attachInterrupt(digitalPinToInterrupt(13), busyWait) // infinite loop to disconnect devi
   //Any custom setup code
@@ -58,16 +68,14 @@ void setup()
 // ================================================================
 void loop()
 {
-  if(Serial.available()){
-    memset(nmea_data, '\0', 1024);
-  }
-  while(Serial.available()){
-    int i = 0;
-    nmea_data[i++] = Serial.read();
+  int i = 0; 
+  memset(nmea_data, '\0', 1024);
+  while(Serial3.available()){
+    nmea_data[i++] = Serial3.read();
     if(i >= 1022) break;
   }
   if(strlen(nmea_data)){
-    sd_save_elem_nodelim ("GPS_DATA.txt", nmea_data);
+    sd_save_elem_nodelim ("GPS.txt", nmea_data);
   }
   
 } // End loop section
@@ -91,4 +99,12 @@ bool sd_save_elem_nodelim(char *file, char* data)
   }
   sdFile.close();
   return true;
+}
+
+void Serial3_setup() {
+  Serial3.begin(115200);          //tx from rover to pin 6
+
+  // Assign pins 6 & A5 SERCOM functionality, internal function
+  pinPeripheral(6, PIO_SERCOM);  //Private functions for serial communication
+  pinPeripheral(A5, PIO_SERCOM_ALT);
 }

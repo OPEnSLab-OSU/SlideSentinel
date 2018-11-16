@@ -479,7 +479,3 @@ void printDirectory(File dir, int numTabs)
 		entry.close();
 	}
 }
-
-
-
-

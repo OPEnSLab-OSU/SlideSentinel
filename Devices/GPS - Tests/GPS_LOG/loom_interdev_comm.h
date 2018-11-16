@@ -364,4 +364,3 @@ void check_device_refresh_interval()
 	}
 }
 #endif
-

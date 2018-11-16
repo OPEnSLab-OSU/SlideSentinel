@@ -86,5 +86,3 @@ void write_relay_states()
 	digitalWrite(RELAY_PIN0,(state_relay.on[0]==true) ? HIGH : LOW);
 	digitalWrite(RELAY_PIN1,(state_relay.on[1]==true) ? HIGH : LOW);
 }
-
-

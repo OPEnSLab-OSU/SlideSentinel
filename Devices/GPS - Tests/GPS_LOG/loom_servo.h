@@ -125,13 +125,3 @@ void handle_servo_msg(OSCMessage &msg)
 	
 	set_servo_degree(set_degree, servo_num);
 }
-
-
-
-
-
-
-
-
-
-

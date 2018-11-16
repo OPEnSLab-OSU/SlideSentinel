@@ -459,8 +459,3 @@ void additional_loop_checks()
 		check_device_refresh_interval();
 	#endif
 }
-
-
-
-
-

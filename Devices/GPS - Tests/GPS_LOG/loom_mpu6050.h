@@ -475,8 +475,3 @@ void calMPU6050_OSC(OSCMessage &msg)
 	
 	LOOM_DEBUG_Println("New calibration values written to non-volatile memory");
 }
-
-
-
-
-

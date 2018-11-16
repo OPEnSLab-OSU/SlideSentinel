@@ -116,10 +116,3 @@ void measure_sht31d()
 		LOOM_DEBUG_Println("Failed to read temperature or humidity");
 	}
 }
-
-
-
-
-
-
-

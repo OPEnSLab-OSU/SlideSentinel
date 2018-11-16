@@ -159,8 +159,3 @@ retFuncPtr custom_strToFunc(char * str) {
 
 	return NULL; // Return Null if no match found, do not change
 }
-
-
-
-
-

@@ -203,12 +203,3 @@ bool lora_send_bundle_fragment(OSCBundle *bndl)
 // 		lora_send_bundle(&tmp_bndl);
 // 	}
 // }
-
-
-
-
-
-
-
-
-

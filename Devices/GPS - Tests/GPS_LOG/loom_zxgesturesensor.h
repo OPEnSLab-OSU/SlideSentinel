@@ -179,10 +179,3 @@ void measure_zxgesturesensor()
 		LOOM_DEBUG_Println("Gesture data unavailable for zxgesturesensor");
 	}
 }
-
-
-
-
-
-
-

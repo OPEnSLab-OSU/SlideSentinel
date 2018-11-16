@@ -110,13 +110,3 @@ bool nrf_send_bundle_fragment(OSCBundle *bndl)
 		nrf_send_bundle(&tmp_bndl);
 	}
 }
-
-
-
-
-
-
-
-
-
-

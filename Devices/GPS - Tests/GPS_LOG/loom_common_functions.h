@@ -332,8 +332,3 @@ void flash_led()
 	} 
 	digitalWrite(led, HIGH);
 }
-
-
-
-
-
