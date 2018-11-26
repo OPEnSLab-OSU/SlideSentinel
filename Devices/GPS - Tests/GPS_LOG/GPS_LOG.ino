@@ -52,13 +52,12 @@ void busyWait(){
 // ================================================================
 void setup()
 {
-  while(!Serial);
   // LOOM_begin calls any relevant (based on config) LOOM device setup functions
   Loom_begin();
   //setup code here, to run once:
   Serial.begin(115200);         //Opens the main serial port to communicate with the computer
   Serial3_setup();
-//  digitalWrite(13, INPUT);
+  digitalWrite(6, INPUT_PULLUP);
 //  attachInterrupt(digitalPinToInterrupt(13), busyWait) // infinite loop to disconnect devi
   //Any custom setup code
 }
@@ -75,7 +74,7 @@ void loop()
     if(i >= 1022) break;
   }
   if(strlen(nmea_data)){
-    sd_save_elem_nodelim ("GPS.txt", nmea_data);
+    sd_save_elem_nodelim ("GPS.csv", nmea_data);
   }
   
 } // End loop section
@@ -103,7 +102,7 @@ bool sd_save_elem_nodelim(char *file, char* data)
 
 void Serial3_setup() {
   Serial3.begin(115200);          //tx from rover to pin 6
-
+  digitalWrite(6,INPUT_PULLUP);
   // Assign pins 6 & A5 SERCOM functionality, internal function
   pinPeripheral(6, PIO_SERCOM);  //Private functions for serial communication
   pinPeripheral(A5, PIO_SERCOM_ALT);
