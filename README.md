@@ -1,4 +1,5 @@
 # SlideSentinel
+[![DOI](https://zenodo.org/badge/136069337.svg)](https://zenodo.org/badge/latestdoi/136069337)
 
 Contents of "test files"
 - example files of functioning code;  archived here to fall back on if editing files gets too messy
