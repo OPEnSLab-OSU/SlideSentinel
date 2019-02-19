@@ -43,40 +43,42 @@ struct loraString {
   short int len;
 };
 
-#define BAUD 57600    // reading and writing occurs at 
+#define BAUD 115200    // reading and writing occurs at 
 #define DEBUG 0       // turn on debug mode
 #define DEBUG_SD 1
 #define CELLULAR 0
 
 
 // Define mode constants
-#define DEBUG 0       // allow printing to serial monitor,
+#define DEBUG 1       // allow printing to serial monitor,
                       // serial monitor must be opened before device will start to function in debug mode
 #define RTC_MODE 1    // enable RTC interrupts
-#define SD_WRITE 0    // enable SD card logging, not yuet implemented
+#define SD_WRITE 1    // enable SD card logging, not yuet implemented
 
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
-#define RTC_WAKE_PERIOD 3      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 180       // Length of time to take measurements under periodic wake condition,
-#define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
+#define RTC_WAKE_PERIOD 1      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 10       // Length of time to take measurements under periodic wake condition,
+#define ALERT_WAKE 20          // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
 // (can possibly use A5 and/or 13, they are defined as UART but unused in this implementation)
-#define ACCEL_EN_PIN A1     // Interrupt driven, connect to switch for toggle
-#define GPS_EN_PIN A2       // Attach to RESET on relay
-#define ALERT_WAKE_PIN A3   // Attach A3 to int1 on accelerometer
+#define ACCEL_EN_PIN 	A1  // Interrupt driven, connect to switch for toggle
+#define GPS_EN_PIN 		A2  // Attach to RESET on relay
+#define ALERT_WAKE_PIN  A3  // Attach A3 to int1 on accelerometer
 #define GPS_DISABLE_PIN A4  // Attach to SET on relay
-#define VBATPIN A7    
-#define RTC_WAKE_PIN A5     // Attach to SQW pin on RTC
+#define VBATPIN 		A7  // Labeled pin 9
+#define RTC_WAKE_PIN	A5  // Attach to SQW pin on RTC
+#define SERIAL2_RX		12	// Rx pin for serial port
+#define SERIAL2_TX 		11	// Tx pin for serial port
 
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 RTC_DS3231 RTC_DS;                  //  instance of DS3231 RTC
 
 // ======== Serial Port Init ==========
-// RX pin 13, TX pin 10, configuring for rover UART
-Uart Serial2 (&sercom1, 13, 10, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+// RX pin 12, TX pin 11, configuring for rover UART
+Uart Serial2 (&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler()
 {
   Serial2.IrqHandler();
@@ -153,8 +155,8 @@ void setup()
   Serial.begin(9600);
   //setup code here, to run once:
 
-  // pins 13(rx), 10(tx) 
-  Serial2_setup();
+  // pins 12(rx), 11(tx) 
+  //Serial2_setup();
 
 #if DEBUG
   setupPrint();
@@ -216,8 +218,11 @@ void loop()
 {
   timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
   RTCFlagCheck();   // reset RTC interrupts
-  enCheck();
+  enCheck();		// check accelerometer enable
   alertFlagCheck(); // reset accelerometer interrupts, 
+  readSerial();		// read from serial port if available
+
+
 
   tryStandby();  
 } // End loop section
@@ -257,7 +262,7 @@ void configInterrupts(Adafruit_MMA8451 device){
     //dataToWrite |= 0x10;    // Wake from Pulse function enable
     //dataToWrite |= 0x08;    // Wake from freefall/motion decect interrupt
     //dataToWrite |= 0x02;    // Interrupt polarity, 1 = active high
-    dataToWrite |= 0x01;    // (0) Push/pull or (1) open drain interrupt, determines whether bus is driven by device, or left to hang
+    dataToWrite |= 0x00;    // (0) Push/pull or (1) open drain interrupt, determines whether bus is driven by device, or left to hang
 
     device.writeRegister8_public(MMA8451_REG_CTRL_REG3, dataToWrite);
 
@@ -417,6 +422,13 @@ void setRTCAlarm()
   RTC_DS.alarmInterrupt(1, true);  //code to pull microprocessor out of sleep is tied to the time -> here
 }
 
+void readSerial(){
+	if(Serial2.available()){
+		char read_in = Serial2.read();
+		sd_save_elem_nodelim((char*) "cycle_dump.txt", &read_in);
+	}
+}
+
 /* RTC helper function */
 /* When exiting the sleep mode we clear the alarm */
 void clearRTCAlarm()
@@ -476,7 +488,7 @@ void interruptReset() {
   detachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN));
   detachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN));
   EIC->INTFLAG.reg = 0x01ff;  // clear interrupt flags pending
-  delay(5);                   // GPS switch will trigger accel interrupt if no delay
+  delay(10);                   // GPS switch will trigger accel interrupt if no delay
   attachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN), wakeUp_alert, LOW);
   attachInterrupt(digitalPinToInterrupt(RTC_WAKE_PIN), wakeUp_RTC, LOW);
 }
@@ -568,10 +580,14 @@ void tryStandby() {
     setRTCAlarm(); //reset alarm to go off one wake period from sleeping
     Serial.end();
     USBDevice.detach();
-
+    while(Serial2.available()){readSerial();}	// load the rest of the gps strings that are ready
     gps_off();
-    delay(20);
-    interruptReset(); //clear interrupt registers, attach interrupts
+
+	// TODO: process strings that are in the read cycle folder
+	
+	SD.remove((char *) "cycle_dump.txt");
+    delay(20);			// delay is so that the gps switch doesn't trigger accelerometer wake
+    interruptReset(); 	//clear interrupt registers, attach interrupts
     LowPower.standby();
     // ========================================================================================
     // ====================== Sleep here and wait for int (accel or RTC) ======================
@@ -588,10 +604,11 @@ void tryStandby() {
 }
 
 void Serial2_setup() {
-  Serial2.begin(56700);           //rx on rover to pin 10
+  Serial2.begin(BAUD);          			//rx on rover to pin 10
+
   // Assign pins 10 & 13 SERCOM functionality, internal function
-  pinPeripheral(10, PIO_SERCOM);  //Private functions for serial communication
-  pinPeripheral(13, PIO_SERCOM);
+  pinPeripheral(SERIAL2_TX, PIO_SERCOM);	//Private functions for serial communication
+  pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
 
 void mmaPrintIntSRC(uint8_t dataRead){
