@@ -30,7 +30,7 @@ void PrintBund(OSCMessage &msg)
 void setup()
 {
   Serial.begin(115200);
-  SLIPSerial.begin(115200);
+  SLIPSerial.begin(9600);
   pinPeripheral(SERIAL3_TX, PIO_SERCOM);  //Private functions for serial communication
   pinPeripheral(SERIAL3_RX, PIO_SERCOM_ALT);
 }
@@ -43,6 +43,7 @@ void loop() {
 
   // first SLIPSerial.available checks if serial port is taking data
   if(SLIPSerial.available()){
+    Serial.print("Message received");
     // wait for the end of the packet to be received
     while(!SLIPSerial.endofPacket())
       // read the packet that was received
@@ -54,6 +55,6 @@ void loop() {
   }
 
   if(!bundleIN.hasError())
-   bundleIN.dispatch("/alpha", PrintBund);
+   bundleIN.dispatch("/GPS", PrintBund);
 
 }
