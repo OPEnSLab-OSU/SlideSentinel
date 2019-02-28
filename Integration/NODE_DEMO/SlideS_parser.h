@@ -11,6 +11,8 @@ void GPSToFiles(char*, int*, int, SLIPEncodedSerial *);
 bool verify(char*);
 void getFieldContents(char*, char*, uint8_t);
 int stringRank(char);
+
+int sent = 0;
 // fill the OSCMessage in the order UTC, Lat, Lon, Alt, Mode, Age, Ratio
 // nmea string must be PSTI030
 void fillGPSMsgFormat(char *, OSCMessage &);
@@ -91,7 +93,8 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, SLIPEncoded
 			if(quality < *bestStringPrev) return;
 			else if(quality >= *bestStringPrev){
 				*bestStringPrev = quality;
-        Serial.print("sending packet");
+        Serial.print("sending packet: ");
+        Serial.println(sent++);
 				OSCMessage msg("/GPS"); // address
 				fillGPSMsgFormat(nmeaString, msg);
 				Serial.println(nmeaString);
@@ -99,6 +102,7 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, SLIPEncoded
 				(*SLIPUart).beginPacket();
 				msg.send(*SLIPUart);
 				(*SLIPUart).endPacket();
+        delay(500);
 			}
 		}
 	}
