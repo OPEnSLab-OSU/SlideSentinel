@@ -25,7 +25,9 @@
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 #include <EnableInterrupt.h>
+#include <SLIPEncodedSerial.h>
 #include "wiring_private.h" // pinPeripheral() function
+#include "SlideS_parser.h"
 
 //IMPORTANT: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
@@ -36,12 +38,6 @@ void mmaCSVRead(Adafruit_MMA8451 device, String& to_fill, int count);
 void configInterrupts(Adafruit_MMA8451 device);
 void mmaPrintIntSRC(uint8_t dataRead);
 void mmaSetupSlideSentinel();
-
-//Holds an NMEA string
-struct loraString {
-  char data[100];
-  short int len;
-};
 
 #define BAUD 115200    // reading and writing occurs at 
 #define DEBUG 0       // turn on debug mode
@@ -54,6 +50,8 @@ struct loraString {
                       // serial monitor must be opened before device will start to function in debug mode
 #define RTC_MODE 1    // enable RTC interrupts
 #define SD_WRITE 1    // enable SD card logging, not yuet implemented
+#define NODE_NUM 9    // ID for node
+#define GPS_BUFFER_LEN 500
 
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
@@ -64,19 +62,27 @@ struct loraString {
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
 // (can possibly use A5 and/or 13, they are defined as UART but unused in this implementation)
-#define ACCEL_EN_PIN 	A1  // Interrupt driven, connect to switch for toggle
-#define GPS_EN_PIN 		A2  // Attach to RESET on relay
+#define ACCEL_EN_PIN  A1  // Interrupt driven, connect to switch for toggle
+#define GPS_EN_PIN    A2  // Attach to RESET on relay
 #define ALERT_WAKE_PIN  A3  // Attach A3 to int1 on accelerometer
 #define GPS_DISABLE_PIN A4  // Attach to SET on relay
-#define VBATPIN 		A7  // Labeled pin 9
-#define RTC_WAKE_PIN	A5  // Attach to SQW pin on RTC
-#define SERIAL2_RX		12	// Rx pin for serial port
-#define SERIAL2_TX 		11	// Tx pin for serial port
+#define VBATPIN     A7  // Labeled pin 9
+#define RTC_WAKE_PIN  9  // Attach to SQW pin on RTC
+#define SERIAL2_RX    12  // Rx pin for serial port
+#define SERIAL2_TX    11  // Tx pin for serial port
+#define SERIAL3_RX    A5
+#define SERIAL3_TX    6
+
+//Holds an NMEA string
+struct nmeaData {
+  char data[GPS_BUFFER_LEN];
+  int len;
+};
 
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 RTC_DS3231 RTC_DS;                  //  instance of DS3231 RTC
 
-// ======== Serial Port Init ==========
+// ======== Hardware Serial Port 2 ==========
 // RX pin 12, TX pin 11, configuring for rover UART
 Uart Serial2 (&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler()
@@ -84,11 +90,23 @@ void SERCOM1_Handler()
   Serial2.IrqHandler();
 }
 
+// ======== Hardware Serial Port 3, SLIP Encoding ==========
+Uart Serial3 (&sercom5, SERIAL3_RX, SERIAL3_TX, SERCOM_RX_PAD_0, UART_TX_PAD_2);
+void SERCOM5_Handler()
+{
+  Serial3.IrqHandler();
+}
+SLIPEncodedSerial SLIPSerial(Serial3);
+
 sensors_event_t event; 
+struct nmeaData dataIn;
 String accel_data;
 bool accelFlag;
 unsigned long int timer, count, temp_timer, alert_timer;
 String RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
+
+const char * CurrentWakeGPS = "CurrentWakePreiodGPS.txt";
+const char * CurrentWakeState = "CurrentWakePreiodState.txt";
 
 // Declare RTC/Accelerometer specific variables
 volatile bool TakeSampleFlag = false; // Flag is set with external Pin A0 Interrupt by RTC
@@ -153,13 +171,16 @@ void setup()
   // LOOM_begin calls any relevant (based on config) LOOM device setup functions
   Loom_begin();
   Serial.begin(9600);
-  //setup code here, to run once:
 
-  // pins 12(rx), 11(tx) 
-  //Serial2_setup();
+  memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
+  dataIn.len = 0;
+
+  // see pin definitions
+  SLIPSetup();
+  Serial2Setup();
 
 #if DEBUG
-  setupPrint();
+  //setupPrint();
 #else
   delay(15000);
 #endif
@@ -206,9 +227,11 @@ void setup()
   accelInt(accelEn);
   gps_on();
 
-//  digitalWrite(13, INPUT);
-//  attachInterrupt(digitalPinToInterrupt(13), busyWait) // infinite loop to disconnect devi
-  //Any custom setup code
+  processGPS((char*)"GPS_CLN.TXT", NODE_NUM, & SLIPSerial);
+
+  Serial.println("GPS data written out");
+
+  //  Any custom setup code
 }
 
 // ================================================================
@@ -216,15 +239,14 @@ void setup()
 // ================================================================
 void loop()
 {
-  timerFlagCheck(); // set the timer each time an interrupt is triggered, prolong the wake period
-  RTCFlagCheck();   // reset RTC interrupts
-  enCheck();		// check accelerometer enable
-  alertFlagCheck(); // reset accelerometer interrupts, 
-  readSerial();		// read from serial port if available
+  // timerFlagCheck();  // set the timer each time an interrupt is triggered, prolong the wake period
+  // RTCFlagCheck();    // reset RTC interrupts
+  // enCheck();         // check accelerometer enable
+  // alertFlagCheck();  // reset accelerometer interrupts, 
+  // readSerial();      // read from serial port if available
 
 
-
-  tryStandby();  
+  // tryStandby();  
 } // End loop section
 
 
@@ -423,10 +445,29 @@ void setRTCAlarm()
 }
 
 void readSerial(){
-	if(Serial2.available()){
-		char read_in = Serial2.read();
-		sd_save_elem_nodelim((char*) "cycle_dump.txt", &read_in);
-	}
+  // read data if data is available and buffer isn't full
+  if(Serial2.available()){
+    if(dataIn.len < GPS_BUFFER_LEN){
+      dataIn.data[dataIn.len] = Serial2.read();
+      dataIn.len += 1;
+    }
+    // write date from buffer to SD if buffer is full
+    else{
+      dataIn.data[GPS_BUFFER_LEN] = 0;
+      sd_save_elem_nodelim((char *) CurrentWakeGPS, dataIn.data);
+      memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
+      dataIn.len = 0;
+      dataIn.data[dataIn.len] = Serial2.read();
+      dataIn.len += 1;
+    }
+  }
+  // write data to SD if serial is not available and buffer has data
+  else if (dataIn.len){
+    dataIn.data[dataIn.len] = 0; // ensure data is c string
+    sd_save_elem_nodelim((char *) CurrentWakeGPS, dataIn.data);
+    memset(dataIn.data, '\0', dataIn.len + 1);
+    dataIn.len = 0;
+  }
 }
 
 /* RTC helper function */
@@ -580,14 +621,15 @@ void tryStandby() {
     setRTCAlarm(); //reset alarm to go off one wake period from sleeping
     Serial.end();
     USBDevice.detach();
-    while(Serial2.available()){readSerial();}	// load the rest of the gps strings that are ready
+    while(Serial2.available()){readSerial();} // load the rest of the gps strings that are ready
     gps_off();
 
-	// TODO: process strings that are in the read cycle folder
-	
-	SD.remove((char *) "cycle_dump.txt");
-    delay(20);			// delay is so that the gps switch doesn't trigger accelerometer wake
-    interruptReset(); 	//clear interrupt registers, attach interrupts
+  // TODO: process strings that are in the read cycle folder
+  
+    SD.remove((char *) CurrentWakeGPS);
+    SD.remove((char *) CurrentWakeState);
+    delay(20);      // delay is so that the gps switch doesn't trigger accelerometer wake
+    interruptReset();   //clear interrupt registers, attach interrupts
     LowPower.standby();
     // ========================================================================================
     // ====================== Sleep here and wait for int (accel or RTC) ======================
@@ -603,12 +645,19 @@ void tryStandby() {
   }
 }
 
-void Serial2_setup() {
-  Serial2.begin(BAUD);          			//rx on rover to pin 10
+void Serial2Setup() {
+  Serial2.begin(BAUD);
 
-  // Assign pins 10 & 13 SERCOM functionality, internal function
-  pinPeripheral(SERIAL2_TX, PIO_SERCOM);	//Private functions for serial communication
+  // Assign pins 11,12 SERCOM functionality, internal function
+  pinPeripheral(SERIAL2_TX, PIO_SERCOM);  //Private functions for serial communication
   pinPeripheral(SERIAL2_RX, PIO_SERCOM);
+}
+
+void SLIPSetup() {
+  // Assign pins 10 & 13 SERCOM functionality, internal function
+  SLIPSerial.begin(9600);
+  pinPeripheral(SERIAL3_TX, PIO_SERCOM);  //Private functions for serial communication
+  pinPeripheral(SERIAL3_RX, PIO_SERCOM_ALT);
 }
 
 void mmaPrintIntSRC(uint8_t dataRead){
