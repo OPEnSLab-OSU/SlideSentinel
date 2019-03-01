@@ -100,7 +100,7 @@
 
 
 // --- RTC Options ---
-#define is_rtc        1		// Enable RTC functionality
+#define is_rtc        0		// Enable RTC functionality
 #if is_rtc == 1
 	#define RTC_pin 		6	// What pin the RTC interrupt is connected to
 
@@ -116,8 +116,8 @@
 	TimeZone timezone = PST;
 
 	// Select only one of the below options
-	#define is_rtc3231 0 	// RTC DS 3231 Featherwing
-	#define is_rtc8523 1	// RTC Adalogger Featherwing with PCF8523 RTC (the one with SD card)
+	#define is_rtc3231 1 	// RTC DS 3231 Featherwing
+	#define is_rtc8523 0	// RTC Adalogger Featherwing with PCF8523 RTC (the one with SD card)
 
 
 	// Try to set time from internet (Ethernet or Wifi internet connection required)
