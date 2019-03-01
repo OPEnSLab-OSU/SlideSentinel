@@ -7,7 +7,7 @@
 
 #define PSTI_30_UTC 
 
-void GPSToFiles(char*, int*, int, SLIPEncodedSerial *);
+void GPSToFiles(char*, int*, int, HardwareSerial &);
 bool verify(char*);
 void getFieldContents(char*, char*, uint8_t);
 int stringRank(char);
@@ -17,7 +17,7 @@ int sent = 0;
 // nmea string must be PSTI030
 void fillGPSMsgFormat(char *, OSCMessage &);
 
-bool processGPS(char* filename, int fromNode, SLIPEncodedSerial * SLIPUart){
+bool processGPS(char* filename, int fromNode, HardwareSerial & serialPort){
 	int bestStringPrev = -1; // quality indicator
 
 	char buffer[BUFFER_SIZE+1];
@@ -44,7 +44,7 @@ bool processGPS(char* filename, int fromNode, SLIPEncodedSerial * SLIPUart){
 			}
 		}
 		if(i < BUFFER_SIZE){
-			GPSToFiles(buffer, &bestStringPrev, fromNode, SLIPUart);
+			GPSToFiles(buffer, &bestStringPrev, fromNode, serialPort);
 		}
 	}
 	fileIn.close();
@@ -55,7 +55,7 @@ bool processGPS(char* filename, int fromNode, SLIPEncodedSerial * SLIPUart){
 }
 
 // Send the GPS String to the proper files if formatted properly
-void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, SLIPEncodedSerial *SLIPUart){
+void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, HardwareSerial & serialPort){
 	// first segment verifies the string and sends it to the all valid measurements file
 	char field[FILL_SIZE+1];
 	int len;
@@ -99,9 +99,9 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, SLIPEncoded
 				fillGPSMsgFormat(nmeaString, msg);
 				Serial.println(nmeaString);
 				print_message(&msg, 1);
-				(*SLIPUart).beginPacket();
-				msg.send(*SLIPUart);
-				(*SLIPUart).endPacket();
+				(serialPort).write(byte(2)); // Start of text
+				msg.send(serialPort);
+				(serialPort).write(byte(4)); // End of transmission
         delay(500);
 			}
 		}

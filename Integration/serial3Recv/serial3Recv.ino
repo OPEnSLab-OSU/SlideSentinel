@@ -20,7 +20,6 @@ void SERCOM5_Handler()
   Serial3.IrqHandler();
 }
 
-SLIPEncodedSerial SLIPSerial(Serial3);
 
 void PrintBund(OSCMessage &msg)
 {
@@ -30,31 +29,36 @@ void PrintBund(OSCMessage &msg)
 void setup()
 {
   Serial.begin(115200);
-  SLIPSerial.begin(9600);
+  Serial3.begin(115200);
   pinPeripheral(SERIAL3_TX, PIO_SERCOM);  //Private functions for serial communication
   pinPeripheral(SERIAL3_RX, PIO_SERCOM_ALT);
+  while(!Serial){}
+  Serial.println("Start");
 }
 
 void loop() {
 
   OSCBundle bundleIN;
   int size;
-
-
-  // first SLIPSerial.available checks if serial port is taking data
-  if(SLIPSerial.available()){
-    Serial.print("Message received");
-    // wait for the end of the packet to be received
-    while(!SLIPSerial.endofPacket())
-      // read the packet that was received
-      if( (size =SLIPSerial.available()) > 0)
-      {
-         while(size--)
-            bundleIN.fill(SLIPSerial.read());
-       }
+  char input;
+  
+  if(Serial3.available()){
+    Serial.println("Reading data");
+    if(input = Serial3.read() == (byte) 2){
+      while(input != (byte) 4){
+        if(Serial3.available()){
+          input = Serial3.read();
+          if(input == 4) break;
+          bundleIN.fill(input);
+        }
+      }
+    }
   }
-
+  
   if(!bundleIN.hasError())
-   bundleIN.dispatch("/GPS", PrintBund);
-
+  bundleIN.dispatch("/GPS", PrintBund);
+  else{
+    Serial.print("ERROR: ");
+    Serial.println(bundleIN.getError());
+  }
 }

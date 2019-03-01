@@ -96,7 +96,6 @@ void SERCOM5_Handler()
 {
   Serial3.IrqHandler();
 }
-SLIPEncodedSerial SLIPSerial(Serial3);
 
 sensors_event_t event; 
 struct nmeaData dataIn;
@@ -176,7 +175,7 @@ void setup()
   dataIn.len = 0;
 
   // see pin definitions
-  SLIPSetup();
+  Serial3Setup();
   Serial2Setup();
 
 #if DEBUG
@@ -227,7 +226,7 @@ void setup()
   accelInt(accelEn);
   gps_on();
 
-  processGPS((char*)"GPS_CLN.TXT", NODE_NUM, & SLIPSerial);
+  processGPS((char*)"GPS_CLN.TXT", NODE_NUM, Serial3);
 
   Serial.println("GPS data written out");
 
@@ -653,9 +652,9 @@ void Serial2Setup() {
   pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
 
-void SLIPSetup() {
+void Serial3Setup() {
   // Assign pins 10 & 13 SERCOM functionality, internal function
-  SLIPSerial.begin(9600);
+  Serial3.begin(115200);
   pinPeripheral(SERIAL3_TX, PIO_SERCOM);  //Private functions for serial communication
   pinPeripheral(SERIAL3_RX, PIO_SERCOM_ALT);
 }
