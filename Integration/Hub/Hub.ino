@@ -3,9 +3,6 @@
  ****************************************************************/
 
 /* To Do: 
-1. folder init
-2. on/off sheild
-3. code for turning the ROCKBLOCK device off
 4. FUTURE: Node monitoring, if we dont receive packets from a node over the course of two days we know something happened!
            Nodes get deployed they automatically get cheked into the network
 
@@ -32,6 +29,16 @@ CODE:
     - IS THE NODE MAPPING THE TIME AND LOCATIONS TOGETHER? ASK GRAY
     --RTC set alarm functions, just reduce the times. Upon alarm interrupt send all of the SD shit!
 
+  //ROCKBLOCK TESTING
+  //RockBLOCK Plus  (OFF):< -1.5V     (ON):< 1.5
+  //ON/OFF pin feather:  9, digital pin 9
+  //Net Av pin: A5, digital pin 19
+  //RI: A4, digital pin 18
+
+  /*NOTES ON NET AV
+    When a network is available, the Network Available pinout is high.
+    When a network isn't available, the Network Available pinout is low.
+  
 
 //osc for arduino sending data description
 //Talk to Storm about what data we want, get in touch with Kevin about configuring the spreadsheet
@@ -51,12 +58,10 @@ https://postproxy.azurewebsites.net
 Old sheet: https://docs.google.com/spreadsheets/d/1Laa9uiGudBIt20_-pP0hakaxJziztCw4hWVcvK4OTTo/edit?usp=sharing
 New Sheet: https://docs.google.com/spreadsheets/d/1whYegShf4DCOdr8wcOLqrE0EAbwxUkiP6pIbef7favo/edit?usp=sharing
 
-Test the send and receive functionality of the ROCKBLOCK
 
-1. RTC wake ups
-2. Sending upon wake up with some flag
-3. If the network is not present reseting the alarm
-4. Remember that you have a file in which you detail this information
+1. still need logic for selecting the string to be sent
+2. ring indicator, messages to the ROCKBLOCK to increase or decrease send frequency
+3. basically done after that!
 
 */
 
@@ -65,18 +70,22 @@ Test the send and receive functionality of the ROCKBLOCK
 #include <EnableInterrupt.h>
 #include "wiring_private.h"
 #include "IridiumSBD.h"
+#include <SLIPEncodedSerial.h>
+#include "SlideS_parser.h"
 
 #define DEBUG 1
 #define DEBUG_SD 1
-#define CELLULAR 1
 #define MAX_LEN 82 //NMEA0183 specification standard
 #define FILENAME_LENGTH 20
 #define NODE_NUM 5
+#define CONFIG_UPDATE
+#define NET_AV 19
+#define ON_OFF 9
 
 //timer definitions
 #define CPU_HZ 48000000
 #define TIMER_PRESCALER_DIV 1024
-#define IridiumSerial Serial1 
+#define IridiumSerial Serial1
 
 //timer functions
 void startTimer(int frequencyHz);
@@ -100,14 +109,26 @@ void gpsProc(OSCMessage &msg);
 void stateProc(OSCMessage &msg);
 void write_gps(String node, const char *file);
 void initRockblock();
+void toggleRockblock(bool on);
+uint8_t getSignalQuality();
+uint8_t getNetwork();
+void PrintBund(OSCMessage &msg);
+
+//Initialize the satcom module
+IridiumSBD modem(IridiumSerial);
+bool is_on;
+bool is_retry;
 
 //Globals
 char inputBuf[MAX_LEN];
-uint32_t satcom_frequency;
-volatile bool alarm_flag;
-unsigned long satcom_timer; 
-unsigned long upload_freq;
 
+unsigned long satcom_timer;
+unsigned long retry_timer;
+unsigned long update_timer;
+
+unsigned long update_freq;
+unsigned long upload_freq;
+unsigned long retry_freq;
 
 //testing globals
 char UTC[20] = "030718.1408";
@@ -144,15 +165,15 @@ void SERCOM1_Handler()
   Serial2.IrqHandler();
 }
 
-//Initialize the satcom module
-IridiumSBD modem(IridiumSerial);
-bool is_on;
+bool success;
 /**************************************
  * 
  * 
  *************************************/
 void setup()
 {
+  //start with the ROCKBLOCK turned ON!
+  toggleRockblock(true);
   Serial.begin(115200); //Opens the main serial port to communicate with the computer
   while (!Serial)
     ;
@@ -163,31 +184,23 @@ void setup()
   initialize_nodes();
   memset(inputBuf, '\0', sizeof(inputBuf));
   //initRockblock();
-  
- /* 
-  Serial.println("Initializing RockBlock...");
-  int signalQuality = -1;
-  int err;
-  // Start the serial port connected to the satellite modem
-  IridiumSerial.begin(19200);
 
-  // Begin satellite modem operation
-  Serial.println("Starting modem...");
-  err = modem.begin();
-  if (err != ISBD_SUCCESS)
-  {
-    Serial.print("Begin failed: error ");
-    Serial.println(err);
-    if (err == ISBD_NO_MODEM_DETECTED)
-      Serial.println("No modem detected: check wiring.");
-    return;
-  }*/
-  pinMode(9, OUTPUT); //ON/OFF control
-  pinMode(19, INPUT);  //Network availability
-  digitalWrite(9, LOW); //turn the device on
-  is_on = true;
-  startTimer(1);
+/*
+  upload_freq = 30;     //number of seconds between ROCKBLOCK uploads
+  retry_freq = 5;       //number of seconds to wait if no network is available
+  update_freq = 259200; //check for updates once every three days?     YUCK I DONT LIKE THIS METHOD
+  satcom_timer = 0;
+  retry_timer = 0;
+  update_timer = 0;
+*/
+
+  //startTimer(1);
+  Serial.print("Initializing satcom to upload once every ");
+  Serial.print((float)upload_freq / 60);
+  Serial.println(" minutes...");
   Serial.println("ALL SYSTEMS CONFIGURED... ");
+
+  success = true;
 }
 
 /**************************************
@@ -196,82 +209,57 @@ void setup()
  *************************************/
 void loop()
 {
-  OSCBundle bndl;
-  TcCount16* TC = (TcCount16*) TC3;
+  //OSCBundle bndl;
+ // TcCount16 *TC = (TcCount16 *)TC3;
   //AWESOME: since the SD takes a substantial amount of time and I will be receiving strings quickly I can buffer them in individual messages in a receive bundle then call dispatch once!!!
-  bndl.add("/GPS").add((const char *)node_num).add((const char *)UTC).add((const char *)lat).add((const char *)lon).add((const char *)alt).add((const char *)mode).add((const char *)age).add((const char *)ratio);
-  bndl.add("/GPS").add((const char *)node_num2).add((const char *)UTC2).add((const char *)lat2).add((const char *)lon2).add((const char *)alt2).add((const char *)mode2).add((const char *)age2).add((const char *)ratio2);
- // bndl.add("/State").add((const char *)node_num3).add((const char *)UTC3).add((const char *)x).add((const char *)y).add((const char *)z).add((const char *)voltage).add((const char *)temp);
+  //bndl.add("/GPS").add((const char *)node_num).add((const char *)UTC).add((const char *)lat).add((const char *)lon).add((const char *)alt).add((const char *)mode).add((const char *)age).add((const char *)ratio);
+  //bndl.add("/GPS").add((const char *)node_num2).add((const char *)UTC2).add((const char *)lat2).add((const char *)lon2).add((const char *)alt2).add((const char *)mode2).add((const char *)age2).add((const char *)ratio2);
+  // bndl.add("/State").add((const char *)node_num3).add((const char *)UTC3).add((const char *)x).add((const char *)y).add((const char *)z).add((const char *)voltage).add((const char *)temp);
+  //String str = "test string...";
 
-  //Serial.println(timer);
-  /*read in the message
-  while (!SLIPSerial.endofPacket())
+  //if (Serial2.available())
+  //{
+  //disable compare match interrupt, so no conflict with sending via Rockblock
+  //TC->INTENCLR.bit.MC0 = 1;
+
+  OSCBundle bundleIN;
+  int size;
+  char input;
+
+  if (Serial2.available())
   {
-    int size = SLIPSerial.available();
-    if (size > 0)
+    Serial.println("Reading data");
+    if (input = Serial2.read() == (byte)2)
     {
-      //fill the msg with all of the available bytes
-      while (size--)
+      while (input != (byte)4)
       {
-        msg.fill(SLIPSerial.read());
+        if (Serial2.available())
+        {
+          input = Serial2.read();
+          if (input == 4)
+            break;
+          bundleIN.fill(input);
+        }
       }
     }
-  }*/
 
-  //satcom_timer = millis();
-  //if((satcom__timer - last_timer) > upload_rate){
-  //}
-
-  //ROCKBLOCK TESTING
-  //RockBLOCK Plus  (OFF):< -1.5V     (ON):< 1.5
-  //ON/OFF pin feather:  9, digital pin 9 
-  //Net Av pin: A5, digital pin 19
-  //RI: A4, digital pin 18
-
-
-  /*NOTES ON NET AV
-    When a network is available, the Network Available pinout is high.
-    When a network isn't available, the Network Available pinout is low.
-  */
-  
-
-  int avail;
-
-
-  if (Serial.available())
-  {
-      //disable compare match interrupt, so no conflict with sending via Rockblock 
-      TC->INTENCLR.bit.MC0 = 1;
-
-      char buffer [200];
-      memset(buffer, '\0', sizeof(buffer));
-      readBuffer(buffer);
-  
-  if()
-    if(is_on){
-      Serial.println("Turning device off...");
-      digitalWrite(9, HIGH); 
-      is_on = false;
-      avail = digitalRead(19);    //test if the network is available
-      Serial.print("Network Available?...   ");
-      Serial.println(avail);
-      Serial.println("\n");
+    if (!bundleIN.hasError())
+      bundleIN.dispatch("/GPS", PrintBund);
+    else
+    {
+      Serial.print("ERROR: ");
+      Serial.println(bundleIN.getError());
     }
-    else{
-      Serial.println("Turning device on wait a second...");
-      digitalWrite(9, LOW);
-      is_on = true;
-      avail = digitalRead(19);    //test if the network is available
-      Serial.print("Network Available?...   ");
-      Serial.println(avail);
-      Serial.println("\n");
-    }
+  }
 
-/*
-    Serial.println("\n");
-    print_bundle(&bndl);
-    Serial.println("\n");
-    
+  /*
+    char buffer[200];
+    memset(buffer, '\0', sizeof(buffer));
+    readBuffer(buffer);
+    success = !success;
+    Serial.print("changing value of success... Now: ");
+    Serial.println(success);
+
     char large_buf[120];
     memset(large_buf, '\0', sizeof(large_buf));
     convert_OSC_bundle_to_string(&bndl, large_buf);
@@ -279,14 +267,131 @@ void loop()
 
     bndl.dispatch("/GPS", gpsProc);
     bndl.dispatch("/State", stateProc);
-    Serial.println("Done processing...");
-*/
+    */
 
-    //Re-enable rockblock
+  //Serial.println("Done processing...");
+
+  //Re-enable rockblock
+  // TC->INTENSET.bit.MC0 = 1;
+  //}
+
+  if (satcom_timer == upload_freq)
+  {                           //attempt to send via the ROCKBLOCK
+    TC->INTENCLR.bit.MC0 = 1; //make sure to disable interrupts and clear the timer when done
+    //attemptSendToday(str.c_str());
+    Serial.println("Upload to SATCOM!!!"); 
+    satcom_timer = 0;
     TC->INTENSET.bit.MC0 = 1;
   }
+
+  /*
+  if (is_retry && (retry_timer == retry_freq))
+  {
+    TC->INTENCLR.bit.MC0 = 1;
+    attemptSendRetry(str.c_str());
+    TC->INTENSET.bit.MC0 = 1;
+  }
+
+  /*************************
+   * Due to the fact that the unit is passively off to save energy we cannot use ring indicators to determine if a request was sent
+   * We will thus periodically perform a mailbox check, which consumes a signle credit at some configuration update interval
+   **************************/
+  /*if (update_timer == update_freq)
+  {
+    TC->INTENCLR.bit.MC0 = 1;
+    update();
+    TC->INTENSET.bit.MC0 = 1;
+  }
+  */
 }
 
+/*************************************
+ * 
+ * 
+ *************************************/
+void PrintBund(OSCMessage &msg)
+{
+  print_message(&msg);
+}
+
+/*************************************
+ * 
+ * 
+ *************************************/
+void attemptSendToday(const char *message)
+{
+  toggleRockblock(true); //turn on the ROCKBLOCK
+  if (getNetwork())
+  { //if network is available we send, included because Rockblock will sometimes consume credits if network is not available but a request to send still occurs, no data will get uploaded.
+    //CONSTRUCT PACKET                 //check if there is data that we can send from each folder
+    if (successfulUpload(message))
+    { //check if test string failed to send
+      Serial.println("Successfully sent message!");
+      is_retry = false;
+    }
+    else
+    { //message failed to send, COPY OVER MESSAGE TO RETRY BUFFER, first check to see if the buffer is empty.
+      is_retry = true;
+      Serial.println("Failed configuring retry....");
+    }
+  }
+  else //network was not initially available, attempt to retry, COPY OVER MESSAGE TO RETRY BUFFER, first check to see if the buffer is empty.
+  {
+    Serial.println("Network not available configuring retry....");
+    is_retry = true;
+  }
+  toggleRockblock(false);
+  satcom_timer = 0;
+}
+
+/*************************************
+ * Test how many credits Iridium receive library consumes...
+ * Use it here in a case, statement, some format in maps to some upload frequency value...
+ * 
+ *************************************/
+void update()
+{
+}
+
+/*************************************
+ * TO DO:
+ * - If we need to retry, we reset the retry timer. 
+ * - Increment the retry timer in timer ISR 
+ * - copy over the string we want to send to some retry buffer, which the retry send function will use
+ * - Last thing to do will be composing the string to send, we need to verify the best string
+ * - Need to figure out some update configuration timer on the hub as well
+ *************************************/
+void attemptSendRetry(const char *message)
+{
+  Serial.println("Performing retry logic.....");
+}
+
+/**************************************
+ * 
+ * 
+ *************************************/
+bool successfulUpload(const char *message)
+{
+  int err;
+  err = modem.sendSBDText(message);
+  if (err != ISBD_SUCCESS)
+  {
+    Serial.print("sendSBDText failed: error ");
+    Serial.println(err);
+    if (err == ISBD_SENDRECEIVE_TIMEOUT)
+      Serial.println("Try again with a better view of the sky.");
+    if (err == ISBD_MSG_TOO_LONG)
+      Serial.println("Try again with a shorter message.");
+    if (err == ISBD_SBDIX_FATAL_ERROR)
+      Serial.println("Fatal Error. Something went wrong.");
+    return false;
+  }
+  else
+  {
+    Serial.println("Message successfully sent.");
+    return true;
+  }
+}
 
 /**************************************
  * 
@@ -347,6 +452,104 @@ void initialize_nodes()
  * Function: 
  * Description:
 *****************************************************/
+uint8_t getNetwork()
+{
+  Serial.println("Getting network availability");
+  return digitalRead(NET_AV);
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void toggleRockblock(bool on)
+{
+  if (on)
+  {
+    Serial.println("Turning device on...");
+    delay(1000);
+    digitalWrite(ON_OFF, LOW);
+    is_on = true;
+  }
+  else
+  {
+    Serial.println("Turning device off...");
+    digitalWrite(ON_OFF, HIGH);
+    is_on = false;
+  }
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void initRockblock()
+{
+  Serial.println("Initializing RockBlock...");
+  int err;
+  char version[12];
+
+  // Start the serial port connected to the satellite modem
+  IridiumSerial.begin(19200);
+
+  // Begin satellite modem operation
+  Serial.println("Starting modem...");
+  err = modem.begin();
+  if (err != ISBD_SUCCESS)
+  {
+    Serial.print("Begin failed: error ");
+    Serial.println(err);
+    if (err == ISBD_NO_MODEM_DETECTED)
+      Serial.println("No modem detected: check wiring.");
+  }
+
+  //get the Rockblock firmware version
+  err = modem.getFirmwareVersion(version, sizeof(version));
+  if (err != ISBD_SUCCESS)
+  {
+    Serial.print("FirmwareVersion failed: error ");
+    Serial.println(err);
+    return;
+  }
+  Serial.print("Firmware Version is ");
+  Serial.print(version);
+  Serial.println(".");
+
+  //determine current signal quality
+  getSignalQuality();
+  Serial.println("Configuring ON/OFF, Ring Indicator and Network availability..."); //STILL NEED TO CONFIGURE RING INDICATOR!!
+  pinMode(ON_OFF, OUTPUT);                                                          //ON/OFF control
+  pinMode(NET_AV, INPUT);                                                           //Network availability
+  toggleRockblock(false);
+  is_on = false;
+  is_retry = false;
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+uint8_t getSignalQuality()
+{
+  //determine current signal quality
+  int signalQuality = -1;
+  int err;
+  err = modem.getSignalQuality(signalQuality);
+  if (err != ISBD_SUCCESS)
+  {
+    Serial.print("SignalQuality failed: error ");
+    Serial.println(err);
+  }
+  Serial.print("On a scale of 0 to 5, signal quality is currently: ");
+  Serial.print(signalQuality);
+  Serial.println(".");
+  return signalQuality;
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
 double strToDouble(const char *gpsencoding)
 {
   double a = strtod(gpsencoding, 0);
@@ -374,8 +577,8 @@ void readBuffer(char buffer[])
   char c = '\0';
   while (c != '\n') //read until we hit the line feed return 0x0d
   {
-    if (Serial.available())
-    { //if there is something in the buffer read it
+    if (Serial.available()) //if there is something in the buffer read it
+    {
       c = Serial.read();
       append(buffer, c);
     }
@@ -451,25 +654,6 @@ void write_sd(String node, const char *file, OSCMessage *msg)
   }
 }
 
-/*
-void initRockblock(){
-  int signalQuality = -1;
-  int err;
-  // Start the serial port connected to the satellite modem
-  IridiumSerial.begin(19200);
-
-  // Begin satellite modem operation
-  Serial.println("Starting modem...");
-  err = modem.begin();
-  if (err != ISBD_SUCCESS)
-  {
-    Serial.print("Begin failed: error ");
-    Serial.println(err);
-    if (err == ISBD_NO_MODEM_DETECTED)
-      Serial.println("No modem detected: check wiring.");
-    return;
-}*/
-
 /*****************************************************
  * Function: 
  * Description:
@@ -522,15 +706,6 @@ void oscMsg_to_string(char *osc_string, OSCMessage *msg)
     strcat(osc_string, " ");
 }
 
-/*
-  Serial.println("getting the current time...");
-  char* current_time;
-  current_time = get_timestring();
-  Serial.print("Current time: ");
-  Serial.println(current_time);
-  delay(1000);
-*/
-
 /*****************************************************
  * Function: 
  * Description:
@@ -543,38 +718,54 @@ void Serial2_setup()
   pinPeripheral(13, PIO_SERCOM);
 }
 
-void setTimerFrequency(int frequencyHz) {
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void setTimerFrequency(int frequencyHz)
+{
   int compareValue = (CPU_HZ / (TIMER_PRESCALER_DIV * frequencyHz)) - 1;
-  TcCount16* TC = (TcCount16*) TC3;
+  TcCount16 *TC = (TcCount16 *)TC3;
   // Make sure the count is in a proportional position to where it was
   // to prevent any jitter or disconnect when changing the compare value.
   TC->COUNT.reg = map(TC->COUNT.reg, 0, TC->CC[0].reg, 0, compareValue);
   TC->CC[0].reg = compareValue;
   Serial.println(TC->COUNT.reg);
   Serial.println(TC->CC[0].reg);
-  while (TC->STATUS.bit.SYNCBUSY == 1);
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ;
 }
 
-void startTimer(int frequencyHz) {
-  REG_GCLK_CLKCTRL = (uint16_t) (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 | GCLK_CLKCTRL_ID_TCC2_TC3) ;
-  while ( GCLK->STATUS.bit.SYNCBUSY == 1 ); // wait for sync
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void startTimer(int frequencyHz)
+{
+  REG_GCLK_CLKCTRL = (uint16_t)(GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 | GCLK_CLKCTRL_ID_TCC2_TC3);
+  while (GCLK->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 
-  TcCount16* TC = (TcCount16*) TC3;
+  TcCount16 *TC = (TcCount16 *)TC3;
 
   TC->CTRLA.reg &= ~TC_CTRLA_ENABLE;
-  while (TC->STATUS.bit.SYNCBUSY == 1); // wait for sync
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 
   // Use the 16-bit timer
   TC->CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
-  while (TC->STATUS.bit.SYNCBUSY == 1); // wait for sync
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 
   // Use match mode so that the timer counter resets when the count matches the compare register
   TC->CTRLA.reg |= TC_CTRLA_WAVEGEN_MFRQ;
-  while (TC->STATUS.bit.SYNCBUSY == 1); // wait for sync
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 
   // Set prescaler to 1024
   TC->CTRLA.reg |= TC_CTRLA_PRESCALER_DIV1024;
-  while (TC->STATUS.bit.SYNCBUSY == 1); // wait for sync
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 
   setTimerFrequency(frequencyHz);
 
@@ -585,15 +776,31 @@ void startTimer(int frequencyHz) {
   NVIC_EnableIRQ(TC3_IRQn);
 
   TC->CTRLA.reg |= TC_CTRLA_ENABLE;
-  while (TC->STATUS.bit.SYNCBUSY == 1); // wait for sync
+  while (TC->STATUS.bit.SYNCBUSY == 1)
+    ; // wait for sync
 }
 
-void TC3_Handler() {
-  TcCount16* TC = (TcCount16*) TC3;
-  // If this interrupt is due to the compare register matching the timer count
-  // we toggle the LED.
-  if (TC->INTFLAG.bit.MC0 == 1) {
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void TC3_Handler()
+{
+  TcCount16 *TC = (TcCount16 *)TC3;
+  if (TC->INTFLAG.bit.MC0 == 1)
+  {
     TC->INTFLAG.bit.MC0 = 1;
     satcom_timer++;
+    //config_timer++;
+    // update_timer++;
   }
 }
+
+/*
+  Serial.println("getting the current time...");
+  char* current_time;
+  current_time = get_timestring();
+  Serial.print("Current time: ");
+  Serial.println(current_time);
+  delay(1000);
+*/
