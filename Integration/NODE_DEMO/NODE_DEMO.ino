@@ -9,7 +9,6 @@
 // working
 // ****************************************************************
 
-
 // Config has to be first has it hold all user specified options
 #include "config.h"
 
@@ -28,6 +27,10 @@
 #include <SLIPEncodedSerial.h>
 #include "wiring_private.h" // pinPeripheral() function
 #include "SlideS_parser.h"
+
+// IMPORTANT: Edit the #define SERIAL_BUFFER_SIZE 164 to read #define SERIAL_BUFFER_SIZE 512
+
+
 
 //IMPORTANT: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
@@ -104,8 +107,8 @@ bool accelFlag;
 unsigned long int timer, count, temp_timer, alert_timer;
 String RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
 
-const char * CurrentWakeGPS = "CurrentWakePreiodGPS.txt";
-const char * CurrentWakeState = "CurrentWakePreiodState.txt";
+const char * CurrentWakeGPS = "CRWKG";
+const char * CurrentWakeState = "CRWKS";
 
 // Declare RTC/Accelerometer specific variables
 volatile bool TakeSampleFlag = false; // Flag is set with external Pin A0 Interrupt by RTC
@@ -226,7 +229,7 @@ void setup()
   accelInt(accelEn);
   gps_on();
 
-  processGPS((char*)"GPS_CLN.TXT", NODE_NUM, Serial3);
+  processGPS((char*)"CRWKG", NODE_NUM, Serial3);
 
   Serial.println("GPS data written out");
 
@@ -242,7 +245,7 @@ void loop()
   // RTCFlagCheck();    // reset RTC interrupts
   // enCheck();         // check accelerometer enable
   // alertFlagCheck();  // reset accelerometer interrupts, 
-  // readSerial();      // read from serial port if available
+  readSerial();      // read from serial port if available
 
 
   // tryStandby();  
@@ -446,6 +449,7 @@ void setRTCAlarm()
 void readSerial(){
   // read data if data is available and buffer isn't full
   if(Serial2.available()){
+    Serial.println("Getting GPS data");
     if(dataIn.len < GPS_BUFFER_LEN){
       dataIn.data[dataIn.len] = Serial2.read();
       dataIn.len += 1;

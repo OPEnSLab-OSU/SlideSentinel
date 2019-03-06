@@ -102,7 +102,7 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, HardwareSer
 				(serialPort).write(byte(2)); // Start of text
 				msg.send(serialPort);
 				(serialPort).write(byte(4)); // End of transmission
-        delay(500);
+        delay(100);
 			}
 		}
 	}
