@@ -39,14 +39,15 @@ CODE:
     When a network is available, the Network Available pinout is high.
     When a network isn't available, the Network Available pinout is low.
   
-  //network availability pin on ROCKBLOCK, unfortunatley if the network is not available and we try to send we still consume credits
+
+//osc for arduino sending data description
+//Talk to Storm about what data we want, get in touch with Kevin about configuring the spreadsheet
+//network availability pin on ROCKBLOCK, unfortunatley if the network is not available and we try to send we still consume credits
 
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
 
-Old sheet: https://docs.google.com/spreadsheets/d/1Laa9uiGudBIt20_-pP0hakaxJziztCw4hWVcvK4OTTo/edit?usp=sharing
-New Sheet: https://docs.google.com/spreadsheets/d/1whYegShf4DCOdr8wcOLqrE0EAbwxUkiP6pIbef7favo/edit?usp=sharing
 
 
 1. still need logic for selecting the string to be sent
@@ -181,13 +182,24 @@ void loop()
   //bndl.add("/GPS").add((const char *)node_num2).add((const char *)UTC2).add((const char *)lat2).add((const char *)lon2).add((const char *)alt2).add((const char *)mode2).add((const char *)age2).add((const char *)ratio2);
   // bndl.add("/State").add((const char *)node_num3).add((const char *)UTC3).add((const char *)x).add((const char *)y).add((const char *)z).add((const char *)voltage).add((const char *)temp);
   //String str = "test string...";
+  unsigned long internal_time_cur;
+  unsigned long internal_time_prev;
 
+  if (Serial2.available())
+  {
+    TC->INTENCLR.bit.MC0 = 1;
 
+    internal_time_prev = millis();
+    internal_time_cur = millis();
 
+    bool str_flag = false;
+
+    while ((internal_time_cur - internal_time_prev) < 30000)
+    {
       OSCBundle bundleIN;
       int size;
       char input;
-      //  str_flag = false;
+      str_flag = false;
       if (Serial2.available())
       {
         // Serial.println("Reading data");
@@ -199,7 +211,7 @@ void loop()
             {
               input = Serial2.read();
               if (input == 4){
-                //str_flag = true;
+                str_flag = true;
                 break;
               }
               bundleIN.fill(input);
@@ -208,6 +220,8 @@ void loop()
         }
       }
 
+    //  if (str_flag)
+    //  {
         if (!bundleIN.hasError())
         {
           //bundleIN.send(Serial);
@@ -221,9 +235,9 @@ void loop()
           Serial.print("ERROR: ");
           Serial.println(bundleIN.getError());
         }
-       // internal_time_cur = millis();
-    
-
+        internal_time_cur = millis();
+      }
+   // }
 
     //internal_time_cur = millis();
 
@@ -257,9 +271,9 @@ void loop()
     //Serial.println("Done processing...");
 
     //Re-enable rockblock
+   /* TC->INTENSET.bit.MC0 = 1;
+  }
 
-
-/*
   if ((satcom_timer - satcom_timer_prev) > satcom_freq)
   {                           //attempt to send via the ROCKBLOCK
     TC->INTENCLR.bit.MC0 = 1; //make sure to disable interrupts and clear the timer when done
@@ -276,7 +290,6 @@ void loop()
     retry_timer_prev = retry_timer;
     TC->INTENSET.bit.MC0 = 1;
   }
-*/
 
   /*************************
    * Due to the fact that the unit is passively off to save energy we cannot use ring indicators to determine if a request was sent
