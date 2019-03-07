@@ -39,14 +39,15 @@ CODE:
     When a network is available, the Network Available pinout is high.
     When a network isn't available, the Network Available pinout is low.
   
-  //network availability pin on ROCKBLOCK, unfortunatley if the network is not available and we try to send we still consume credits
+
+//osc for arduino sending data description
+//Talk to Storm about what data we want, get in touch with Kevin about configuring the spreadsheet
+//network availability pin on ROCKBLOCK, unfortunatley if the network is not available and we try to send we still consume credits
 
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
 
-Old sheet: https://docs.google.com/spreadsheets/d/1Laa9uiGudBIt20_-pP0hakaxJziztCw4hWVcvK4OTTo/edit?usp=sharing
-New Sheet: https://docs.google.com/spreadsheets/d/1whYegShf4DCOdr8wcOLqrE0EAbwxUkiP6pIbef7favo/edit?usp=sharing
 
 
 1. still need logic for selecting the string to be sent
@@ -131,6 +132,7 @@ void SERCOM1_Handler()
   Serial2.IrqHandler();
 }
 
+char buffer[200];
 bool success;
 /**************************************
  * 
@@ -165,8 +167,23 @@ void setup()
   Serial.println(" minutes...");
   Serial.println("ALL SYSTEMS CONFIGURED... ");
 
+  serialFlush();
   success = true;
+  memset(buffer, '\0', sizeof(buffer));
 }
+
+//TRYING A GLOBAL BUNDLE 
+OSCBundle bundleIN;
+
+/*
+GOOD
+This is the string:/GPS,sssssss185149.0004434.001393512316.842463694.354D0.00.0
+2F 47 50 53 2C 73 73 73 73 73 73 73 31 38 35 31 34 39 2E 30 30 30 34 34 33 34 2E 30 30 31 33 39 33 35 31 32 33 31 36 2E 38 34 32 34 36 33 36 39 34 2E 33 35 34 44 30 2E 30 30 2E 30 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+
+2F 47 50 53 2C 73 73 73 73 73 73 73 31 38 35 31 34 39 2E 30 30 30 34 34 33 34 2E 30 30 31 33 39 33 35 31 32 33 31 36 2E 38 34 32 34 36 33 36 39 34 2E 33 35 34 44 30 2E 30 30 2E 30 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+BAD
+This is the string:/GPS,sssssss185149.0004434.001393512316.842463694.354D0.00.0
+*/
 
 /**************************************
  *    Test what the dispatch function does with a bundle that has multiple messages, may there is some looping functionality?
@@ -181,13 +198,25 @@ void loop()
   //bndl.add("/GPS").add((const char *)node_num2).add((const char *)UTC2).add((const char *)lat2).add((const char *)lon2).add((const char *)alt2).add((const char *)mode2).add((const char *)age2).add((const char *)ratio2);
   // bndl.add("/State").add((const char *)node_num3).add((const char *)UTC3).add((const char *)x).add((const char *)y).add((const char *)z).add((const char *)voltage).add((const char *)temp);
   //String str = "test string...";
+  unsigned long internal_time_cur;
+  unsigned long internal_time_prev;
 
+  if (Serial2.available())
+  {
+    TC->INTENCLR.bit.MC0 = 1;
 
+    //OSCBundle bundleIN;
+    //internal_time_prev = millis();
+    internal_time_cur = millis();
+    bool str_flag = false;
 
-      OSCBundle bundleIN;
+    while (millis() - internal_time_cur < 1000)
+    {
+
+      bundleIN.empty();
       int size;
       char input;
-      //  str_flag = false;
+
       if (Serial2.available())
       {
         // Serial.println("Reading data");
@@ -198,33 +227,56 @@ void loop()
             if (Serial2.available())
             {
               input = Serial2.read();
-              if (input == 4){
-                //str_flag = true;
+              if (input == 4)
+              {
+                str_flag = true;
                 break;
               }
               bundleIN.fill(input);
+              append(buffer, input);
             }
           }
         }
+        internal_time_cur = millis();
+        Serial.print("This is the string:");
+        Serial.println(buffer);
+       /* printHex(buffer);
+        
+        
+        /*int i; 
+        for(i = 0; i < )
+          bundleIN.fill(input);
+
+        //try declaring a static bundle so we dont use the destructor
+*/
+
+        memset(buffer, '\0', sizeof(buffer));
       }
 
+      //invlad bundle: error 2
+
+      if (str_flag)
+      {
+        //Serial.print("String:");
+        //bundleIN.send(Serial);
         if (!bundleIN.hasError())
         {
           //bundleIN.send(Serial);
-          //Serial.println();
+          Serial.println("      GOOD");
           bundleIN.dispatch("/GPS", PrintBund);
           // count++;
         }
         else
         {
           // bad_count++;
-          Serial.print("ERROR: ");
+          Serial.print("     ERROR: ");
           Serial.println(bundleIN.getError());
         }
-       // internal_time_cur = millis();
-    
+      }
 
-
+      str_flag = false;
+    }
+    Serial.println("outside of read");
     //internal_time_cur = millis();
 
     /*
@@ -255,11 +307,11 @@ void loop()
     */
 
     //Serial.println("Done processing...");
-
     //Re-enable rockblock
+    TC->INTENSET.bit.MC0 = 1;
+  }
 
-
-/*
+  /*
   if ((satcom_timer - satcom_timer_prev) > satcom_freq)
   {                           //attempt to send via the ROCKBLOCK
     TC->INTENCLR.bit.MC0 = 1; //make sure to disable interrupts and clear the timer when done
@@ -277,7 +329,6 @@ void loop()
     TC->INTENSET.bit.MC0 = 1;
   }
 */
-
   /*************************
    * Due to the fact that the unit is passively off to save energy we cannot use ring indicators to determine if a request was sent
    * We will thus periodically perform a mailbox check, which consumes a signle credit at some configuration update interval
@@ -288,10 +339,9 @@ void loop()
     update();
     TC->INTENSET.bit.MC0 = 1;
   }
-  */
+  
   //update_time();*/
 }
-
 /*************************************
  * 
  * 
@@ -299,6 +349,18 @@ void loop()
 void PrintBund(OSCMessage &msg)
 {
   print_message(&msg);
+}
+
+/*************************************
+ * 
+ * 
+ *************************************/
+void serialFlush()
+{
+  while (Serial.available() > 0)
+  {
+    char t = Serial.read();
+  }
 }
 
 /*************************************
@@ -564,6 +626,16 @@ void append(char *s, char c)
   s[len + 1] = '\0';
 }
 
+void printHex(char buffer[])
+{
+  int i = 0;
+  for (i = 0; i < 200 /*sizeof(buffer)*/; i++)
+  {
+    Serial.print(buffer[i], HEX);
+    Serial.write(' ');
+  }
+  Serial.println();
+}
 /*****************************************************
  * Function: 
  * Description:
