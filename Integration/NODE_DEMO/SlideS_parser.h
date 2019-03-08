@@ -10,6 +10,7 @@
 void GPSToFiles(char*, int*, int, HardwareSerial &);
 bool verify(char*);
 void getFieldContents(char*, char*, uint8_t);
+void sendMessage(OSCMessage *, HardwareSerial &);
 int stringRank(char);
 
 int sent = 0;
@@ -18,40 +19,40 @@ int sent = 0;
 void fillGPSMsgFormat(char *, OSCMessage &);
 
 bool processGPS(char* filename, int fromNode, HardwareSerial & serialPort){
-	int bestStringPrev = -1; // quality indicator
-
-	char buffer[BUFFER_SIZE+1];
-	char nextRead;
-
-	SD.begin(chipSelect);
-	File fileIn = SD.open(filename, FILE_READ);
-
-	if(!fileIn){
-		LOOM_DEBUG_Print("SD could not open file properly: ");
-		Serial.println(filename);
-		return 0;
-	}
-
-	while(fileIn.available()){
-		int i = 0;
-		memset((char*) buffer,'\0', BUFFER_SIZE + 1);
-		buffer[i++] = fileIn.read();
-		while(fileIn.peek() != '$' && fileIn.available()){
-			nextRead = fileIn.read();
-			buffer[i++] = nextRead;
-			if(i >= BUFFER_SIZE || nextRead == -1){
-				break;
-			}
-		}
-		if(i < BUFFER_SIZE){
-			GPSToFiles(buffer, &bestStringPrev, fromNode, serialPort);
-		}
-	}
-	fileIn.close();
-	// if(!SD.remove(filename)){
-	// 	Serial.print("could not remove");
-	// 	Serial.println(filename);
-	// }
+  int bestStringPrev = -1; // quality indicator
+  
+  char buffer[BUFFER_SIZE+1];
+  char nextRead;
+  
+  SD.begin(chipSelect);
+  File fileIn = SD.open(filename, FILE_READ);
+  
+  if(!fileIn){
+  	LOOM_DEBUG_Print("SD could not open file properly: ");
+  	Serial.println(filename);
+  	return 0;
+  }
+  
+  while(fileIn.available()){
+  	int i = 0;
+  	memset((char*) buffer,'\0', BUFFER_SIZE + 1);
+  	buffer[i++] = fileIn.read();
+  	while(fileIn.peek() != '$' && fileIn.available()){
+  		nextRead = fileIn.read();
+  		buffer[i++] = nextRead;
+  		if(i >= BUFFER_SIZE || nextRead == -1){
+  			break;
+  		}
+  	}
+  	if(i < BUFFER_SIZE){
+  		GPSToFiles(buffer, &bestStringPrev, fromNode, serialPort);
+  	}
+  }
+  fileIn.close();
+   if(!SD.remove(filename)){
+   	Serial.print("could not remove");
+   	Serial.println(filename);
+  }
 }
 
 // Send the GPS String to the proper files if formatted properly
@@ -96,13 +97,12 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, HardwareSer
         Serial.print("sending packet: ");
         Serial.println(sent++);
 				OSCMessage msg("/GPS"); // address
+				msg.add((int32_t)fromNode);
 				fillGPSMsgFormat(nmeaString, msg);
 				Serial.println(nmeaString);
 				print_message(&msg, 1);
-				(serialPort).write(byte(2)); // Start of text
-				msg.send(serialPort);
-				(serialPort).write(byte(4)); // End of transmission
-        delay(100);
+				sendMessage(&msg, serialPort);
+        		delay(50);
 			}
 		}
 	}
@@ -187,4 +187,10 @@ int stringRank(char indicator){
 	  default:
 	    return -1;
 	}
+}
+
+void sendMessage(OSCMessage * output, HardwareSerial & serialPort){
+	serialPort.write(byte(2)); // start of text
+	output->send(serialPort);
+	serialPort.write(byte(4)); // End of transmission
 }
