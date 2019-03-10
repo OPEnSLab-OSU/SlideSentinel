@@ -100,7 +100,7 @@
 
 
 // --- RTC Options ---
-#define is_rtc        1		// Enable RTC functionality
+#define is_rtc        0		// Enable RTC functionality
 #if is_rtc == 1
 	#define RTC_pin 		6	// What pin the RTC interrupt is connected to
 
