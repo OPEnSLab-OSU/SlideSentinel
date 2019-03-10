@@ -9,8 +9,6 @@
 // working everythurrrrr
 // ****************************************************************
 
-#define SERIAL_BUFFER_SIZE 512
-
 // Config has to be first has it hold all user specified options
 #include "config.h"
 
@@ -45,7 +43,7 @@
 // IMPORTANT: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
 
-#pragma message "SERIAL_BUFFER_SIZE=" SERIAL_BUFFER_SIZE  // print the value of the defined serial buffer, make sure this is 512
+#pragma message "SERIAL_BUFFER_SIZE=" SERIAL_BUFFER_SIZE  // print the value of the preprocessor defined serial buffer, make sure this is 512
 
 /* function declarations */ 
 void mmaCSVRead(Adafruit_MMA8451 device, String& to_fill, int count);
@@ -53,22 +51,22 @@ void configInterrupts(Adafruit_MMA8451 device);
 void mmaPrintIntSRC(uint8_t dataRead);
 void mmaSetupSlideSentinel();
 
-#define BAUD 115200    // reading and writing occurs at 
+#define DEBUG 1       // allow printing to serial monitor,
 #define DEBUG_SD 1
 #define CELLULAR 0
 
 
 // Define mode constants
-#define DEBUG 1       // allow printing to serial monitor,
                       // serial monitor must be opened before device will start to function in debug mode
 #define RTC_MODE 1    // enable RTC interrupts
-#define SD_WRITE 1    // enable SD card logging, not yuet implemented
+#define SD_WRITE 1    // enable SD card logging
 #define NODE_NUM 9    // ID for node
 #define GPS_BUFFER_LEN 500
+#define BAUD 115200    // reading and writing occurs at 
 
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
-#define RTC_WAKE_PERIOD 1      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define RTC_WAKE_PERIOD 30      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
 #define STANDARD_WAKE 300       // Length of time to take measurements under periodic wake condition,
 #define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
 
@@ -441,7 +439,7 @@ void initializeRTC()
   RTC_DS.writeSqwPinMode(DS3231_OFF);
 
   //Set alarm1
-  setRTCAlarm();
+  clearRTCAlarm();
 }
 
 /* RTC helper function */
@@ -466,7 +464,6 @@ void setRTCAlarm()
 void readSerial(){
   // read data if data is available and buffer isn't full
   if(Serial2.available()){
-    Serial.println("Getting GPS data");
     if(dataIn.len < GPS_BUFFER_LEN){
       dataIn.data[dataIn.len] = Serial2.read();
       dataIn.len += 1;
@@ -485,7 +482,7 @@ void readSerial(){
   else if (dataIn.len){
     dataIn.data[dataIn.len] = 0; // ensure data is c string
     sd_save_elem_nodelim((char *) CurrentWakeGPS, dataIn.data);
-    memset(dataIn.data, '\0', dataIn.len + 1);
+    memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
     dataIn.len = 0;
   }
 }
