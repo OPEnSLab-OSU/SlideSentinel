@@ -3,31 +3,10 @@
  ****************************************************************/
 
 /* To Do: 
-4. FUTURE: Node monitoring, if we dont receive packets from a node over the course of two days we know something happened!
-           Nodes get deployed they automatically get cheked into the network
-
-HARDWARE: 
-  Test RS232 shield, play around with ON/OFF controls and network available on the ROCKBLOCK+ (tommorrow)
-  What happens when upload interrupt occurs but the network is not available???, break out of ISR and set alarm for every 10 minute interval until it works and sends!
-  Keep in touch with Kevin about App
-
-CODE:
- Parsing code: 
-    SETUP...
-    -initialize folders
-    -read the time
-    -turn off the ROCKBLOCK (initialize)
-
-    LOOP...
-    - read string
-    - save fields to folder
-    - parse an osc bundle
-    
-    - implement a counterwith the RTC. 
-    - a simple register value in the counter upon hitting a value will produce a new upload
-    - after uploading clear the data in the current nodes folder so we dont send redundant data if asked for a higher frequency upload rat 
-    - IS THE NODE MAPPING THE TIME AND LOCATIONS TOGETHER? ASK GRAY
-    --RTC set alarm functions, just reduce the times. Upon alarm interrupt send all of the SD shit!
+  // 1.) now if temp has contents, we delete old file and create a new one, then copy temp to the new file
+  // 2.) then we need to implement bulk upload failure, in which we decompose the upload and place it back in the retry folder
+  // 3.) The last thing we do is write the hub configuration logic, for sending requests to the hub,
+  //  GET MORE CREDITS, REFINE ROCKBLOCK PCB, ORDER MORE ROCKBLOCK PCB's, BUILD ROCKBLOCK INTO LOOM
 
   //ROCKBLOCK TESTING
   //RockBLOCK Plus  (OFF):< -1.5V     (ON):< 1.5
@@ -40,20 +19,9 @@ CODE:
     When a network isn't available, the Network Available pinout is low.
   
 
-//osc for arduino sending data description
-//Talk to Storm about what data we want, get in touch with Kevin about configuring the spreadsheet
-//network availability pin on ROCKBLOCK, unfortunatley if the network is not available and we try to send we still consume credits
-
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
-
-
-
-1. still need logic for selecting the string to be sent
-2. ring indicator, messages to the ROCKBLOCK to increase or decrease send frequency
-3. basically done after that!
-
 */
 
 #include "config.h"
@@ -154,8 +122,8 @@ void setup()
   memset(inputBuf, '\0', sizeof(inputBuf));
   initRockblock();
 
-  satcom_freq = 10000;  //number of seconds between ROCKBLOCK uploads
-  retry_freq = 3000;    //number of seconds to wait if no network is available
+  satcom_freq = 20000;  //number of seconds between ROCKBLOCK uploads
+  retry_freq = 5000;    //number of seconds to wait if no network is available
   update_freq = 259200; //check for updates once every three days?     YUCK I DONT LIKE THIS METHOD
 
   satcom_timer_prev = 0;
@@ -175,12 +143,8 @@ void setup()
   memset(buffer, '\0', sizeof(buffer));
 }
 
-/*
-The retry scheme will write all failed best strings for a given cycle to an SD card!
-*/
-
 /**************************************
- *    Test what the dispatch function does with a bundle that has multiple messages, may there is some looping functionality?
+ *    
  * 
  *************************************/
 void loop()
@@ -261,6 +225,7 @@ void loop()
     check_retry();
   }
 
+
   if (is_retry && ((retry_timer - retry_timer_prev) > retry_freq))
   {
     attemptSendRetry();
@@ -269,12 +234,14 @@ void loop()
     check_retry();
   }
 
+
   /*if (update_timer == update_freq)
   {
     update();
     update_timer_prev = update_timer;
   }
   */
+
   update_time();
 }
 
@@ -381,7 +348,7 @@ bool createPacket(char *buf, const char *file)
       memset(buf, '\0', sizeof(buf));
 
       while (e.available()) //REFRACTOR, create function which takes an open file pointer and returns an OSC message TEST
-      {                     //This function should really have some failure recovery code, definitley refractor this!!!
+      {
         gpsStr = e.readStringUntil('\n');
         gpsStr.toCharArray(buf, gpsStr.length());
         stringToOSCmsg(buf, &cur);
@@ -390,6 +357,12 @@ bool createPacket(char *buf, const char *file)
         memset(buf, '\0', sizeof(buf));
       }
     }
+    else
+    {
+      Serial.println("Could not open file!");
+      return false;
+    }
+
     oscMsg_to_string(buf, &best);
     Serial.println("BEST STRING FOR THE CURRENT UPLOAD CYCLE");
     Serial.println(buf);
@@ -454,8 +427,9 @@ void stringToOSCmsg(char *osc_string, OSCMessage *bndl)
 }
 
 /*************************************
- * 
- * 
+ * The one bug I kow of in this code, occurs if the SD fails to open on upload. 
+ * This will cause another node wake cycle to be written to the best data folder. 
+ * This actually is not a critical bug at all but something to keep in mind for refractoring
  *************************************/
 void attemptSendToday()
 {
@@ -473,11 +447,9 @@ void attemptSendToday()
       if (successfulUpload(packet))
       {
         Serial.println("Successfully sent message!");
-        //  is_retry = false;
       }
       else
       { //message failed to send, write messaage to retry folder on SD card
-        //  is_retry = true;
         node_num = "0";
         //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
         write_sd_str(node_num, "/GPS_R.TXT", packet);
@@ -490,14 +462,13 @@ void attemptSendToday()
       node_num = "0";
       //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
       write_sd_str(node_num, "/GPS_R.TXT", packet);
-      // is_retry = true;
     }
     copy.empty();
     memset(packet, '\0', sizeof(packet));
     toggleRockblock(false);
   }
   else
-    Serial.println("No strings needed to be sent.");
+    Serial.println("No strings needed to be sent or could not open data file.");
 }
 
 /*************************************
@@ -534,12 +505,48 @@ void check_retry()
 void attemptSendRetry()
 {
   Serial.println("Attempting to resend");
-  char buf[340];
+  char *token;
+  String node_num;
+  char bulk[340];
+  char buf[100];
   memset(buf, '\0', sizeof(buf));
-  bulkUpload(buf, "/GPS_R.TXT");
-  Serial.print("BULK UPLOAD: ");
-  Serial.println(buf);
-  memset(buf, '\0', sizeof(buf));
+  memset(bulk, '\0', sizeof(bulk));
+
+  toggleRockblock(true); //turn on the ROCKBLOCK
+  if (/*getNetwork()*/ 1 && bulkUpload(bulk, "/GPS_R.TXT"))
+  {
+    Serial.print("BULK UPLOAD: ");
+    Serial.println(bulk);
+
+    if (/*successfulUpload(bulk)*/0)
+    {
+      Serial.println("Successfully sent bulk message!");
+    }
+    else
+    { //message failed to send, write messaage to retry folder on SD card
+      node_num = "0";
+      //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
+
+      token = strtok(bulk, "#");
+      while (token != NULL)
+      {
+        snprintf(buf, sizeof(buf), "%s", token);
+        Serial.print("SNPRINTF:" ); 
+        Serial.println(buf);
+        write_sd_str(node_num, "/GPS_R.TXT", buf);
+        memset(buf, '\0', sizeof(buf));
+        token = strtok(NULL, "#");
+      }
+
+      Serial.println("Failed to send, writing to retry folder...");
+    }
+  }
+  else //network was not initially available, attempt to retry, COPY OVER MESSAGE TO RETRY BUFFER, first check to see if the buffer is empty.
+  {
+    Serial.println("Network not available for bulk upload, writing to retry folder...");
+  }
+  memset(bulk, '\0', sizeof(bulk));
+  toggleRockblock(false);
 }
 
 /*****************************************************
@@ -560,7 +567,7 @@ bool bulkUpload(char *buf, const char *file)
   String node = "0"; //REFRACTOR
   folder = "NODE_" + node;
 
-  t = SD.open(folder + "/temp.txt", FILE_WRITE);
+  t = SD.open(folder + "/TEMP.TXT", FILE_WRITE);
   if (!t)
   {
     Serial.println("Failed to open temp aborting retry");
@@ -577,26 +584,90 @@ bool bulkUpload(char *buf, const char *file)
         gpsStr = e.readStringUntil('\n');
         if ((strlen(buf) + gpsStr.length() + 1) >= 340)
         {
-          Serial.println("Full packet sized reach, writing to temp");
+          // Serial.println("Full packet sized reach, writing to temp");
           t.println(gpsStr);
         }
         else
         {
+        //here in this code, the characters are getting trimmed!
+          Serial.print("prior to #: ");
+          Serial.println(buf);
           strcat(buf, "#");                            //place the delimiter
-          gpsStr.toCharArray(buffer, gpsStr.length()); //test that this works
+         Serial.print("post #: ");
+         Serial.println(buf);
+         Serial.print("gpsStr: ");
+         Serial.println(gpsStr);
+                                                       //remove the newline character
+          gpsStr.toCharArray(buffer, sizeof(buffer)); //test that this works
+          Serial.print("gpsStr to buffer: ");
+
+          Serial.println(buffer);
           strcat(buf, buffer);
+          Serial.print("final: ");
+         Serial.println(buf);
           memset(buffer, '\0', sizeof(buffer));
         }
       }
       e.close();
+      t.close();
     }
-    else{
+    else
+    {
       Serial.println("failed to open data folder, aborting bulk upload");
-      t.close();      //dont forget to close the temp file
+      t.close(); //dont forget to close the temp file
       return false;
     }
+  }
 
-    /*
+  Serial.println("Deleting old retry folder...");
+  SD.remove(folder + file); //remove the old retry folder
+
+  e = SD.open(folder + "/GPS_R.txt", FILE_WRITE); //create a new retry folder
+  if (e)
+  {
+    Serial.println("New copy of " + folder + "/GPS_R.txt created...");
+  }
+  else
+  { //it is very important that I verify that the program can recover from this, it will create this folder whenever it uploads, so I think im good as long as I do not delete the contents of temp
+    Serial.println("Failed to create a new file!");
+    t.close();
+    return false;
+  }
+
+  t = SD.open(folder + "/TEMP.TXT", FILE_READ); //Super annoyed that I have to reopen temp, documentation declares that opening a file for writing opens it for both reading and writing...
+  if (!t)
+  {
+    Serial.println("Failed to open temp for reading aborting retry");
+    return false;
+  }
+  if (t.size() > 0)
+  { //copy t to e, really annoying that file renaming is not supported, this is a terribly inefficient work around
+    memset(buffer, '\0', sizeof(buffer));
+    Serial.println("Copying data from temp to new retry folder...");        //ISSUE HERE, EVERY REWRITE A NEW CHARACTER IS ADDED !!!
+    while (t.available())
+    {
+      gpsStr = t.readStringUntil('\n');
+      gpsStr.trim();
+      Serial.print("GPSSTR: ");
+      Serial.println(gpsStr);
+      gpsStr.toCharArray(buffer, sizeof(buffer));       //find where a new byte is being added!!!
+      Serial.print("buffer: ");
+      Serial.println(buffer);
+      write_sd_str(node, "/GPS_R.TXT", buffer);
+      memset(buffer, '\0', sizeof(buffer));
+    }
+  }
+
+  Serial.println("deleting temp file....");
+  SD.remove(folder + "/TEMP.TXT");
+
+  Serial.println("Done!");
+  e.close();
+  t.close();
+  return true;
+}
+
+/*
     Serial.println("Clearing file for current upload cycle.");
     SD.remove(folder + file);
     e = SD.open(folder + "/GPS_C.txt", FILE_WRITE);
@@ -610,9 +681,6 @@ bool bulkUpload(char *buf, const char *file)
   else
     return false;
   */
-  }
-  t.close(); //DELETE THIS
-}
 
 /*************************************
  * Test how many credits Iridium receive library consumes...
@@ -859,7 +927,8 @@ void gpsProc(OSCMessage &msg)
 
   node_num = "0";
   //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
-  write_sd(node_num, "/GPS_LOGS.TXT", &msg);
+  write_sd(node_num, "/GPS_R.TXT", &msg);
+  write_sd(node_num, "/GPS_LOGS.TXT", &msg); //CHANGE
 }
 
 /*****************************************************
@@ -879,8 +948,7 @@ void gpsBest(OSCMessage &msg)
 
 /*****************************************************
  * Function: 
- * Description:   Converts data in bndl to a string then 
- *                writes the string to the proper location on the SD
+ * Description:   
 *****************************************************/
 void stateProc(OSCMessage &msg)
 {
@@ -1012,19 +1080,3 @@ void Serial2_setup()
   pinPeripheral(10, PIO_SERCOM); //Private functions for serial communication
   pinPeripheral(13, PIO_SERCOM);
 }
-
-/*
-        //Serial.print("This is the string:");
-        //Serial.println(buffer);
-        //printHex(buffer);
-        //memset(buffer, '\0', sizeof(buffer));
-
-
-
-
-                //Serial.println("Copying over new message");
-        //write a OSCmsg compare function...
-        //deep_copy_message(&messageIN, &retry);
-        //Serial.println("This is retry....");
-        //print_message(&retry);        //we can maintain a retry bundle!
-        */
