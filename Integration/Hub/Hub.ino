@@ -166,6 +166,7 @@ void loop()
 
       if (Serial2.available())
       {
+        Serial.println("Data available...");
         if (input = Serial2.read() == (byte)2)
         {
           while (input != (byte)4)
@@ -173,9 +174,11 @@ void loop()
             if (Serial2.available())
             {
               input = Serial2.read();
+              Serial.print(input);
               if (input == 4)
               {
                 str_flag = true;
+                Serial.println();
                 break;
               }
               messageIN.fill(input);
@@ -376,7 +379,7 @@ bool createPacket(char *buf, const char *file)
     Serial.println("BEST STRING FOR THE CURRENT UPLOAD CYCLE");
     Serial.println(buf);
 
-    //TEST ME!
+    //TEST ME! If state data was found add it to the packet!
     if (latestState.bytes() > 8) //check if we have a state string, if so concatenate the state string with the best GPS string for this satcom cycle, an empty OSC string apparantly has 8 bytes
     {
       oscMsg_to_string(stateBuf, &latestState);
