@@ -119,9 +119,9 @@ void setup()
   //toggleRockblock(true);
   initRockblock();
 
-  satcom_freq = 60000;    //21600000; //number of seconds between ROCKBLOCK uploads, 6 hours
-  retry_freq = 30000;  //1800000;   //number of seconds to wait if no network is available, 30 minutes
-  update_freq = 28800000; //check for updates once a day, 8 hours
+  satcom_freq = 720000; //number of seconds between ROCKBLOCK uploads, 15 minutes
+  retry_freq = 300000;   //number of seconds to wait if no network is available, 5 minutes
+  update_freq = 86400000; //check for updates once a day
 
   satcom_timer_prev = 0;
   retry_timer_prev = 0;
