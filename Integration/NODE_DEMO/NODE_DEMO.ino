@@ -29,8 +29,9 @@
 #include <RTClibExtended.h>
 
 // Library edits for libraries that don't have #ifdef statements :(
+
 // IMPORTANT: Edit the feather m0 variant.cpp to comment out lines:
- 
+// ~/Library/Arduino15/packages/adafruit/hardware/samd/1.2.9/variants/feather_m0/variants.cpp
 // Uart Serial5( &sercom5, PIN_SERIAL_RX, PIN_SERIAL_TX, PAD_SERIAL_RX, PAD_SERIAL_TX ) ;
 // void SERCOM5_Handler()
 // {
@@ -39,6 +40,7 @@
 
 // IMPORTANT: Edit the #define SERIAL_BUFFER_SIZE 164 to read #define SERIAL_BUFFER_SIZE 512
 //            located in the path /.arduino15/packages/adafruit/hardware/samd/1.3.0/cores/arduino
+//            Mac:        ~/Library/Arduino15/packages/adafruit/hardware/samd/1.2.9/cores/arduino/RingBuffer.h
 
 // IMPORTANT: Must include the following line in the RTClibExtended.h file to use with M0:
 //#define _BV(bit) (1 << (bit))
@@ -67,7 +69,7 @@ void mmaSetupSlideSentinel();
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
 #define RTC_WAKE_PERIOD 30      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 300       // Length of time to take measurements under periodic wake condition,
+#define STANDARD_WAKE 300       // Length of time to take measurements under periodic wake condition,     5 mines in minutes
 #define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
@@ -390,7 +392,7 @@ void mmaSetupSlideSentinel(){
 
   // library configurations
   mma.setRange(MMA8451_RANGE_2_G);
-  mma.setDataRate(MMA8451_DATARATE_6_25_HZ);
+  mma.setDataRate(MMA8451_DATARATE_6_25HZ);
   Serial.print("Range = "); Serial.print(2 << mma.getRange()); Serial.println("G");
 
 }
