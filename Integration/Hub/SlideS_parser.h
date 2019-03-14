@@ -174,6 +174,8 @@ void getFieldContents(char* nmeaString, char * toFill, uint8_t fieldNum)
 
 int stringRank(char indicator){
 	switch(indicator){
+		case ('X'):						//for the unintialized best string
+			return -2;
 	  case ('N'):
     	return -1;
 	  case ('A'):

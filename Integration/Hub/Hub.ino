@@ -2,7 +2,6 @@
  
  ****************************************************************/
 
-
 /* To Do: 
   // 1.) now if temp has contents, we delete old file and create a new one, then copy temp to the new file
   // 2.) then we need to implement bulk upload failure, in which we decompose the upload and place it back in the retry folder
@@ -74,7 +73,7 @@ void PrintMsg(OSCMessage &msg);
 bool successfulUpload(const char *message);
 
 //Initialize the satcom module
-IridiumSBD modem(IridiumSerial);        //TRY BY PASSING THE SLEEP PIN 
+IridiumSBD modem(IridiumSerial); //TRY BY PASSING THE SLEEP PIN
 bool is_on;
 bool is_retry;
 
@@ -120,8 +119,8 @@ void setup()
   //toggleRockblock(true);
   initRockblock();
 
-  satcom_freq = 21600000; //number of seconds between ROCKBLOCK uploads, 6 hours 
-  retry_freq = 1800000;  //number of seconds to wait if no network is available, 30 minutes
+  satcom_freq = 60000;    //21600000; //number of seconds between ROCKBLOCK uploads, 6 hours
+  retry_freq = 30000;  //1800000;   //number of seconds to wait if no network is available, 30 minutes
   update_freq = 28800000; //check for updates once a day, 8 hours
 
   satcom_timer_prev = 0;
@@ -154,8 +153,15 @@ void loop()
     internal_time_cur = millis();
 
     //initialize the best string for this run, as the worst possible reading, REFRACTOR
-    OSCMessage best;
-    best.setAddress("/GPS");
+    OSCMessage best("/GPS");
+    best.add("X");
+    best.add("X");
+    best.add("X");
+    best.add("X");
+    best.add("X");
+    best.add("X");
+    best.add("X");
+    best.add("X");
 
     while (millis() - internal_time_cur < 1000)
     {
@@ -166,7 +172,6 @@ void loop()
 
       if (Serial2.available())
       {
-        Serial.println("Data available...");
         if (input = Serial2.read() == (byte)2)
         {
           while (input != (byte)4)
@@ -178,7 +183,6 @@ void loop()
               if (input == 4)
               {
                 str_flag = true;
-                Serial.println();
                 break;
               }
               messageIN.fill(input);
@@ -217,7 +221,6 @@ void loop()
     }
   }
 
-
   if ((satcom_timer - satcom_timer_prev) > satcom_freq)
   {
     attemptSendToday();
@@ -225,8 +228,6 @@ void loop()
     retry_timer_prev = satcom_timer;
     check_retry();
   }
-  
-
 
   if (is_retry && ((retry_timer - retry_timer_prev) > retry_freq))
   {
@@ -235,7 +236,6 @@ void loop()
     retry_timer_prev = retry_timer;
     check_retry();
   }
-
 
   if ((update_timer - update_timer_prev) > update_freq)
   {
@@ -273,13 +273,22 @@ void serialFlush()
  *************************************/
 void compareNMEA(OSCMessage *current, OSCMessage *best)
 {
+  Serial.println('\n');
+  Serial.println("Inside compare NMEA...");
+  Serial.print("Comparing: ");
+  PrintMsg(*current);
+  Serial.println("--------------- AND ----------------");
+  PrintMsg(*best);
+  Serial.println('\n');
+  Serial.println('\n');
+
   char buf[5];
   memset(buf, '\0', sizeof(buf));
-  get_data_value(current, 4).toCharArray(buf, sizeof(buf));
+  get_data_value(current, 5).toCharArray(buf, sizeof(buf));
   char modeCur = buf[0];
   memset(buf, '\0', sizeof(buf));
 
-  get_data_value(best, 4).toCharArray(buf, sizeof(buf));
+  get_data_value(best, 5).toCharArray(buf, sizeof(buf));
   char modeBest = buf[0];
   memset(buf, '\0', sizeof(buf));
 
@@ -293,19 +302,23 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
   { //4 is the position of the mode
     best->empty();
     Serial.println("Better mode found!");
-    Serial.print("New value of best: ");
     deep_copy_message(current, best);
-    Serial.println(get_data_value(best, 4));
+    PrintMsg(*best);
+    Serial.println('\n');
+    //Serial.println(get_data_value(best, 4));
   }
   //else if (stringRank(get_data_value(current, 6)) == stringRank(get_data_value(best, 6)))
   else if (stringRank(modeCur) == stringRank(modeBest))
   { //6 is the position of the RTK ratio
-    if (get_data_value(current, 5).toFloat() > get_data_value(best, 5).toFloat())
-    {
+    Serial.println("Modes of same quality...");
+    if (get_data_value(current, 6).toFloat() > get_data_value(best, 6).toFloat())
+    {   
+      Serial.println("Current value has higher RTK ratio...");
       best->empty();
       deep_copy_message(current, best);
     }
   }
+  Serial.println("Leaving compare NMEA...");
 }
 
 /*************************************
@@ -331,24 +344,28 @@ bool createPacket(char *buf, const char *file)
   char stateBuf[100];
   memset(stateBuf, '\0', sizeof(stateBuf));
   memset(buf, '\0', sizeof(buf));
-  OSCMessage best;
   OSCMessage latestState;
   OSCMessage cur;
+  OSCMessage best("/GPS");
 
   latestState.empty();
   Serial.println("Creating packet!!!");
-  String node = "0"; //REFRACTOR
+  String node = "0"; //REFRACTOR ALSO CONSIDER LARGER NODE NETWORKS!!!
   folder = "NODE_" + node;
   e = SD.open(folder + file, FILE_READ);
   if (e.size() > 0)
   {
     if (e)
     {
-      //initialize the best of the current cycle data be the first line
-      gpsStr = e.readStringUntil('\n');
-      gpsStr.toCharArray(buf, gpsStr.length());
-      stringToOSCmsg(buf, &best);
-      memset(buf, '\0', sizeof(buf));
+      //initialize the best of the current cycle data be the first line, this needs be GPS DATA!!!!
+      best.add("X");
+      best.add("X");
+      best.add("X");
+      best.add("X");
+      best.add("X");
+      best.add("X");
+      best.add("X");
+      best.add("X");
 
       while (e.available()) //REFRACTOR, create function which takes an open file pointer and returns an OSC message TEST
       {
@@ -471,7 +488,7 @@ void attemptSendToday()
     //toggleRockblock(true); //turn on the ROCKBLOCK
     if (getNetwork())
     {
-      if (successfulUpload(packet))
+      if (successfulUpload(packet))          //TESTING 
       {
         Serial.println("Successfully sent message!");
       }
@@ -554,12 +571,12 @@ void attemptSendRetry()
   memset(bulk, '\0', sizeof(bulk));
 
   //toggleRockblock(true); //turn on the ROCKBLOCK
-  if (getNetwork() && bulkUpload(bulk, "/RETRY.TXT"))
+  if (getNetwork() && bulkUpload(bulk, "/RETRY.TXT"))   
   {
     Serial.print("BULK UPLOAD: ");
     Serial.println(bulk);
 
-    if (successfulUpload(bulk))
+    if (successfulUpload(bulk))           //TESTING 
     {
       Serial.println("Successfully sent bulk message!");
     }
@@ -567,7 +584,6 @@ void attemptSendRetry()
     { //message failed to send, write messaage to retry folder on SD card
       node_num = "0";
       //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
-
       token = strtok(bulk, "#");
       while (token != NULL)
       {
@@ -714,7 +730,7 @@ void update()
   }
   else
   {
-    if (/*(!first_sent || modem.getWaitingMessageCount() > 0) &&*/ getNetwork())       //we need a first not sent flag because rockblock is dumb and only accuratley reads incoming messages if at leasto e has been sent...
+    if (/*(!first_sent || modem.getWaitingMessageCount() > 0) &&*/ getNetwork()) //we need a first not sent flag because rockblock is dumb and only accuratley reads incoming messages if at leasto e has been sent...
     {
       Serial.print("Signal quality is ");
       Serial.println(signalQuality);
@@ -728,23 +744,25 @@ void update()
       {
         Serial.print("Inbound buffer size is ");
         Serial.println(bufferSize);
-        
+
         if ((buffer[0] == 'C' || buffer[0] == 'S') && checkBuf(buffer)) //This is really unfortunate, the ROCKBLOCK can only receive data after sending data (I tested mutliple things because I wanted to avoid wasting the credit and nothing worked)
-        {                                                               //Additionally I decided to not couple the receive with uploads because this could very likely be configured for month long upload cycles, in which case configuration commands           
-          int i,j = 0;       
-          int temp = 0;                                                  //to the system would not be registered for an entire month worst case, thus I think the update frequency will be once every three days about,
-          for(i=7; i >= 0 ; i--){
-            if(buffer[i] >= 0x30 && buffer[i] <= 0x39){
-              temp = pow(10, j) * (buffer[i]-'0');
+        {                                                               //Additionally I decided to not couple the receive with uploads because this could very likely be configured for month long upload cycles, in which case configuration commands
+          int i, j = 0;
+          int temp = 0; //to the system would not be registered for an entire month worst case, thus I think the update frequency will be once every three days about,
+          for (i = 7; i >= 0; i--)
+          {
+            if (buffer[i] >= 0x30 && buffer[i] <= 0x39)
+            {
+              temp = pow(10, j) * (buffer[i] - '0');
               Serial.print("Value of temp: ");
               Serial.println(temp);
               Serial.print("This is buffer at i: ");
-              Serial.println(buffer[i]-'0');
+              Serial.println(buffer[i] - '0');
               j++;
-              ret = ret + temp; 
+              ret = ret + temp;
             }
           }
-          
+
           Serial.print("Value of Ret: ");
           Serial.println(ret);
 
@@ -780,7 +798,8 @@ void update()
         Serial.println(modem.getWaitingMessageCount());
       }
     }
-    else{
+    else
+    {
       Serial.println("No messages...");
     }
   }
@@ -798,10 +817,11 @@ bool checkBuf(uint8_t buffer[])
   Serial.println();
   Serial.print("size of buffer: ");
   Serial.println(sizeof(buffer));
-  for(i = 0; i < sizeof(buffer)-1; i++){
+  for (i = 0; i < sizeof(buffer) - 1; i++)
+  {
     Serial.print("Value in checkbuf: ");
     Serial.println(buffer[i]); //REFRACTOR
-    if ((buffer[i] < 0x30 || buffer[i] > 0x39) && (i>0))
+    if ((buffer[i] < 0x30 || buffer[i] > 0x39) && (i > 0))
     {
       Serial.println("non integer input...");
       return false;
@@ -1037,7 +1057,7 @@ void gpsProc(OSCMessage &msg)
   String node_num;
 
   node_num = "0";
-  //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
+  //node_num = get_data_value(&msg, 0); //0th position is the node number         //REFRACTOR
   write_sd(node_num, "/GPS_LOGS.TXT", &msg);
   //write_sd(node_num, "/RETRY.TXT", &msg); //TESTING
 }
@@ -1069,7 +1089,8 @@ void stateProc(OSCMessage &msg)
 {
   String node_num;
   Serial.println("State router...");
-  node_num = get_data_value(&msg, 0); //0th position is the node number
+  //node_num = get_data_value(&msg, 0); //0th position is the node number
+  node_num = "0";
   write_sd(node_num, "/S_LOGS.TXT", &msg);
   write_sd(node_num, "/CYCLE.TXT", &msg);
 }
