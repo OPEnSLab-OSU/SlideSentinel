@@ -69,7 +69,7 @@ void mmaSetupSlideSentinel();
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
 #define RTC_WAKE_PERIOD 30      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 300       // Length of time to take measurements under periodic wake condition,     5 mines in minutes
+#define STANDARD_WAKE 300     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
 #define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
@@ -648,12 +648,14 @@ void sendState(Adafruit_MMA8451 device){
 
 void tryStandby() {
   if (millis() - timer > 1000 * awakeFor) { //delay, then sleep
-    gps_off();
     processGPS((char*)CurrentWakeGPS, NODE_NUM, Serial3);
     Serial.println("GPS data written out");
     sendState(mma);
+    gps_off();
+    delay(50);
     //reset all flags
     resetFlags();
+
 
     // process strings that are in the read cycle folder
 
