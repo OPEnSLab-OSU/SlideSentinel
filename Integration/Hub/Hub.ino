@@ -106,7 +106,6 @@ void SERCOM1_Handler()
  *************************************/
 void setup()
 {
-  //start with the ROCKBLOCK turned ON!
   Serial.begin(115200); //Opens the main serial port to communicate with the computer
   while (!Serial)
     ;
@@ -186,7 +185,6 @@ void loop()
                 break;
               }
               messageIN.fill(input);
-              //append(buffer, input);
             }
           }
         }
@@ -197,11 +195,14 @@ void loop()
         {
           compareNMEA(&messageIN, &best);
         }
+
       }
+
+
 
       if (str_flag)
       {
-        if (!messageIN.hasError())
+        if (!messageIN.hasError())    //check that the msg is not null 
         {
           messageIN.dispatch("/GPS", gpsProc);     //gpsProc
           messageIN.dispatch("/State", stateProc); //this function will write state data to both state logs, and also the cycle folder for the node
@@ -214,8 +215,7 @@ void loop()
       str_flag = false;
     }
 
-    Serial.println("Send cycle complete...");
-    if (!best.hasError()) //send the best string to the SD
+    if (!best.hasError() || !(get_data_value(&best, 1).equals("X"))) //send the best string to the SD make sure it is initialized
     {
       best.dispatch("/GPS", gpsBest);
     }
