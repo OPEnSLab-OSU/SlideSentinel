@@ -62,7 +62,7 @@ void mmaSetupSlideSentinel();
                       // serial monitor must be opened before device will start to function in debug mode
 #define RTC_MODE 1    // enable RTC interrupts
 #define SD_WRITE 1    // enable SD card logging
-#define NODE_NUM 9    // ID for node
+#define NODE_NUM 0    // ID for node
 #define GPS_BUFFER_LEN 500
 #define BAUD 115200    // reading and writing occurs at 
 
@@ -520,7 +520,7 @@ void setupPrint()
   {
     Serial.print(i);
     Serial.println(" s");
-    delay(1000);
+    delay(1000);  
   }
 }
 
@@ -634,7 +634,9 @@ void resetFlags() {
 void sendState(Adafruit_MMA8451 device){
   String reading;
   device.getEvent(&event);
-  OSCMessage msg("/State");
+  OSCMessage msg("/State");   
+  reading = "0";                        //Refrator, tie this to the predefined NODE NUM constant
+  msg.add((char*)reading.c_str());      //node num
   reading = device.x;
   msg.add((char*)reading.c_str());      // accel x
   reading = device.y;
@@ -651,6 +653,7 @@ void tryStandby() {
     processGPS((char*)CurrentWakeGPS, NODE_NUM, Serial3);
     Serial.println("GPS data written out");
     sendState(mma);
+    delay(500);
     gps_off();
     delay(50);
     //reset all flags
