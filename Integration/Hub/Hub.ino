@@ -21,7 +21,6 @@
     When a network is available, the Network Available pinout is high.
     When a network isn't available, the Network Available pinout is low.
   
-
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
@@ -31,7 +30,7 @@ https://postproxy.azurewebsites.net
 #include "loom_preamble.h"
 #include <EnableInterrupt.h>
 #include "wiring_private.h"
-#include "IridiumSBD.h"
+#include "IridiumSBD.h" 
 #include <SLIPEncodedSerial.h>
 #include "SlideS_parser.h"
 
@@ -215,10 +214,12 @@ void loop()
       str_flag = false;
     }
 
-    if (!best.hasError() || !(get_data_value(&best, 1).equals("X"))) //send the best string to the SD make sure it is initialized
+    Serial.println("Checking to write the best string...");
+    if (!best.hasError() && !(get_data_value(&best, 1).equals("X"))) //send the best string to the SD make sure it is initialized
     {
       best.dispatch("/GPS", gpsBest);
     }
+    Serial.println("Done handling the best string...");
   }
 
   if ((satcom_timer - satcom_timer_prev) > satcom_freq)
