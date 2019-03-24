@@ -110,7 +110,8 @@ void GPSToFiles(char* nmeaString, int* bestStringPrev, int fromNode, HardwareSer
 	memset(field, '\0', FILL_SIZE+1);
 }
 
-// fill the OSCMessage in the order UTC, Lat, Lon, Alt, Mode, Age, Ratio
+///GPS,i0,s115954.000,s0000.0000000,s00000.0000000,s0.000,sN,s0.0,s0.0
+// fill the OSCMessage in the order UTC, Lat, N/S, Lon, E/W, Alt, Mode, Age, Ratio
 // nmea string must be PSTI030
 void fillGPSMsgFormat(char * pstiThirtyString, OSCMessage & msg){
 	char toFill[FILL_SIZE+1];
@@ -119,7 +120,11 @@ void fillGPSMsgFormat(char * pstiThirtyString, OSCMessage & msg){
 	msg.add((const char*) toFill);
 	getFieldContents(pstiThirtyString, toFill, 4);
 	msg.add((const char*) toFill);
+	getFieldContents(pstiThirtyString, toFill, 5);
+	msg.add((const char*) toFill);
 	getFieldContents(pstiThirtyString, toFill, 6);
+	msg.add((const char*) toFill);
+	getFieldContents(pstiThirtyString, toFill, 7);
 	msg.add((const char*) toFill);
 	getFieldContents(pstiThirtyString, toFill, 8);
 	msg.add((const char*) toFill);

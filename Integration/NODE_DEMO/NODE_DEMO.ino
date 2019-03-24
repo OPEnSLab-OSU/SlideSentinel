@@ -84,7 +84,8 @@ void mmaSetupSlideSentinel();
 #define SERIAL2_RX    12    // Rx pin for first serial port
 #define SERIAL2_TX    11    // Tx pin for first serial port
 #define SERIAL3_RX    A5
-#define SERIAL3_TX    6
+#define SERIAL3_TX    6   
+#define BATTERYPIN  A0        //ADDED
 
 //Holds an NMEA string
 struct nmeaData {
@@ -403,6 +404,7 @@ void initializePins(){
     pinMode(ALERT_WAKE_PIN, INPUT_PULLUP);
     pinMode(ACCEL_EN_PIN, INPUT_PULLUP); //connect to pull down switch
     pinMode(GPS_EN_PIN, OUTPUT);
+    pinMode(BATTERYPIN, INPUT);
     digitalWrite(GPS_EN_PIN, LOW);
     pinMode(GPS_DISABLE_PIN, OUTPUT);
     digitalWrite(GPS_DISABLE_PIN, LOW);
@@ -633,6 +635,11 @@ void resetFlags() {
 
 void sendState(Adafruit_MMA8451 device){
   String reading;
+  int raw;
+  float voltage;
+  char buf[10];
+  memset(buf, '\0', sizeof(buf));         //clear the buffer
+  float divider_const = 1.12;
   device.getEvent(&event);
   OSCMessage msg("/State");   
   reading = "0";
@@ -644,7 +651,12 @@ void sendState(Adafruit_MMA8451 device){
   reading = device.z;
   msg.add((char*)reading.c_str());      // accel z
   //msg.add(15.0);                        // Temperature standin
-  msg.add((float)analogRead(VBATPIN));  // Battery voltage
+
+  raw = analogRead(BATTERYPIN);
+  raw = map(raw, 0, 4095, 0, 3300);
+  voltage = (raw/1000)*divider_const;  
+  snprintf(buf, sizeof(buf), "%f", voltage);
+  msg.add((char*)buf);                    // Battery voltage
   sendMessage(&msg, Serial3);
 }
 
