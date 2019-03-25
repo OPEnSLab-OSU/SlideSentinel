@@ -69,8 +69,8 @@ void mmaSetupSlideSentinel();
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
 #define RTC_WAKE_PERIOD 15      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 300     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
-#define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
+#define STANDARD_WAKE 420     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
+#define ALERT_WAKE 420          // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
