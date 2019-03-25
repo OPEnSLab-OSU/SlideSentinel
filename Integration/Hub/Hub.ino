@@ -117,7 +117,7 @@ void setup()
   //toggleRockblock(true);
   initRockblock();
 
-  satcom_freq = 720000; //number of seconds between ROCKBLOCK uploads, 15 minutes
+  satcom_freq = 900000; //number of seconds between ROCKBLOCK uploads, 15 minutes
   retry_freq = 300000;   //number of seconds to wait if no network is available, 5 minutes
   update_freq = 86400000; //check for updates once a day
 
@@ -285,11 +285,11 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
 
   char buf[5];
   memset(buf, '\0', sizeof(buf));
-  get_data_value(current, 5).toCharArray(buf, sizeof(buf));
+  get_data_value(current, 7).toCharArray(buf, sizeof(buf));
   char modeCur = buf[0];
   memset(buf, '\0', sizeof(buf));
 
-  get_data_value(best, 5).toCharArray(buf, sizeof(buf));
+  get_data_value(best, 7).toCharArray(buf, sizeof(buf));
   char modeBest = buf[0];
   memset(buf, '\0', sizeof(buf));
 
@@ -312,7 +312,7 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
   else if (stringRank(modeCur) == stringRank(modeBest))
   { //6 is the position of the RTK ratio
     Serial.println("Modes of same quality...");
-    if (get_data_value(current, 6).toFloat() > get_data_value(best, 6).toFloat())
+    if (get_data_value(current, 9).toFloat() > get_data_value(best, 9).toFloat())
     {   
       Serial.println("Current value has higher RTK ratio...");
       best->empty();
