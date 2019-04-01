@@ -68,9 +68,9 @@ void mmaSetupSlideSentinel();
 
 // ======== Timer periods for different measurement conditions ==========
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
-#define RTC_WAKE_PERIOD 15      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 420     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
-#define ALERT_WAKE 420          // Length of time to take measurements under acceleration wake condition
+#define RTC_WAKE_PERIOD 20      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 300     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
+#define ALERT_WAKE 300          // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
@@ -653,7 +653,7 @@ void sendState(Adafruit_MMA8451 device){
   //msg.add(15.0);                        // Temperature standin
 
   raw = analogRead(BATTERYPIN);
-  raw = map(raw, 0, 4095, 0, 3300);
+  raw = map(raw, 0, 4095, 0, 3700);
   voltage = (raw/1000)*divider_const;  
   snprintf(buf, sizeof(buf), "%f", voltage);
   msg.add((char*)buf);                    // Battery voltage
@@ -665,7 +665,7 @@ void tryStandby() {
     processGPS((char*)CurrentWakeGPS, NODE_NUM, Serial3);
     Serial.println("GPS data written out");
     sendState(mma);
-    delay(500);
+    delay(5000);
     gps_off();
     delay(100);
     //reset all flags
