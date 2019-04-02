@@ -30,7 +30,7 @@ https://postproxy.azurewebsites.net
 #include "loom_preamble.h"
 #include <EnableInterrupt.h>
 #include "wiring_private.h"
-#include "IridiumSBD.h" 
+#include "IridiumSBD.h"
 #include <SLIPEncodedSerial.h>
 #include "SlideS_parser.h"
 
@@ -117,20 +117,19 @@ void setup()
   //toggleRockblock(true);
   initRockblock();
 
-  satcom_freq = 900000; //number of seconds between ROCKBLOCK uploads, 15 minutes
-  retry_freq = 300000;   //number of seconds to wait if no network is available, 5 minutes
+  satcom_freq = 1;   //number of node messages between satcom uploads
+  retry_freq = 1800000;   //number of seconds to wait if no network is available, 30 minutes
   update_freq = 86400000; //check for updates once a day
 
   satcom_timer_prev = 0;
   retry_timer_prev = 0;
   update_timer_prev = 0;
-  satcom_timer = millis();
   retry_timer = millis();
   update_timer = millis();
 
   Serial.print("Initializing satcom to upload once every ");
-  Serial.print((float)satcom_freq / 60000);
-  Serial.println(" minutes...");
+  Serial.print(satcom_freq );
+  Serial.println(" messages...");
   Serial.println("Setup Complete.. ");
 
   serialFlush();
@@ -177,7 +176,6 @@ void loop()
             if (Serial2.available())
             {
               input = Serial2.read();
-              Serial.print(input);
               if (input == 4)
               {
                 str_flag = true;
@@ -189,19 +187,29 @@ void loop()
         }
         internal_time_cur = millis();
 
+        //remove all messages of invlad length, might not necessary MAY NOT NEED THIS
+        if (get_address_string(&messageIN).equals("/GPS") && messageIN.size() != 10)
+        {
+          messageIN.empty();
+          str_flag = false;
+        }
+        else if (get_address_string(&messageIN).equals("/State") && messageIN.size() != 5)
+        {
+          messageIN.empty();
+          str_flag = false;
+        }
+
+
         //Compare the incoming data with the current best
-        if (get_address_string(&messageIN).equals("/GPS")) //Refractor, test that this properly filters input
+        if (get_address_string(&messageIN).equals("/GPS"))
         {
           compareNMEA(&messageIN, &best);
         }
-
       }
-
-
 
       if (str_flag)
       {
-        if (!messageIN.hasError())    //check that the msg is not null 
+        if (!messageIN.hasError()) //check that the msg is not null
         {
           messageIN.dispatch("/GPS", gpsProc);     //gpsProc
           messageIN.dispatch("/State", stateProc); //this function will write state data to both state logs, and also the cycle folder for the node
@@ -220,8 +228,16 @@ void loop()
       best.dispatch("/GPS", gpsBest);
     }
     Serial.println("Done handling the best string...");
+
+    if(satcom_timer >= satcom_freq)
+    {
+      attemptSendToday();
+      check_retry();
+      satcom_timer = 0;
+    }
   }
 
+/*
   if ((satcom_timer - satcom_timer_prev) > satcom_freq)
   {
     attemptSendToday();
@@ -229,6 +245,8 @@ void loop()
     retry_timer_prev = satcom_timer;
     check_retry();
   }
+*/
+
 
   if (is_retry && ((retry_timer - retry_timer_prev) > retry_freq))
   {
@@ -236,7 +254,8 @@ void loop()
     Serial.println("Attempting to send retry...");
     retry_timer_prev = retry_timer;
     check_retry();
-  }
+  } 
+
 
   if ((update_timer - update_timer_prev) > update_freq)
   {
@@ -262,11 +281,12 @@ void PrintMsg(OSCMessage &msg)
  *************************************/
 void serialFlush()
 {
-  while (Serial.available() > 0)
+  while (Serial2.available() > 0)
   {
-    char t = Serial.read();
+    char t = Serial2.read();
   }
 }
+
 
 /*************************************
  * 
@@ -274,6 +294,7 @@ void serialFlush()
  *************************************/
 void compareNMEA(OSCMessage *current, OSCMessage *best)
 {
+  
   Serial.println('\n');
   Serial.println("Inside compare NMEA...");
   Serial.print("Comparing: ");
@@ -281,7 +302,7 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
   Serial.println("--------------- AND ----------------");
   PrintMsg(*best);
   Serial.println('\n');
-  Serial.println('\n');
+  
 
   char buf[5];
   memset(buf, '\0', sizeof(buf));
@@ -313,7 +334,7 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
   { //6 is the position of the RTK ratio
     Serial.println("Modes of same quality...");
     if (get_data_value(current, 9).toFloat() > get_data_value(best, 9).toFloat())
-    {   
+    {
       Serial.println("Current value has higher RTK ratio...");
       best->empty();
       deep_copy_message(current, best);
@@ -328,7 +349,6 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
  *************************************/
 void update_time()
 {
-  satcom_timer = millis();
   retry_timer = millis();
   update_timer = millis();
 }
@@ -486,10 +506,9 @@ void attemptSendToday()
   {
     Serial.println("Packet created... Contents: ");
     Serial.println(packet);
-    //toggleRockblock(true); //turn on the ROCKBLOCK
     if (getNetwork())
     {
-      if (successfulUpload(packet))          //TESTING 
+      if (successfulUpload(packet))      //REMOTE CONFIG TEST
       {
         Serial.println("Successfully sent message!");
       }
@@ -572,12 +591,12 @@ void attemptSendRetry()
   memset(bulk, '\0', sizeof(bulk));
 
   //toggleRockblock(true); //turn on the ROCKBLOCK
-  if (getNetwork() && bulkUpload(bulk, "/RETRY.TXT"))   
+  if (getNetwork() && bulkUpload(bulk, "/RETRY.TXT"))
   {
     Serial.print("BULK UPLOAD: ");
     Serial.println(bulk);
 
-    if (successfulUpload(bulk))           //TESTING 
+    if (successfulUpload(bulk)) //TESTING
     {
       Serial.println("Successfully sent bulk message!");
     }
@@ -604,6 +623,7 @@ void attemptSendRetry()
   memset(buf, '\0', sizeof(buf));
   memset(bulk, '\0', sizeof(bulk));
   //toggleRockblock(false);
+  serialFlush();
 }
 
 /*****************************************************
@@ -727,17 +747,19 @@ void update()
   if (err != 0 || signalQuality == 0)
   {
     Serial.print("SignalQuality failed: error ");
-    Serial.println(err);
+    Serial.print(err);
+    Serial.print(", ");
+    Serial.println(signalQuality);
   }
   else
   {
-    if (/*(!first_sent || modem.getWaitingMessageCount() > 0) &&*/ getNetwork()) //we need a first not sent flag because rockblock is dumb and only accuratley reads incoming messages if at leasto e has been sent...
+    if (getNetwork()) //we need a first not sent flag because rockblock is dumb and only accuratley reads incoming messages if at leasto e has been sent...
     {
       Serial.print("Signal quality is ");
       Serial.println(signalQuality);
       //toggleRockblock(true);
       err = modem.sendReceiveSBDBinary(buffer, 10, buffer, bufferSize);
-      if (err != ISBD_SUCCESS)
+      if (err != ISBD_SUCCESS)   
       {
         Serial.print("Failed to receive... ");
       }
@@ -781,12 +803,10 @@ void update()
             }
             else if (buffer[0] == 'S')
             {
-              satcom_freq = (ret * 60000);
-              Serial.println("System will now be sending satcom uploads every ");
+              satcom_freq = ret;
+              Serial.print("System will now be sending satcom uploads every ");
               Serial.print(ret);
-              Serial.print(" minutes (");
-              Serial.print(satcom_freq);
-              Serial.println(" milliseconds).");
+              Serial.println(" messages");
             }
           }
         }
@@ -806,6 +826,7 @@ void update()
   }
   memset(buffer, '\0', sizeof(buffer));
   //toggleRockblock(false);
+  serialFlush();
 }
 
 /**************************************
@@ -815,11 +836,9 @@ void update()
 bool checkBuf(uint8_t buffer[])
 {
   int i;
-  Serial.println();
-  Serial.print("size of buffer: ");
-  Serial.println(sizeof(buffer));
-  for (i = 0; i < sizeof(buffer) - 1; i++)
-  {
+  //for (i = 0; i < sizeof(buffer) - 1; i++)
+  //{
+  while(buffer[i] != '\0'){
     Serial.print("Value in checkbuf: ");
     Serial.println(buffer[i]); //REFRACTOR
     if ((buffer[i] < 0x30 || buffer[i] > 0x39) && (i > 0))
@@ -827,7 +846,9 @@ bool checkBuf(uint8_t buffer[])
       Serial.println("non integer input...");
       return false;
     }
+    i++;
   }
+  //}
   Serial.println("Valid configuration data.");
   return true;
 }
@@ -1076,6 +1097,7 @@ void gpsBest(OSCMessage &msg)
   node_num = "0";
   //node_num = get_data_value(&msg,0); //0th position is the node number         //REFRACTOR
   write_sd(node_num, "/CYCLE.TXT", &msg);
+  satcom_timer++;
 }
 
 /*****************************************************
@@ -1089,7 +1111,7 @@ void gpsBest(OSCMessage &msg)
 void stateProc(OSCMessage &msg)
 {
   String node_num;
-  Serial.println("State router...");
+  PrintMsg(msg);
   //node_num = get_data_value(&msg, 0); //0th position is the node number
   node_num = "0";
   write_sd(node_num, "/S_LOGS.TXT", &msg);
