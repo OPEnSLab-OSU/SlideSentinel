@@ -653,7 +653,7 @@ void sendState(Adafruit_MMA8451 device){
   //msg.add(15.0);                        // Temperature standin
 
   raw = analogRead(BATTERYPIN);
-  raw = map(raw, 0, 4095, 0, 3700);
+  raw = map(raw, 0, 4095, 0, 3300);
   voltage = (raw/1000)*divider_const;  
   snprintf(buf, sizeof(buf), "%f", voltage);
   msg.add((char*)buf);                    // Battery voltage
