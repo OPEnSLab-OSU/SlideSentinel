@@ -106,8 +106,6 @@ void SERCOM1_Handler()
 void setup()
 {
   Serial.begin(115200); //Opens the main serial port to communicate with the computer
-  while (!Serial)
-    ;
   Loom_begin();
   Serial2_setup(); //Serial port for communicating with Freewave radios
   Serial.println("serial configured... ");
