@@ -34,8 +34,6 @@ https://postproxy.azurewebsites.net
 #include <SLIPEncodedSerial.h>
 #include "SlideS_parser.h"
 
-#define DEBUG 1
-#define DEBUG_SD 1
 #define MAX_LEN 82 //NMEA0183 specification standard
 #define FILENAME_LENGTH 20
 #define NODE_NUM 1
