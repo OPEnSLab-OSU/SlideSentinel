@@ -653,7 +653,7 @@ void sendState(Adafruit_MMA8451 device){
   //msg.add(15.0);                        // Temperature standin
 
   raw = analogRead(BATTERYPIN);
-  raw = map(raw, 0, 4095, 0, 3300);
+  raw = map(raw, 0, 4095, 0, 3480);   
   voltage = (raw/1000)*divider_const;  
   snprintf(buf, sizeof(buf), "%f", voltage);
   msg.add((char*)buf);                    // Battery voltage
@@ -665,7 +665,7 @@ void tryStandby() {
     processGPS((char*)CurrentWakeGPS, NODE_NUM, Serial3);
     Serial.println("GPS data written out");
     sendState(mma);
-    delay(5000);
+    delay(10000);
     gps_off();
     delay(100);
     //reset all flags
