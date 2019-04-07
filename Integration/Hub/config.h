@@ -44,7 +44,7 @@
 								//   Device will freeze if this in enabled and device does not get plugged into Serial
 								// LOOM_DEBUG_Print* are Serial prints that are removed if debugging is off
 
-#define dynamic_serial_output 0 // These only apply if LOOM_DEBUG is enabled
+#define dynamic_serial_output 1 // These only apply if LOOM_DEBUG is enabled
 								// 0 is standard operation 
 								//   - Serial monitor needs to start / be open for device to setup
 								//   - Serial (USB) can generally be detached after setup without issue 
