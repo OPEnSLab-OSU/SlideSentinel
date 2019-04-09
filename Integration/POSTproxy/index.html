@@ -1,0 +1,80 @@
+<!--
+Name: index.html
+Author: Kevin Koos
+Description: 
+
+
+-->
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+
+  <title>POSTproxy</title>
+  <meta name="description" content="POSTproxy">
+  <meta name="author" content="Kevin Koos">
+
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet"> 
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="/index.js"></script>
+  
+</head>
+
+<body>
+    <div class="main-body">
+        <h4>Choose an action.</h4>
+        
+        <!-- form to change type of action -->
+        <form id="main-type" autocomplete="off" class="toggle">
+            <label for="r1"> NEW </label>
+            <input type="radio" id="r1" name="type" value="new" checked>
+            <label for="r2"> CHANGE EXISTING </label>
+            <input type="radio" id="r2" name="type" value="existing">
+            <label for="r3"> REMOVE </label>
+            <input type="radio" id="r3" name="type" value="remove">
+        </form>
+
+        <!-- form for adding a new url to the config.json -->
+        <form id="new-form" autocomplete="off">
+            <input type="text" placeholder="URL" name="url"> <br> <br>
+            <h4> HTTP REQUEST TYPE </h4>
+            <label for="nr1"> GET </label>
+            <input type="radio" id="nr1" name="requesttype" value="GET" checked>
+            <label for="nr2"> POST </label>
+            <input type="radio" id="nr2" name="requesttype" value="POST">
+        </form>
+        
+        <!-- form for changing an existing scenario -->
+        <form id="existing-form" style="display:none;" autocomplete="off">
+            <input type="text" placeholder="Device ID" name="devid"> <br> <br>
+            <input type="text" placeholder="URL" name="url"> <br> <br>
+            <h4> HTTP REQUEST TYPE </h4>
+            <label for="er1"> GET </label>
+            <input type="radio" id="er1" name="requesttype" value="GET" checked>
+            <label for="er2"> POST </label>
+            <input type="radio" id="er2" name="requesttype" value="POST">
+        </form>
+        
+        <!-- form for removing an existing scenario -->
+        <form id="remove-form" style="display:none;" autocomplete="off">
+            <input type="text" placeholder="Device ID" name="devid"> <br>
+        </form>
+
+        <div id='res-body'>
+
+        </div>
+        
+        <form id="submit-body" autocomplete="off">
+            <input type="password" name="pass" placeholder="Password" id="password">
+            <button  class="ui-button ui-wudget ui-corner-all" type="button" id="submit">Submit</button>
+        </form>
+
+    </div>
+    
+</body>
+</html>
