@@ -135,6 +135,8 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 // nmea string must be PSTI030
 void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
 {
+	char sum[20];
+	memset(sum, '\0', sizeof(sum));
 	char buffer[120];
 	memset(buffer, '\0', sizeof(buffer));
 	char toFill[FILL_SIZE + 1];
@@ -167,9 +169,18 @@ void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
 	}
 	uint32_t checksum = crc.finalize();
 	crc.reset();
+	
+#if DEBUG
+	Serial.print("CHECKSUM: ");
+	Serial.println(checksum);
+#endif
 
-	msg.add((int32_t)checksum);
+	String check = String(checksum);
+	check.toCharArray(sum, sizeof(sum));
+	msg.add((const char *)sum);
 }
+
+
 
 bool verify(char *nmeaString)
 {
