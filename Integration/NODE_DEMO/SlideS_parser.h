@@ -168,7 +168,7 @@ void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
 	uint32_t checksum = crc.finalize();
 	crc.reset();
 
-	msg.add((unsigned int)checksum);
+	msg.add((int32_t)checksum);
 }
 
 bool verify(char *nmeaString)
