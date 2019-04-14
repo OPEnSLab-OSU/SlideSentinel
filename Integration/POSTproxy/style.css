@@ -1,0 +1,94 @@
+body, html {
+  padding: 10px;
+  margin: 0;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+  font-family: 'Roboto', sans-serif;
+}
+
+.main-body {
+  position: relative;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  
+  border: 2px solid black;
+  border-radius: 9px;
+  
+  padding: 10px;
+  padding-right: 4px;
+  margin: auto;
+  width: 440px;
+  height: 320px;
+  font-size: 16px;
+}
+
+#main-type {
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+input[type=text] {
+    margin: 0px;
+    padding: 5px;
+    width: 95.5%;
+}
+
+input[type=password] {
+  width: 74%;
+}
+
+input[type=text], input[type=password] {
+    background-color: #FFFFFF!important;
+}
+
+h4 {
+  padding: 0;
+  padding-bottom: 5px;
+  margin: 0;
+}
+
+#submit-body {
+  position: absolute;
+  bottom: 0;
+  padding-bottom: 13px;
+  width: 95%;
+}
+
+#submit {
+  float: right;
+  margin: 2px;
+  width: 70px;
+}
+
+#res-body {
+  position: absolute;
+  bottom: 60px;
+  font-weight: bold;
+  width: 100%;
+}
+
+h5 {
+  padding: 0;
+  padding-bottom: 5px;
+  padding-left: 3px;
+  margin: 0;
+}
+
+.red {
+    color: red;
+}
+
+.normal {
+    color: black;
+}
+
+body {
+    background-color: #1070c9;
+}
+
+.main-body {
+  background-color: #FFFFFF;
+}
