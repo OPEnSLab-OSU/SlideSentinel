@@ -6,6 +6,7 @@
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
+future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-calculator-code.html
 */
 
 #include "config.h"
@@ -13,13 +14,18 @@ https://postproxy.azurewebsites.net
 #include "wiring_private.h"
 #include "IridiumSBD.h"
 #include "SlideS_parser.h"
+#include <EnableInterrupt.h>
+#include <CRC32.h>
 
 #define DEBUG 1
 #define DEBUG_SD 1
 #define TOGGLE_SATCOM true        //turns SATCOM uploads on or off
-#define FORCE_SATCOM_FAILURE false //forces satcom to always fail for debug purposes
+#define FORCE_SATCOM_FAILURE true //forces satcom to always fail for debug purposes
+#define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
+#define FORCE_UPDATE false        //forces the update routine to occur for testing
 #define NODE_NUM 1
 #define NET_AV 19
+#define RING_INDICATOR_PIN A3
 #define IridiumSerial Serial1
 
 //RF Communication
@@ -44,6 +50,8 @@ void stateProc(OSCMessage &msg);
 
 //Globals
 bool is_retry;
+volatile bool update_flag;
+bool str_flag;
 unsigned long satcom_count;
 unsigned long retry_timer;
 unsigned long update_timer;
@@ -55,7 +63,8 @@ unsigned long retry_freq;
 
 //Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
 Uart Serial2(&sercom1, 13, 10, SERCOM_RX_PAD_1, UART_TX_PAD_2);
-IridiumSBD modem(IridiumSerial);
+IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);
+CRC32 crc;
 
 /*****************************************************
  * Function: 
@@ -65,20 +74,30 @@ void setup()
 {
   Serial.begin(115200); //Opens the main serial port to communicate with the computer
 
-  Loom_begin();
+#if DEBUG
+  while (!Serial)
+#endif
+
+    Loom_begin();
   Serial2_setup(); //Serial port for communicating with Freewave radios
   setup_sd();
   initialize_nodes();
   initRockblock();
+  getNetwork();
+  pinMode(RING_INDICATOR_PIN, INPUT);
 
-  satcom_freq = 2;        //number of node messages between satcom uploads
-  retry_freq = 1800000;   //number of seconds to wait if no network is available, 30 minutes
-  update_freq = 86400000; //check for updates once a day
+#if TOGGLE_UPDATES
+  attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
+#endif
+
+  update_flag = false;
+  str_flag = false;
+
+  satcom_freq = 2;     //number of node messages between satcom uploads
+  retry_freq = 180000; //check for updates once a day
 
   retry_timer_prev = 0;
-  update_timer_prev = 0;
   retry_timer = millis();
-  update_timer = millis();
 
   Serial.print("Initializing satcom to upload once every ");
   Serial.print(satcom_freq);
@@ -98,7 +117,6 @@ void loop()
 
   if (Serial2.available())
   {
-    bool str_flag = false;
     internal_time_cur = millis();
 
     //initialize the best string for the wake cycle
@@ -111,6 +129,8 @@ void loop()
     best.add("X");
     best.add("X");
     best.add("X");
+    best.add("X");
+    best.add("0");    //initial checksum
 
     while (millis() - internal_time_cur < 5000)
     {
@@ -139,22 +159,19 @@ void loop()
         internal_time_cur = millis();
       }
 
-      //remove all messages of invlad length, might not necessary MAY NOT NEED THIS MAKE THIS A HIGHLY EFFICIENT FUNCTION
-      if (get_address_string(&messageIN).equals("/GPS") && messageIN.size() != 10)
+      if (str_flag && verifyOSC(&messageIN))
+      {
+        //Compare the incoming data with the current best
+        if (get_address_string(&messageIN).equals("/GPS"))
+        {
+          compareNMEA(&messageIN, &best);
+        }
+      }
+      //if the OSC message is not valid
+      else
       {
         messageIN.empty();
         str_flag = false;
-      }
-      else if (get_address_string(&messageIN).equals("/State") && messageIN.size() != 5)
-      {
-        messageIN.empty();
-        str_flag = false;
-      }
-
-      //Compare the incoming data with the current best
-      if (get_address_string(&messageIN).equals("/GPS"))
-      {
-        compareNMEA(&messageIN, &best);
       }
 
       //if a message was successfully collected dispatch its contents
@@ -187,7 +204,6 @@ void loop()
   //attempt retry
   if (is_retry && ((retry_timer - retry_timer_prev) > retry_freq) && TOGGLE_SATCOM)
   {
-    //attemptSendRetry();
     attemptSend(true);
 
 #if DEBUG
@@ -199,13 +215,86 @@ void loop()
   }
 
   //Make a health update and read any remote configuration datas
-  if ((update_timer - update_timer_prev) > update_freq)
+  if ((update_flag && TOGGLE_UPDATES) || FORCE_UPDATE)
   {
+    update_flag = false;
+    Serial.println("Checking for updates");
     update();
-    update_timer_prev = update_timer;
   }
 
   update_time();
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+uint32_t functionHandler(String cmd)
+{
+  uint32_t value = strtoul(cmd.c_str(), NULL, 10);
+  return value;
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+bool verifyOSC(OSCMessage *current)
+{
+  uint8_t numFields = 11;
+  char buffer[120];
+  char newMsg[100];
+  uint8_t count = 0;
+  memset(buffer, '\0', sizeof(buffer));
+  memset(newMsg, '\0', sizeof(newMsg));
+  //Generalize the checksum tto handle both state and GPS data
+  if (get_address_string(current).equals("/GPS"))
+  {
+    String raw = get_data_value(current, 10);
+    uint32_t checksum = functionHandler(raw);
+
+#if DEBUG
+    Serial.println("Message to verify: ");
+    PrintMsg(*current);
+    Serial.print("CHECKSUM: ");
+    Serial.println(checksum);
+#endif
+
+    oscMsg_to_string(buffer, current);
+    for (int i = 0; i < strlen(buffer); i++)
+    {
+      if (buffer[i] == ',')
+      {
+        count++;
+        if (count == numFields)
+          break;
+      }
+      newMsg[i] = buffer[i];
+      crc.update(buffer[i]);
+    }
+    uint32_t test_checksum = crc.finalize();
+
+#if DEBUG
+    Serial.print("Calculated checksum: ");
+    Serial.println(test_checksum);
+#endif
+    crc.reset();
+
+    //packet intact
+    if (test_checksum == checksum){
+      #if DEBUG
+        Serial.println("Checksums match, dropping checksum");
+      #endif
+      current->empty(); 
+      stringToOSCmsg(newMsg, current);
+      return true;
+    }
+
+#if DEBUG
+    Serial.println("Checksums don't match, tossing string");
+#endif
+    return false;
+  }
 }
 
 /*****************************************************
@@ -268,6 +357,24 @@ void compareNMEA(OSCMessage *current, OSCMessage *best)
   }
 }
 
+/* Interrupt service routine for ring indicator interrupts*/
+//ring indicator is a low pulse, followed by another low pulse 10 seconds later
+void toggleUpdate()
+{
+  static uint8_t low_count = 0;
+  low_count++;
+#if DEBUG
+  Serial.print("Low count: ");
+  Serial.println(low_count);
+#endif
+  if (low_count >= 2)
+  {
+    detachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN));
+    update_flag = true;
+    low_count = 0;
+  }
+}
+
 /*************************************
  * The one bug I kow of in this code, occurs if the SD fails to open on upload. 
  * This will cause another node wake cycle to be written to the best data folder. 
@@ -289,7 +396,6 @@ void attemptSend(bool bulk)
 
   if (packetized && getNetwork()) //bulkUpload(bulk, "/RETRY.TXT")
   {
-
 #if DEBUG
     Serial.print("PACKET CREATED: ");
     Serial.println(packet);
@@ -371,6 +477,7 @@ bool createPacket(char *buf, const char *file)
   best.add("X");
   best.add("X");
   best.add("X");
+  best.add("0");
 
   String node = "0";
   folder = "NODE_" + node;
@@ -482,12 +589,10 @@ bool bulkUpload(char *buf, const char *file)
     }
   }
 
-  SD.remove(folder + file); //remove the old retry folder
-
+  SD.remove(folder + file);                       //remove the old retry folder
   e = SD.open(folder + "/RETRY.TXT", FILE_WRITE); //create a new retry folder
   if (e)
   {
-
 #if DEBUG
     Serial.println("New copy of " + folder + "/RETRY.TXT created...");
 #endif
@@ -533,8 +638,8 @@ bool bulkUpload(char *buf, const char *file)
 void update()
 {
   uint8_t buffer[10];
-  memset(buffer, '\0', sizeof(buffer));
-  size_t bufferSize = sizeof(buffer);
+  unsigned int bufferSize = sizeof(buffer);
+  memset(buffer, '\0', bufferSize);
   int err;
   long ret = 0;
   int signalQuality = -1;
@@ -554,15 +659,18 @@ void update()
     {
       Serial.print("Signal quality is ");
       Serial.println(signalQuality);
+
+      //FINISH THIS AND TEST IT
       err = modem.sendReceiveSBDBinary(buffer, 10, buffer, bufferSize);
+      //err = modem.sendReceiveSBDText(NULL, buffer, bufferSize);
       if (err != ISBD_SUCCESS)
       {
         Serial.print("Failed to receive... ");
       }
       else // success!
       {
-        if ((buffer[0] == 'C' || buffer[0] == 'S') && checkBuf(buffer)) //This is really unfortunate, the ROCKBLOCK can only receive data after sending data (I tested mutliple things because I wanted to avoid wasting the credit and nothing worked)
-        {                                                               //Additionally I decided to not couple the receive with uploads because this could very likely be configured for month long upload cycles, in which case configuration commands
+        if (checkBuf(buffer)) //This is really unfortunate, the ROCKBLOCK can only receive data after sending data (I tested mutliple things because I wanted to avoid wasting the credit and nothing worked)
+        {                     //Additionally I decided to not couple the receive with uploads because this could very likely be configured for month long upload cycles, in which case configuration commands
           int i, j = 0;
           int temp = 0; //to the system would not be registered for an entire month worst case, thus I think the update frequency will be once every three days about,
           for (i = 7; i >= 0; i--)
@@ -614,6 +722,7 @@ void update()
     }
   }
   memset(buffer, '\0', sizeof(buffer));
+  attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
   serialFlush();
 }
 
@@ -623,7 +732,11 @@ void update()
 *****************************************************/
 bool checkBuf(uint8_t buffer[])
 {
-  int i;
+  int i = 0;
+  if (buffer[0] != 'C' && buffer[0] != 'S')
+  {
+    return false;
+  }
   while (buffer[i] != '\0')
   {
     Serial.print("Value in checkbuf: ");
