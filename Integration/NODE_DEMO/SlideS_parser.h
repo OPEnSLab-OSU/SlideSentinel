@@ -163,13 +163,9 @@ void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
 	//convert the OSC message to a string, produce the checksum and append to message
 	Serial.println("Converting the message to a string...");
 	oscMsg_to_string(buffer, &msg);
-	int i = 0; 
-	while(buffer[i] != '\0'){
-		Serial.print(buffer[i]);
+	for(uint8_t i = 0; i < strlen(buffer)-1; i++){
 		crc.update(buffer[i]);
-		i++;
 	}
-	Serial.println();
 	uint32_t checksum = crc.finalize();
 	crc.reset();
 	
