@@ -19,15 +19,15 @@ future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-c
 
 #define DEBUG 1
 #define DEBUG_SD 1
-#define TOGGLE_SATCOM true        //turns SATCOM uploads on or off
+#define TOGGLE_SATCOM true         //turns SATCOM uploads on or off
 #define FORCE_SATCOM_FAILURE false //forces satcom to always fail for debug purposes
-#define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
+#define TOGGLE_UPDATES true        //turns on interrupt based Hub configuration
 #define FORCE_UPDATE false         //forces the update routine to occur for testing
 #define NODE_NUM 1
 #define NET_AV 19
 #define RING_INDICATOR_PIN A3
 #define IridiumSerial Serial1
-#define NODE_TIMER 20              //for asking the hub when the next upload will occur (min)
+#define NODE_TIMER 20 //for asking the hub when the next upload will occur (min)
 
 //RF Communication
 void Serial2_setup();
@@ -73,11 +73,7 @@ void setup()
 {
   Serial.begin(115200); //Opens the main serial port to communicate with the computer
 
-#if DEBUG
-  while (!Serial)
-#endif
-
-    Loom_begin();
+  Loom_begin();
   Serial2_setup(); //Serial port for communicating with Freewave radios
   setup_sd();
   initialize_nodes();
@@ -197,14 +193,14 @@ void loop()
     {
       best.dispatch("/GPS", gpsBest);
     }
+  }
 
-    //check to make a satcom uplaod
-    if ((satcom_count >= satcom_freq) && TOGGLE_SATCOM)
-    {
-      attemptSend(false);
-      check_retry();
-      satcom_count = 0;
-    }
+  //check to make a satcom uplaod
+  if ((satcom_count >= satcom_freq) && TOGGLE_SATCOM)
+  {
+    attemptSend(false);
+    check_retry();
+    satcom_count = 0;
   }
 
   //attempt retry
@@ -669,7 +665,7 @@ void collectStatus(char status[])
   strcat(status, ",");
   SDsize(root, size);
   sprintf(status + strlen(status), "%d", size);
-  nextUpload = (satcom_freq * NODE_TIMER) - (satcom_count * NODE_TIMER) + (NODE_TIMER - ((millis() - last_message)/60000));
+  nextUpload = (satcom_freq * NODE_TIMER) - (satcom_count * NODE_TIMER) + (NODE_TIMER - ((millis() - last_message) / 60000));
   int seconds = nextUpload % 60;
   int minutes = (nextUpload / 60) % 60;
   strcat(status, ",");
@@ -705,13 +701,10 @@ void update()
   {
     //err = modem.sendReceiveSBDBinary(buffer, bufferSize, buffer, bufferSize);
     collectStatus(status);
-    err = modem.sendReceiveSBDText(status, (uint8_t*)buffer, bufferSize);
+    err = modem.sendReceiveSBDText(status, (uint8_t *)buffer, bufferSize);
     if (err == ISBD_SUCCESS && checkBuf(buffer))
     {
       sscanf(buffer, "%d", &ret);
-      Serial.print("Value of Ret: ");
-      Serial.println(ret);
-
       if (ret > 0 && ret < 672) //minimum satcom uploads of one upload per week
       {
         satcom_freq = ret;
@@ -725,6 +718,8 @@ void update()
       Serial.println(modem.getWaitingMessageCount());
     }
   }
+  //force a string upload
+  satcom_timer = satcom_freq;
   attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
   serialFlush();
 }
