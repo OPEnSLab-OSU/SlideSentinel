@@ -719,7 +719,7 @@ void update()
     }
   }
   //force a string upload
-  satcom_timer = satcom_freq;
+  satcom_count = satcom_freq;
   attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
   serialFlush();
 }
