@@ -643,85 +643,71 @@ void update()
   uint8_t buffer[10];
   unsigned int bufferSize = sizeof(buffer);
   memset(buffer, '\0', bufferSize);
-  int err;
+  uint8_t err, signalQuality = -1;
   long ret = 0;
-  int signalQuality = -1;
-  Serial.println("updating system....");
 
   err = modem.getSignalQuality(signalQuality);
-  if (err != 0 || signalQuality == 0)
+  if ((err != 0 || signalQuality == 0) && !getNetwork())
   {
+#if DEBUG
     Serial.print("SignalQuality failed: error ");
     Serial.print(err);
     Serial.print(", ");
     Serial.println(signalQuality);
+#endif
   }
   else
   {
-    if (getNetwork()) //we need a first not sent flag because rockblock is dumb and only accuratley reads incoming messages if at leasto e has been sent...
+    //err = modem.sendReceiveSBDBinary(buffer, 10, buffer, bufferSize);
+    err = modem.sendReceiveSBDText(NULL, buffer, bufferSize); //consumes a credit to perform a mailbox check
+    if (err != ISBD_SUCCESS)
+      Serial.print("Failed to receive... ");
+    else // success!
     {
-      Serial.print("Signal quality is ");
-      Serial.println(signalQuality);
-
-      //FINISH THIS AND TEST IT
-      err = modem.sendReceiveSBDBinary(buffer, 10, buffer, bufferSize);
-      //err = modem.sendReceiveSBDText(NULL, buffer, bufferSize);
-      if (err != ISBD_SUCCESS)
-      {
-        Serial.print("Failed to receive... ");
-      }
-      else // success!
-      {
-        if (checkBuf(buffer)) //This is really unfortunate, the ROCKBLOCK can only receive data after sending data (I tested mutliple things because I wanted to avoid wasting the credit and nothing worked)
-        {                     //Additionally I decided to not couple the receive with uploads because this could very likely be configured for month long upload cycles, in which case configuration commands
-          int i, j = 0;
-          int temp = 0; //to the system would not be registered for an entire month worst case, thus I think the update frequency will be once every three days about,
-          for (i = 7; i >= 0; i--)
-          {
-            if (buffer[i] >= 0x30 && buffer[i] <= 0x39)
-            {
-              temp = pow(10, j) * (buffer[i] - '0');
-              j++;
-              ret = ret + temp;
-            }
-          }
-
-          Serial.print("Value of Ret: ");
-          Serial.println(ret);
-
-          //input will be the number of minutes per upload, number of minutes in a year
-          if (ret > 0 && ret < 525600)
-          {
-            if (buffer[0] == 'C')
-            {
-              update_freq = (ret * 60000);
-              Serial.println("System will now be checking for configuration commands every ");
-              Serial.print(ret);
-              Serial.print(" minutes (");
-              Serial.print(update_freq);
-              Serial.println(" milliseconds).");
-            }
-            else if (buffer[0] == 'S')
-            {
-              satcom_freq = ret;
-              Serial.print("System will now be sending satcom uploads every ");
-              Serial.print(ret);
-              Serial.println(" messages");
-            }
-          }
-        }
-        else
+      if (checkBuf(buffer))
+      {                    
+        uint8_t i, j = 0, temp = 0; 
+        for (i = 7; i >= 0; i--)
         {
-          Serial.println("Sadly invalid input data...");
+          if (buffer[i] >= 0x30 && buffer[i] <= 0x39)
+          {
+            temp = pow(10, j) * (buffer[i] - '0');
+            j++;
+            ret = ret + temp;
+          }
         }
-        Serial.println();
-        Serial.print("Messages remaining to be retrieved: ");
-        Serial.println(modem.getWaitingMessageCount());
+
+        Serial.print("Value of Ret: ");
+        Serial.println(ret);
+
+        //input will be the number of minutes per upload, number of minutes in a year
+        if (ret > 0 && ret < 525600)
+        {
+          if (buffer[0] == 'C')
+          {
+            update_freq = (ret * 60000);
+            Serial.println("System will now be checking for configuration commands every ");
+            Serial.print(ret);
+            Serial.print(" minutes (");
+            Serial.print(update_freq);
+            Serial.println(" milliseconds).");
+          }
+          else if (buffer[0] == 'S')
+          {
+            satcom_freq = ret;
+            Serial.print("System will now be sending satcom uploads every ");
+            Serial.print(ret);
+            Serial.println(" messages");
+          }
+        }
       }
-    }
-    else
-    {
-      Serial.println("No messages...");
+      else
+      {
+        Serial.println("Sadly invalid input data...");
+      }
+      Serial.println();
+      Serial.print("Messages remaining to be retrieved: ");
+      Serial.println(modem.getWaitingMessageCount());
     }
   }
   memset(buffer, '\0', sizeof(buffer));
