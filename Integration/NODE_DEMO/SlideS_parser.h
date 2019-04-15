@@ -130,15 +130,37 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 	memset(field, '\0', FILL_SIZE + 1);
 }
 
-///GPS,i0,s115954.000,s0000.0000000,s00000.0000000,s0.000,sN,s0.0,s0.0
-// fill the OSCMessage in the order UTC, Lat, N/S, Lon, E/W, Alt, Mode, Age, Ratio
-// nmea string must be PSTI030
-void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
+
+void addChecksum(OSCMessage &msg)
 {
 	char sum[20];
 	memset(sum, '\0', sizeof(sum));
 	char buffer[120];
 	memset(buffer, '\0', sizeof(buffer));
+	//convert the OSC message to a string, produce the checksum and append to message
+	oscMsg_to_string(buffer, &msg);
+	for (uint8_t i = 0; i < strlen(buffer) - 1; i++)
+	{
+		crc.update(buffer[i]);
+	}
+	uint32_t checksum = crc.finalize();
+	crc.reset();
+
+#if DEBUG
+	Serial.print("CHECKSUM: ");
+	Serial.println(checksum);
+#endif
+
+	String check = String(checksum);
+	check.toCharArray(sum, sizeof(sum));
+	msg.add((const char *)sum);
+}
+
+///GPS,i0,s115954.000,s0000.0000000,s00000.0000000,s0.000,sN,s0.0,s0.0
+// fill the OSCMessage in the order UTC, Lat, N/S, Lon, E/W, Alt, Mode, Age, Ratio
+// nmea string must be PSTI030
+void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
+{
 	char toFill[FILL_SIZE + 1];
 	memset(toFill, '\0', FILL_SIZE + 1);
 	getFieldContents(pstiThirtyString, toFill, 2);
@@ -159,27 +181,8 @@ void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
 	msg.add((const char *)toFill);
 	getFieldContents(pstiThirtyString, toFill, 15);
 	msg.add((const char *)toFill);
-
-	//convert the OSC message to a string, produce the checksum and append to message
-	Serial.println("Converting the message to a string...");
-	oscMsg_to_string(buffer, &msg);
-	for(uint8_t i = 0; i < strlen(buffer)-1; i++){
-		crc.update(buffer[i]);
-	}
-	uint32_t checksum = crc.finalize();
-	crc.reset();
-	
-#if DEBUG
-	Serial.print("CHECKSUM: ");
-	Serial.println(checksum);
-#endif
-
-	String check = String(checksum);
-	check.toCharArray(sum, sizeof(sum));
-	msg.add((const char *)sum);
+	addChecksum(msg);
 }
-
-
 
 bool verify(char *nmeaString)
 {
@@ -263,48 +266,48 @@ void sendMessage(OSCMessage *output, HardwareSerial &serialPort)
 
 void oscMsg_to_string(char *osc_string, OSCMessage *msg)
 {
-  char data_type;
-  data_value value;
-  int addr_len = 40;
-  char addr_buf[addr_len];
+	char data_type;
+	data_value value;
+	int addr_len = 40;
+	char addr_buf[addr_len];
 
-  memset(osc_string, '\0', sizeof(osc_string));
-  memset(addr_buf, '\0', addr_len);
-  msg->getAddress(addr_buf, 0);
-  strcat(osc_string, addr_buf);
+	memset(osc_string, '\0', sizeof(osc_string));
+	memset(addr_buf, '\0', addr_len);
+	msg->getAddress(addr_buf, 0);
+	strcat(osc_string, addr_buf);
 
-  for (int j = 0; j < msg->size(); j++)
-  {
-    data_type = msg->getType(j);
-    switch (data_type)
-    {
-    case 'f':
-      value.f = msg->getFloat(j);
-      snprintf(addr_buf, addr_len, ",f%lu", value.u);
-      strcat(osc_string, addr_buf);
-      break;
+	for (int j = 0; j < msg->size(); j++)
+	{
+		data_type = msg->getType(j);
+		switch (data_type)
+		{
+		case 'f':
+			value.f = msg->getFloat(j);
+			snprintf(addr_buf, addr_len, ",f%lu", value.u);
+			strcat(osc_string, addr_buf);
+			break;
 
-    case 'i':
-      value.i = msg->getInt(j);
-      snprintf(addr_buf, addr_len, ",i%lu", value.u);
-      strcat(osc_string, addr_buf);
-      break;
+		case 'i':
+			value.i = msg->getInt(j);
+			snprintf(addr_buf, addr_len, ",i%lu", value.u);
+			strcat(osc_string, addr_buf);
+			break;
 
-    case 's':
-      char data_buf[40];
-      msg->getString(j, data_buf, sizeof(data_buf));
-      snprintf(addr_buf, addr_len, ",s%s", data_buf);
-      strcat(osc_string, addr_buf);
-      break;
+		case 's':
+			char data_buf[40];
+			msg->getString(j, data_buf, sizeof(data_buf));
+			snprintf(addr_buf, addr_len, ",s%s", data_buf);
+			strcat(osc_string, addr_buf);
+			break;
 
-    default:
-      if (data_type != '\0')
-      {
-        LOOM_DEBUG_Println("Invalid message arg type");
-      }
-      break;
-    }
-  }
-  if (msg != NULL)
-    strcat(osc_string, " ");
+		default:
+			if (data_type != '\0')
+			{
+				LOOM_DEBUG_Println("Invalid message arg type");
+			}
+			break;
+		}
+	}
+	if (msg != NULL)
+		strcat(osc_string, " ");
 }

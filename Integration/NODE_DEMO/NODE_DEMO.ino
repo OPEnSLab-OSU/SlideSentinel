@@ -657,6 +657,12 @@ void sendState(Adafruit_MMA8451 device){
   voltage = (raw/1000)*divider_const;  
   snprintf(buf, sizeof(buf), "%f", voltage);
   msg.add((char*)buf);                    // Battery voltage
+  //add a checksum to the message
+  addChecksum(msg);
+  #if DEBUG
+    Serial.println();
+    print_message(&msg, 1);
+  #endif
   sendMessage(&msg, Serial3);
 }
 
