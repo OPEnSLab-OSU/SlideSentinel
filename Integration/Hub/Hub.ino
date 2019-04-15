@@ -20,13 +20,14 @@ future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-c
 #define DEBUG 1
 #define DEBUG_SD 1
 #define TOGGLE_SATCOM true        //turns SATCOM uploads on or off
-#define FORCE_SATCOM_FAILURE true //forces satcom to always fail for debug purposes
+#define FORCE_SATCOM_FAILURE false //forces satcom to always fail for debug purposes
 #define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
-#define FORCE_UPDATE false        //forces the update routine to occur for testing
+#define FORCE_UPDATE false         //forces the update routine to occur for testing
 #define NODE_NUM 1
 #define NET_AV 19
 #define RING_INDICATOR_PIN A3
 #define IridiumSerial Serial1
+#define NODE_TIMER 20              //for asking the hub when the next upload will occur (min)
 
 //RF Communication
 void Serial2_setup();
@@ -54,12 +55,10 @@ volatile bool update_flag;
 bool str_flag;
 unsigned long satcom_count;
 unsigned long retry_timer;
-unsigned long update_timer;
 unsigned long retry_timer_prev;
-unsigned long update_timer_prev;
-unsigned long update_freq;
 unsigned long satcom_freq;
 unsigned long retry_freq;
+unsigned long last_message;
 
 //Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
 Uart Serial2(&sercom1, 13, 10, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -93,7 +92,7 @@ void setup()
   update_flag = false;
   str_flag = false;
 
-  satcom_freq = 2;     //number of node messages between satcom uploads
+  satcom_freq = 3;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day
 
   retry_timer_prev = 0;
@@ -114,6 +113,7 @@ void setup()
 void loop()
 {
   unsigned long internal_time_cur;
+  unsigned long internal_time;
 
   if (Serial2.available())
   {
@@ -142,7 +142,8 @@ void loop()
       {
         if (input = Serial2.read() == (byte)2)
         {
-          while (input != (byte)4)
+          internal_time = millis();
+          while (millis() - internal_time < 5000) //(input != (byte)4) ||
           {
             if (Serial2.available())
             {
@@ -188,6 +189,7 @@ void loop()
         }
       }
       str_flag = false;
+      last_message = millis(); //for determining when the next satcom upload will occur
     }
 
     //After a completed send cycle dispatch the highest quality positional string
@@ -219,10 +221,12 @@ void loop()
   }
 
   //Make a health update and read any remote configuration datas
-  if ((update_flag && TOGGLE_UPDATES) || FORCE_UPDATE)
+  if (FORCE_UPDATE || (update_flag && TOGGLE_UPDATES))
   {
     update_flag = false;
-    Serial.println("Checking for updates");
+#if DEBUG
+    Serial.println("CHECKING FOR UPDATES");
+#endif
     update();
   }
 
@@ -636,81 +640,91 @@ bool bulkUpload(char *buf, const char *file)
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description: 
+*****************************************************/
+void SDsize(File dir, int &size)
+{
+  while (true)
+  {
+    File entry = dir.openNextFile();
+    if (!entry)
+      return;
+    if (entry.isDirectory())
+      SDsize(entry, size);
+    else
+      size += entry.size();
+    entry.close();
+  }
+}
+
+/*****************************************************
+ * Function: 
+ * Description: 
+*****************************************************/
+void collectStatus(char status[])
+{
+  int size = 0, nextUpload;
+  File root = SD.open("/");
+  sprintf(status, "%d", satcom_freq);
+  strcat(status, ",");
+  SDsize(root, size);
+  sprintf(status + strlen(status), "%d", size);
+  nextUpload = (satcom_freq * NODE_TIMER) - (satcom_count * NODE_TIMER) + (NODE_TIMER - ((millis() - last_message)/60000));
+  int seconds = nextUpload % 60;
+  int minutes = (nextUpload / 60) % 60;
+  strcat(status, ",");
+  sprintf(status + strlen(status), "%d", minutes);
+  strcat(status, ":");
+  sprintf(status + strlen(status), "%d", seconds);
+#if DEBUG
+  String str_status = String(status);
+  Serial.print("HUB STATUS: ");
+  Serial.println(str_status);
+#endif
+}
+
+/*****************************************************
+ * Function: 
+ * Description: HERE
 *****************************************************/
 void update()
 {
-  uint8_t buffer[10];
+  char buffer[50];
+  char status[50];
   unsigned int bufferSize = sizeof(buffer);
   memset(buffer, '\0', bufferSize);
-  uint8_t err, signalQuality = -1;
-  long ret = 0;
+  memset(buffer, '\0', sizeof(status));
+  int signalQuality = -1, err;
+  int ret = 0;
+
+  buffer[0] = '1';
+  buffer[1] = '6';
 
   err = modem.getSignalQuality(signalQuality);
-  if ((err != 0 || signalQuality == 0) && !getNetwork())
+  if (signalQuality > 0 && getNetwork())
   {
-#if DEBUG
-    Serial.print("SignalQuality failed: error ");
-    Serial.print(err);
-    Serial.print(", ");
-    Serial.println(signalQuality);
-#endif
-  }
-  else
-  {
-    //err = modem.sendReceiveSBDBinary(buffer, 10, buffer, bufferSize);
-    err = modem.sendReceiveSBDText(NULL, buffer, bufferSize); //consumes a credit to perform a mailbox check
-    if (err != ISBD_SUCCESS)
-      Serial.print("Failed to receive... ");
-    else // success!
+    //err = modem.sendReceiveSBDBinary(buffer, bufferSize, buffer, bufferSize);
+    collectStatus(status);
+    err = modem.sendReceiveSBDText(status, (uint8_t*)buffer, bufferSize);
+    if (err == ISBD_SUCCESS && checkBuf(buffer))
     {
-      if (checkBuf(buffer))
-      {                    
-        uint8_t i, j = 0, temp = 0; 
-        for (i = 7; i >= 0; i--)
-        {
-          if (buffer[i] >= 0x30 && buffer[i] <= 0x39)
-          {
-            temp = pow(10, j) * (buffer[i] - '0');
-            j++;
-            ret = ret + temp;
-          }
-        }
+      sscanf(buffer, "%d", &ret);
+      Serial.print("Value of Ret: ");
+      Serial.println(ret);
 
-        Serial.print("Value of Ret: ");
-        Serial.println(ret);
-
-        //input will be the number of minutes per upload, number of minutes in a year
-        if (ret > 0 && ret < 525600)
-        {
-          if (buffer[0] == 'C')
-          {
-            update_freq = (ret * 60000);
-            Serial.println("System will now be checking for configuration commands every ");
-            Serial.print(ret);
-            Serial.print(" minutes (");
-            Serial.print(update_freq);
-            Serial.println(" milliseconds).");
-          }
-          else if (buffer[0] == 'S')
-          {
-            satcom_freq = ret;
-            Serial.print("System will now be sending satcom uploads every ");
-            Serial.print(ret);
-            Serial.println(" messages");
-          }
-        }
-      }
-      else
+      if (ret > 0 && ret < 672) //minimum satcom uploads of one upload per week
       {
-        Serial.println("Sadly invalid input data...");
+        satcom_freq = ret;
+        Serial.print("System will now be sending satcom uploads every ");
+        Serial.print(ret);
+        Serial.println(" messages");
       }
+
       Serial.println();
       Serial.print("Messages remaining to be retrieved: ");
       Serial.println(modem.getWaitingMessageCount());
     }
   }
-  memset(buffer, '\0', sizeof(buffer));
   attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
   serialFlush();
 }
@@ -719,25 +733,17 @@ void update()
  * Function: 
  * Description:
 *****************************************************/
-bool checkBuf(uint8_t buffer[])
+bool checkBuf(char buffer[])
 {
   int i = 0;
-  if (buffer[0] != 'C' && buffer[0] != 'S')
-  {
-    return false;
-  }
   while (buffer[i] != '\0')
   {
-    Serial.print("Value in checkbuf: ");
-    Serial.println(buffer[i]);
     if ((buffer[i] < 0x30 || buffer[i] > 0x39) && (i > 0))
     {
-      Serial.println("non integer input...");
       return false;
     }
     i++;
   }
-  Serial.println("Valid configuration data.");
   return true;
 }
 
@@ -1097,7 +1103,6 @@ void Serial2_setup()
 void update_time()
 {
   retry_timer = millis();
-  update_timer = millis();
 }
 
 /*****************************************************
