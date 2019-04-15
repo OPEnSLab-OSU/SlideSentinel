@@ -13,4 +13,3 @@ index.js: Front end javascript to run content on main page, this includes creati
 main.js Back end javascript to handle basic route handling and to load data from a google spreadsheet.
 
 A live version of the webclient should be accessible at home.stallkamp.us:9000
-
