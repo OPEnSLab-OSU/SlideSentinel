@@ -130,7 +130,7 @@ void loop()
     best.add("X");
     best.add("X");
     best.add("X");
-    best.add("0");    //initial checksum
+    best.add("0"); //initial checksum
 
     while (millis() - internal_time_cur < 5000)
     {
@@ -159,19 +159,23 @@ void loop()
         internal_time_cur = millis();
       }
 
-      if (str_flag && verifyOSC(&messageIN))
+      if (str_flag)
       {
         //Compare the incoming data with the current best
         if (get_address_string(&messageIN).equals("/GPS"))
         {
-          compareNMEA(&messageIN, &best);
+          if (verifyOSC(&messageIN, 11))
+          {
+            compareNMEA(&messageIN, &best);
+          }
         }
-      }
-      //if the OSC message is not valid
-      else
-      {
-        messageIN.empty();
-        str_flag = false;
+        else if (get_address_string(&messageIN).equals("/State"))
+          verifyOSC(&messageIN, 6);
+        else //  if (get_address_string(current).equals("/GPS"))
+        {
+          messageIN.empty();
+          str_flag = false;
+        }
       }
 
       //if a message was successfully collected dispatch its contents
@@ -237,64 +241,63 @@ uint32_t functionHandler(String cmd)
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description: 5 for state
 *****************************************************/
-bool verifyOSC(OSCMessage *current)
+bool verifyOSC(OSCMessage *current, uint8_t numFields)
 {
-  uint8_t numFields = 11;
+  uint8_t count = 0;
   char buffer[120];
   char newMsg[100];
-  uint8_t count = 0;
   memset(buffer, '\0', sizeof(buffer));
   memset(newMsg, '\0', sizeof(newMsg));
   //Generalize the checksum tto handle both state and GPS data
-  if (get_address_string(current).equals("/GPS"))
+
+  String raw = get_data_value(current, numFields - 1);
+  uint32_t checksum = functionHandler(raw);
+
+#if DEBUG
+  Serial.println();
+  Serial.println("Message to verify: ");
+  PrintMsg(*current);
+  Serial.print("CHECKSUM: ");
+  Serial.println(checksum);
+#endif
+
+  oscMsg_to_string(buffer, current);
+  for (int i = 0; i < strlen(buffer); i++)
   {
-    String raw = get_data_value(current, 10);
-    uint32_t checksum = functionHandler(raw);
-
-#if DEBUG
-    Serial.println("Message to verify: ");
-    PrintMsg(*current);
-    Serial.print("CHECKSUM: ");
-    Serial.println(checksum);
-#endif
-
-    oscMsg_to_string(buffer, current);
-    for (int i = 0; i < strlen(buffer); i++)
+    if (buffer[i] == ',')
     {
-      if (buffer[i] == ',')
-      {
-        count++;
-        if (count == numFields)
-          break;
-      }
-      newMsg[i] = buffer[i];
-      crc.update(buffer[i]);
+      count++;
+      if (count == numFields)
+        break;
     }
-    uint32_t test_checksum = crc.finalize();
-
-#if DEBUG
-    Serial.print("Calculated checksum: ");
-    Serial.println(test_checksum);
-#endif
-    crc.reset();
-
-    //packet intact
-    if (test_checksum == checksum){
-      #if DEBUG
-        Serial.println("Checksums match, dropping checksum");
-      #endif
-      current->empty(); 
-      stringToOSCmsg(newMsg, current);
-      return true;
-    }
-
-#if DEBUG
-    Serial.println("Checksums don't match, tossing string");
-#endif
-    return false;
+    newMsg[i] = buffer[i];
+    crc.update(buffer[i]);
   }
+  uint32_t test_checksum = crc.finalize();
+
+#if DEBUG
+  Serial.print("Calculated checksum: ");
+  Serial.println(test_checksum);
+#endif
+  crc.reset();
+
+  //packet intact
+  if (test_checksum == checksum)
+  {
+#if DEBUG
+    Serial.println("Checksums match, dropping checksum");
+#endif
+    current->empty();
+    stringToOSCmsg(newMsg, current);
+    return true;
+  }
+
+#if DEBUG
+  Serial.println("Checksums don't match, tossing string");
+#endif
+  return false;
 }
 
 /*****************************************************
