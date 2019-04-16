@@ -1,3 +1,6 @@
+# Spreadsheet Script
+This script is responsible for parsing data received from the hub into a usable format and printing the correct values. Script uses the 24 hour limit to cycles at the moment to figure out the real date of a recorded point. Can parse bulk data uploads.
+
 ## Set Up
 To set this up for another account you must import the spreadsheet and then under tools -> script editors, copy and paste the whole script inside. At the top of the webpage in the url there will be https://docs.google.com/spreadsheets/d/<YOUR SPREADSHEET ID HERE>/edit#gid=0, copy the id string into the id variable at the top of the script. Save the script and then under publish ->  deploy as web app, set the user to be "Me" and set the access permissions to everyone including anonymous. Set version to NEW. Any changed to the script must be saved and deployed as a new version or changes will not be in effect. The script url provided can then be used to send data to sheet. More verbose logging can be accessed through view -> stackdriver logging. This sheet is configured to receive data from Rock7 servers which is hex encoded, this can be disabled for testing by commenting and uncommenting out lines 37 and 38. 
   
