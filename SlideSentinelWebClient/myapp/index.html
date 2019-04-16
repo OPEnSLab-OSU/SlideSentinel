@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Slide Sentinel Web Client</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+	<link rel="stylesheet" href="index.css">
+  </head>
+  <body onload="loadSheetNames();">
+  <div class="header">
+  <h1>Slide Sentinel Web Client</h1>
+  </div>
+
+<div class="navbar">
+	<a style="display: inline-block" href="https://docs.google.com/spreadsheets/d/10DkOqGIkRkOmSKsknAcFsjAp9_pjuEXmgO6n-IdT67c/edit#gid=0" target = "_blank">SpreadSheet Link</a>
+	<a id="myLink" href="#" style="display: inline-block" onclick="loadData();">Load</a>
+	<a id="myLink" href="#" style="display: inline-block" onclick="clearMarkers();">Clear</a>
+  <div class="dropdown">
+  <button class="dropbtn" id = "mainDropBtn" onclick="dropbtnOnClick()">Sheets
+    <i class="fa fa-caret-down"></i>
+  </button>
+  <div class="dropdown-content" id="dropdown-content">
+  </div>
+  </div> 
+</div>
+	<div id="sheetInfo">
+	<h3>Information about the map</h3>
+	<p>The third field on the nav bar is a sheet selector. This menu is populated with all the sheet names from the given google spread sheet. Selecting a sheet from this list will change which sheet the client loads data from. The default sheet is 'data' for testing purposes(this can be changed). The visualizer will search for two columns, one named longitude and one latitude and then represent those points on a map.</p>
+	<p>Each point will be visualized with a marker on the map. Additionally each marker can be clicked on to display more information from that marker. The information will be displayed in a table that will appear upon clicking.
+	</div>
+	<div id='selectorDisplayField'>
+	</div>
+	<div id="map"></div>
+    <div id="legend"><h3>Legend</h3></div>
+	<script src="index.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBVlA73zWhHj5xAo7YGlMupUhRHJexUWi8&callback=initMap"
+    async defer></script>
+  </body>
+</html>
+
