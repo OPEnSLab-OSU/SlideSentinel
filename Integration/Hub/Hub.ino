@@ -693,9 +693,6 @@ void update()
   int signalQuality = -1, err;
   int ret = 0;
 
-  buffer[0] = '1';
-  buffer[1] = '6';
-
   err = modem.getSignalQuality(signalQuality);
   if (signalQuality > 0 && getNetwork())
   {
