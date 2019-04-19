@@ -7,6 +7,11 @@ IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
 future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-calculator-code.html
+
+diagnostic serial routines
+optional force upload 
+set verbosity
+Some testing code. plugs into serial port and emulates node behavior for load testign the system,whether retry's occured and how many, flush messages in the input buffer
 */
 
 #include "config.h"
@@ -58,7 +63,8 @@ unsigned long retry_timer;
 unsigned long retry_timer_prev;
 unsigned long satcom_freq;
 unsigned long retry_freq;
-unsigned long last_message;
+unsigned long last_wake;
+int retry_count;
 
 //Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
 Uart Serial2(&sercom1, 13, 10, SERCOM_RX_PAD_1, UART_TX_PAD_2);
@@ -90,6 +96,7 @@ void setup()
 
   satcom_freq = 3;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day
+  retry_count = 0;
 
   retry_timer_prev = 0;
   retry_timer = millis();
@@ -110,6 +117,8 @@ void loop()
 {
   unsigned long internal_time_cur;
   unsigned long internal_time;
+
+  diagnose();
 
   if (Serial2.available())
   {
@@ -156,19 +165,30 @@ void loop()
         internal_time_cur = millis();
       }
 
+      //TRIM
       if (str_flag)
       {
-        //Compare the incoming data with the current best
         if (get_address_string(&messageIN).equals("/GPS"))
         {
           if (verifyOSC(&messageIN, 11))
           {
             compareNMEA(&messageIN, &best);
           }
+          else
+          {
+            messageIN.empty();
+            str_flag = false;
+          }
         }
         else if (get_address_string(&messageIN).equals("/State"))
-          verifyOSC(&messageIN, 6);
-        else //  if (get_address_string(current).equals("/GPS"))
+        {
+          if (!verifyOSC(&messageIN, 6))
+          {
+            messageIN.empty();
+            str_flag = false;
+          }
+        }
+        else
         {
           messageIN.empty();
           str_flag = false;
@@ -185,14 +205,15 @@ void loop()
         }
       }
       str_flag = false;
-      last_message = millis(); //for determining when the next satcom upload will occur
     }
 
     //After a completed send cycle dispatch the highest quality positional string
     if (!best.hasError() && !(get_data_value(&best, 1).equals("X"))) //send the best string to the SD make sure it is initialized
     {
       best.dispatch("/GPS", gpsBest);
+      last_wake = millis(); //for determining when the next satcom upload will occur
     }
+    serialFlush(); //added
   }
 
   //check to make a satcom uplaod
@@ -201,6 +222,7 @@ void loop()
     attemptSend(false);
     check_retry();
     satcom_count = 0;
+    serialFlush();
   }
 
   //attempt retry
@@ -213,7 +235,9 @@ void loop()
 #endif
 
     retry_timer_prev = retry_timer;
+    retry_count++;
     check_retry();
+    serialFlush();
   }
 
   //Make a health update and read any remote configuration datas
@@ -224,6 +248,7 @@ void loop()
     Serial.println("CHECKING FOR UPDATES");
 #endif
     update();
+    serialFlush();
   }
 
   update_time();
@@ -243,11 +268,70 @@ uint32_t functionHandler(String cmd)
  * Function: 
  * Description: 5 for state
 *****************************************************/
+void diagnose()
+{
+  char cmd;
+  if (Serial.available())
+  {
+    //make function
+    char status[50];
+    String str_status; 
+    memset(status, '\0', sizeof(status));
+    int nextUpload = (millis() - last_wake);
+    int minutes = (nextUpload / 60000);
+    int seconds = (nextUpload - (minutes * 60000)) / 1000;
+    cmd = Serial.read();
+    switch (cmd)
+    {
+    case '0':
+      Serial.print("Satcom count: ");
+      Serial.println(satcom_count);
+      break;
+    case '1':
+      Serial.print("Satcom frequency: ");
+      Serial.println(satcom_freq);
+      break;
+    case '2':
+      Serial.print("is_retry: ");
+      Serial.println(is_retry);
+      break;
+    case '3':
+      Serial.print("Retry count: ");
+      Serial.println(retry_count);
+      break;
+    case '4':
+      Serial.print("Last Message: ");
+      Serial.print(minutes);
+      Serial.print(":");
+      Serial.println(seconds);
+      break;
+    case '5':
+      Serial.print("Messages remaining to be retrieved: ");
+      Serial.println(modem.getWaitingMessageCount());
+      break;
+    case '6':
+      collectStatus(status);
+      str_status = String(status);
+      break;
+    case '7':
+      Serial.println("Forcing satcom...");
+      satcom_count = satcom_freq;
+      break;
+    default:
+      Serial.println("Invalid command.");
+    }
+  }
+}
+
+/*****************************************************
+ * Function: 
+ * Description: 5 for state
+*****************************************************/
 bool verifyOSC(OSCMessage *current, uint8_t numFields)
 {
-  uint8_t count = 0;
-  char buffer[120];
-  char newMsg[100];
+  int count = 0;
+  char buffer[150];
+  char newMsg[150];
   memset(buffer, '\0', sizeof(buffer));
   memset(newMsg, '\0', sizeof(newMsg));
   //Generalize the checksum tto handle both state and GPS data
@@ -427,7 +511,6 @@ void attemptSend(bool bulk)
     Serial.println("Network not available or failed to create a packet during this wake cycle, writing to retry folder...");
 #endif
   }
-  serialFlush();
 }
 
 /*****************************************************
@@ -661,13 +744,16 @@ void collectStatus(char status[])
 {
   int size = 0, nextUpload;
   File root = SD.open("/");
-  sprintf(status, "%d", satcom_freq);
+  sprintf(status, "%d", satcom_count);
+  strcat(status, ",");
+  sprintf(status+strlen(status), "%d", satcom_freq);
   strcat(status, ",");
   SDsize(root, size);
+  root.close();
   sprintf(status + strlen(status), "%d", size);
-  nextUpload = (satcom_freq * NODE_TIMER) - (satcom_count * NODE_TIMER) + (NODE_TIMER - ((millis() - last_message) / 60000));
-  int seconds = nextUpload % 60;
-  int minutes = (nextUpload / 60) % 60;
+  nextUpload = (millis() - last_wake);
+  int minutes = (nextUpload / 60000);
+  int seconds = (nextUpload - (minutes * 60000)) / 1000;
   strcat(status, ",");
   sprintf(status + strlen(status), "%d", minutes);
   strcat(status, ":");
@@ -681,7 +767,7 @@ void collectStatus(char status[])
 
 /*****************************************************
  * Function: 
- * Description: HERE
+ * Description: 
 *****************************************************/
 void update()
 {
@@ -709,7 +795,6 @@ void update()
         Serial.print(ret);
         Serial.println(" messages");
       }
-
       Serial.println();
       Serial.print("Messages remaining to be retrieved: ");
       Serial.println(modem.getWaitingMessageCount());
@@ -718,7 +803,6 @@ void update()
   //force a string upload
   satcom_count = satcom_freq;
   attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
-  serialFlush();
 }
 
 /*****************************************************
@@ -952,6 +1036,7 @@ void gpsProc(OSCMessage &msg)
   memset(write_buffer, '\0', sizeof(write_buffer));
   oscMsg_to_string(write_buffer, &msg);
   write_sd_str(node_num, "/GPS_LOGS.TXT", write_buffer);
+  msg.empty();
 }
 
 /*****************************************************
@@ -971,6 +1056,7 @@ void gpsBest(OSCMessage &msg)
   oscMsg_to_string(write_buffer, &msg);
   write_sd_str(node_num, "/CYCLE.TXT", write_buffer);
   satcom_count++;
+  msg.empty();
 }
 
 /*****************************************************
@@ -991,6 +1077,7 @@ void stateProc(OSCMessage &msg)
   memset(write_buffer, '\0', sizeof(write_buffer)); //prevent newline from making spaces in write_sd
   oscMsg_to_string(write_buffer, &msg);
   write_sd_str(node_num, "/CYCLE.TXT", write_buffer);
+  msg.empty();
 }
 
 /*****************************************************
