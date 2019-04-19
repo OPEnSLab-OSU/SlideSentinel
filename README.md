@@ -3,7 +3,8 @@
 ## How to Setup
 Install the ardiono IDE, follow the adafruit [guide](https://learn.adafruit.com/adafruit-feather-m0-basic-proto/overview), and install LOOM with it dependencies with its guide [here](https://github.com/OPEnSLab-OSU/InternetOfAg/tree/master/Arduino_and_Loom_Setup)
 
-Latest Node code is located in the "integration/DEMO_NODE" directory and the latest hub code is located in the "integration/Hub" directory. Load up the main file from the directory in arduino IDE and connect the device in with the nesseary additions listed out in the bill of materials in the documentation directory. Note: Some additional devices requires configuring the drivers for use with the system.
+Building the Node and Hub:
+Refer to the schematics in the documentation for building the node and hub. All pins are labeled in the schematic located in the supplemental documentation materials. A custom printed PCB is used in the hub for interfacing the Rockblock+ with the arduino. Building and creating of the hardware is managed by the OPEnS lab members. A full list of materials and parts used for all phases of the project is located in the supplemental documentation in the bill of materials (BOM).
 
 The spreadsheet visualizer and parser is located at "integration/spreadsheet". A setup guide is included within along with some sample data.
 
