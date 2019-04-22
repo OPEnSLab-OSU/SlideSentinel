@@ -1,6 +1,0 @@
---2019-01-31 18:42:33--  https://storage.googleapis.com/bc3_production_blobs/f518fee0-25ca-11e9-a907-a0369f6bed49?GoogleAccessId=bc3-production-storage%40bc3-production.iam.gserviceaccount.com
-Resolving storage.googleapis.com (storage.googleapis.com)... 172.217.14.240
-Connecting to storage.googleapis.com (storage.googleapis.com)|172.217.14.240|:443... connected.
-HTTP request sent, awaiting response... 403 Forbidden
-2019-01-31 18:42:33 ERROR 403: Forbidden.
-

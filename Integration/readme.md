@@ -1,22 +1,29 @@
-## Integration Sketch Contents
+#Slide Sentinel Phase 1 Prototype
 
-*HUB_DEMO* - Sketch for demoing the hub integration with devices:
+This folder contains all of the code for producing a new Rover and Base station pair. This device is intended for collecting data on landslide movement with sub-centimeter positional accuracy. The system logs rover position at set intervals, and uploads the highest quality positional fix via a satcom upload using the ROCKBLOCK+. 
 
-- 2G FONA GSM module
-- Datalogger
-- Freewave radio
+## Getting Started
+
+Inspect the Rover/Rover.png and Base/Base.png schemtic images for a detailed schematic of all components used in the system build. Using the Arduino IDE load the Base device with Base/Base.ino and the Rover device with Rover/Rover.ino. 
+
+##Hardware
+
+###Base
+- ROCKBLOCK+ Iridium Satcom Module
+- Freewave Z9-T radio
 - RTK - GPS Base
 
-*NODE_DEMO* - Sketch for demo of node integration with devices:
-
+###Rover
 - MMA8451 accelerometer with interrups
 - DS3231 real time clock with interrupts
 - Datalogger
 - Latching relay for power management
-- Freewave radio
-- RTK - GPS rover
+- Freewave Z9-T radio
+- RTK - GPS Rover
 
-*serial3Send* - Sketch for sending SLIP encoded OSCMessages, to be used with Freewave radio
-
-*serial3Recv* - Sketch for reading SLIP encoded OSCMessages, to be used with Freewave radio
-
+##Files
+1. **Base:** All files for the Base unit of the system
+2. **Rover:** All files for the Rover unit for the system
+3. **POSTproxy:** Source code for the post proxy web application. Required for successful Google Spreadsheets HTTP requests.
+4. **Spreadsheet:** Google spreadsheet script for displaying recorded data.
+5. **EditLib:** Rover unit contains direct library edits. This folder contains copies of editted library files, and original copies of library files for the Base unit.
