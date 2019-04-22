@@ -29,7 +29,7 @@
 #define CUSTOM_NAME "SS_Base"	// This is only used if Auto_name is set to be 0
 
 // --- Debugging --- 
-#define LOOM_DEBUG    0		// Set to 1 if you want Serial statements from various functions to print
+#define LOOM_DEBUG    1		// Set to 1 if you want Serial statements from various functions to print
 							// NOTE: Serial monitor must be opened for device to setup if this is enabled
 							//   Device will freeze if this in abled and device does not get plugged into Serial
 							// LOOM_DEBUG_Print* are Serial prints that are removed if debugging is off
@@ -43,7 +43,7 @@
 
 // --- Enabled Communication Platform --- 
 #define is_wifi       0		// 1 to enable WiFi
-#define is_lora       0		// 1 to enable LoRa (cannot be used with nRF) (Further customization in advanced options)
+#define is_lora       1		// 1 to enable LoRa (cannot be used with nRF) (Further customization in advanced options)
 #define is_nrf        0		// 1 to enable nRF (cannot be used with LoRa) (Further customization in advanced options)
 #define is_ethernet   0		// 1 to enable Ethernet (a number of options below might auto enable this anyway though)
 #define is_fona       0		// 1 to enable cellular via Fona (808)
