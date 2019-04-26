@@ -20,23 +20,23 @@ uint32_t functionHandler(char cmd[])
 *****************************************************/
 int stringRank(char indicator)
 {
-  switch (indicator)
-  {
-  case ('X'): //for the unintialized best string
-    return -2;
-  case ('N'):
-    return -1;
-  case ('A'):
-    return 0;
-  case ('D'):
-    return 1;
-  case ('F'):
-    return 2;
-  case ('R'):
-    return 3;
-  default:
-    return -1;
-  }
+    switch (indicator)
+    {
+    case ('X'): //for the unintialized best string
+        return -2;
+    case ('N'):
+        return -1;
+    case ('A'):
+        return 0;
+    case ('D'):
+        return 1;
+    case ('F'):
+        return 2;
+    case ('R'):
+        return 3;
+    default:
+        return -1;
+    }
 }
 
 /*****************************************************
@@ -64,7 +64,7 @@ void print_Msg(char msg[])
  * Function: 
  * Description: 5 for state
 *****************************************************/
-char *getValueAt(char src[], int pos)
+char* getValueAt(char src[], int pos)
 {
     char buf[MAX_LENGTH];
     memset(buf, '\0', sizeof(buf));
@@ -169,7 +169,7 @@ void compareNMEA(char current[], char best[])
     char buf[MAX_LENGTH];
     char *ptr;
     memset(buf, '\0', sizeof(buf));
-    strcpy(buf, getValueAt(current, 8)); 
+    strcpy(buf, getValueAt(current, 8));
     char modeCur = buf[0];
     memset(buf, '\0', sizeof(buf));
 

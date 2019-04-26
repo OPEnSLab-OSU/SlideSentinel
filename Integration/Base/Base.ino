@@ -32,7 +32,7 @@ use level shifter IC, verify that all connections are valid, re-wire the board w
 #define FORCE_SATCOM_FAILURE true //forces satcom to always fail for debug purposes
 #define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
 #define FORCE_UPDATE false        //forces the update routine to occur for testing
-#define TOGGLE_RETRY false
+#define TOGGLE_RETRY true
 #define NODE_NUM 1
 #define NET_AV 19
 #define RING_INDICATOR_PIN A3
@@ -101,7 +101,7 @@ void setup()
   update_flag = false;
   str_flag = false;
 
-  satcom_freq = 1 ;     //number of node messages between satcom uploads
+  satcom_freq = 3;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day
   retry_count = 0;
   failed_count = 0;
@@ -147,7 +147,7 @@ void loop()
             if (Serial2.available())
             {
               input = Serial2.read();
-              count++; //for preventing
+              count++; //for preventing buffer overflow
               if (input == 4 || count == MAX_LENGTH - 1)
               {
                 str_flag = true;
@@ -176,7 +176,7 @@ void loop()
   //check to make a satcom uplaod
   if ((satcom_count >= satcom_freq) && TOGGLE_SATCOM)
   {
-    attemptSend();
+    attemptSend(false);
     check_retry();
     satcom_count = 0;
     serialFlush();
@@ -185,12 +185,11 @@ void loop()
   //attempt retry
   if (TOGGLE_RETRY && (is_retry && ((retry_timer - retry_timer_prev) > retry_freq) && TOGGLE_SATCOM))
   {
-    attemptSend();
 
 #if DEBUG
     Serial.println("ATTEMPTING RETRY");
 #endif
-
+    attemptSend(true);
     retry_timer_prev = retry_timer;
     retry_count++;
     check_retry();
@@ -354,7 +353,7 @@ void toggleUpdate()
 //Tool this code to continue creating packets until every node on the network has had its data logged
 //For each node in the network
 //  find the best GPS and latest state and append it to the packet up ot 340 bytes
-void attemptSend()
+void attemptSend(bool retry)
 {
   bool packetized = false;
   char packet[340];
@@ -366,7 +365,16 @@ void attemptSend()
     //nested while loop to ensure that we remain under 340 bytes for the satcom upload
     memset(node_num, '\0', sizeof(node_num));
     itoa(i, node_num, 10);
-    packetized = addMsg(packet, node_num, "/CYCLE.TXT");
+    if (!retry)
+      packetized = addMsg(packet, node_num, "/CYCLE.TXT");
+    else
+      packetized = addMsg(packet, node_num, "/RETRY.TXT");
+
+#if DEBUG
+    Serial.print("PACKET CREATED: ");
+    Serial.println(packet);
+    Serial.println();
+#endif
 
     if (packetized && getNetwork())
     {
@@ -415,7 +423,7 @@ void readLine(char buf[], File e)
 *****************************************************/
 void addElem(char msg[], char buf[])
 {
-  if(strlen(msg)!=0)
+  if (strlen(msg) != 0)
     strcat(msg, "#");
   strcat(msg, buf);
 }
@@ -457,12 +465,6 @@ bool addMsg(char *msg, char *node_num, const char *file)
     addElem(msg, best);
     addElem(msg, latestState);
 
-#if DEBUG
-    Serial.print("PACKET CREATED: ");
-    Serial.println(msg);
-    Serial.println();
-#endif
-
     e.close();
     SD.remove(path); //Fix ME
     e = SD.open(path, FILE_WRITE);
@@ -478,19 +480,23 @@ bool addMsg(char *msg, char *node_num, const char *file)
 
 /*****************************************************
  * Function: 
- * Description: fix this function, verify that all node messages are valid, test retry routine!!!
+ * Description: Eventually will need to decompose packets by # delimeter and place each packet back in respective retry folder, /G and /S
 *****************************************************/
 void write_to_retry(char packet[])
 {
 #if DEBUG
-  Serial.println("FAILED TO SEND, WRITING TO NODE 0 RETRY FOLDER.");
+  Serial.print("FAILED TO SEND, WRITING TO NODE 0 RETRY FOLDER: ");
+  Serial.println(packet);
 #endif
+
   char buf[MAX_LENGTH];
   memset(buf, '\0', sizeof(buf));
   char *token = strtok(packet, "#");
   while (token != NULL)
   {
-    snprintf(buf, sizeof(buf), "%s", token);
+    Serial.print("Token: ");
+    Serial.println(token);
+    strncpy(buf, token, sizeof(buf));
     write_sd_str("/RETRY.TXT", buf);
     memset(buf, '\0', sizeof(buf));
     token = strtok(NULL, "#");
@@ -850,15 +856,15 @@ void createFilePath(char path[], char *node_num, const char *file)
 
 /*****************************************************
  * Function: 
- * Description: 
+ * Description: Needs to use the message node number field
 *****************************************************/
 void write_sd_str(const char *file, char message[])
 {
   File e;
   int num;
-  char path[MAX_LENGTH];
+  char path[MAX_FILE];
   memset(path, '\0', sizeof(path));
-  createFilePath(path, getValueAt(message, 1), file);
+  createFilePath(path, "0", file);
 
   e = SD.open(path, FILE_WRITE);
   if (e)
