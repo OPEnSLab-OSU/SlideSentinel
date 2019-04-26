@@ -8,31 +8,38 @@ https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
 future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-calculator-code.html
 
-diagnostic serial routines
 optional force upload 
 set verbosity
-Some testing code. plugs into serial port and emulates node behavior for load testign the system,whether retry's occured and how many, flush messages in the input buffer
+Dont filter for best on every upload, log all data to cycle.txt then iterate through SD and grab the best string and latest state
+Rethink the pertinent data which should be sent
+Tag messages sent from accelerometer wake up, clean up accelerometer data, state data should be the first sent piece of data on wake up 
+
+ROCKBLOCK PCB
+use level shifter IC, verify that all connections are valid, re-wire the board with the new IC, find new voltage regulator
 */
 
 #include "config.h"
 #include "loom_preamble.h"
 #include "wiring_private.h"
 #include "IridiumSBD.h"
-#include "SlideS_parser.h"
+#include "MessageParser.h"
 #include <EnableInterrupt.h>
-#include <CRC32.h>
+#include <MemoryFree.h>
 
 #define DEBUG 1
 #define DEBUG_SD 1
-#define TOGGLE_SATCOM true         //turns SATCOM uploads on or off
-#define FORCE_SATCOM_FAILURE false //forces satcom to always fail for debug purposes
-#define TOGGLE_UPDATES true        //turns on interrupt based Hub configuration
-#define FORCE_UPDATE false         //forces the update routine to occur for testing
+#define TOGGLE_SATCOM true        //turns SATCOM uploads on or off
+#define FORCE_SATCOM_FAILURE true //forces satcom to always fail for debug purposes
+#define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
+#define FORCE_UPDATE false        //forces the update routine to occur for testing
+#define TOGGLE_RETRY false
 #define NODE_NUM 1
 #define NET_AV 19
 #define RING_INDICATOR_PIN A3
 #define IridiumSerial Serial1
-#define NODE_TIMER 20 //for asking the hub when the next upload will occur (min)
+#define NODE_TIMER 20  //for asking the hub when the next upload will occur (min)
+#define MAX_LENGTH 150 //every buffer declared in this program is initialized with this length, Packets longer than 150 will always be dropped
+#define MAX_FILE 30
 
 //RF Communication
 void Serial2_setup();
@@ -45,8 +52,6 @@ bool successfulUpload(const char *message);
 
 //String manipulation
 void append(char *s, char c);
-void serialToOSCmsg(char *osc_string, OSCMessage *msg);
-void oscMsg_to_string(char *osc_string, OSCMessage *msg);
 void PrintMsg(OSCMessage &msg);
 
 //SD Card Logging
@@ -64,12 +69,14 @@ unsigned long retry_timer_prev;
 unsigned long satcom_freq;
 unsigned long retry_freq;
 unsigned long last_wake;
-int retry_count;
+uint16_t failed_count;
+uint16_t retry_count;
+unsigned long message_count;
+const char *folder = "NODE_";
 
 //Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
 Uart Serial2(&sercom1, 13, 10, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);
-CRC32 crc;
 
 /*****************************************************
  * Function: 
@@ -82,8 +89,8 @@ void setup()
   Loom_begin();
   Serial2_setup(); //Serial port for communicating with Freewave radios
   setup_sd();
-  initialize_nodes();
   initRockblock();
+  initialize_nodes();
   getNetwork();
   pinMode(RING_INDICATOR_PIN, INPUT);
 
@@ -94,9 +101,11 @@ void setup()
   update_flag = false;
   str_flag = false;
 
-  satcom_freq = 3;     //number of node messages between satcom uploads
+  satcom_freq = 1 ;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day
   retry_count = 0;
+  failed_count = 0;
+  message_count = 0;
 
   retry_timer_prev = 0;
   retry_timer = millis();
@@ -117,118 +126,66 @@ void loop()
 {
   unsigned long internal_time_cur;
   unsigned long internal_time;
-
+  int count = 0;
+  char messageIn[MAX_LENGTH];
+  memset(messageIn, '\0', sizeof(messageIn));
   diagnose();
 
   if (Serial2.available())
   {
     internal_time_cur = millis();
-
-    //initialize the best string for the wake cycle
-    OSCMessage best("/GPS");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("X");
-    best.add("0"); //initial checksum
-
     while (millis() - internal_time_cur < 5000)
     {
-      OSCMessage messageIN;
-      messageIN.empty();
       char input;
-
       if (Serial2.available())
       {
         if (input = Serial2.read() == (byte)2)
         {
           internal_time = millis();
-          while (millis() - internal_time < 5000) //(input != (byte)4) ||
+          while (millis() - internal_time < 5000)
           {
             if (Serial2.available())
             {
               input = Serial2.read();
-              if (input == 4)
+              count++; //for preventing
+              if (input == 4 || count == MAX_LENGTH - 1)
               {
                 str_flag = true;
                 break;
               }
-              messageIN.fill(input);
+              append(messageIn, input);
             }
           }
         }
+        count = 0;
         internal_time_cur = millis();
       }
 
-      //TRIM
-      if (str_flag)
-      {
-        if (get_address_string(&messageIN).equals("/GPS"))
-        {
-          if (verifyOSC(&messageIN, 11))
-          {
-            compareNMEA(&messageIN, &best);
-          }
-          else
-          {
-            messageIN.empty();
-            str_flag = false;
-          }
-        }
-        else if (get_address_string(&messageIN).equals("/State"))
-        {
-          if (!verifyOSC(&messageIN, 6))
-          {
-            messageIN.empty();
-            str_flag = false;
-          }
-        }
-        else
-        {
-          messageIN.empty();
-          str_flag = false;
-        }
-      }
-
-      //if a message was successfully collected dispatch its contents
-      if (str_flag)
-      {
-        if (!messageIN.hasError())
-        {
-          messageIN.dispatch("/GPS", gpsProc);
-          messageIN.dispatch("/State", stateProc);
-        }
-      }
-      str_flag = false;
+      //if a message was successfully collected dispatch its contents HERE
+      if (verify(messageIn))
+        processData(messageIn);
+      memset(messageIn, '\0', sizeof(messageIn));
     }
 
-    //After a completed send cycle dispatch the highest quality positional string
-    if (!best.hasError() && !(get_data_value(&best, 1).equals("X"))) //send the best string to the SD make sure it is initialized
-    {
-      best.dispatch("/GPS", gpsBest);
-      last_wake = millis(); //for determining when the next satcom upload will occur
-    }
-    serialFlush(); //added
+    //when done receiving all data for the wake cycle process the best captured position
+    satcom_count++;
+    last_wake = millis(); //for determining when the next satcom upload will occur
+    serialFlush();
   }
 
   //check to make a satcom uplaod
   if ((satcom_count >= satcom_freq) && TOGGLE_SATCOM)
   {
-    attemptSend(false);
+    attemptSend();
     check_retry();
     satcom_count = 0;
     serialFlush();
   }
 
   //attempt retry
-  if (is_retry && ((retry_timer - retry_timer_prev) > retry_freq) && TOGGLE_SATCOM)
+  if (TOGGLE_RETRY && (is_retry && ((retry_timer - retry_timer_prev) > retry_freq) && TOGGLE_SATCOM))
   {
-    attemptSend(true);
+    attemptSend();
 
 #if DEBUG
     Serial.println("ATTEMPTING RETRY");
@@ -256,16 +213,6 @@ void loop()
 
 /*****************************************************
  * Function: 
- * Description:
-*****************************************************/
-uint32_t functionHandler(String cmd)
-{
-  uint32_t value = strtoul(cmd.c_str(), NULL, 10);
-  return value;
-}
-
-/*****************************************************
- * Function: 
  * Description: 5 for state
 *****************************************************/
 void diagnose()
@@ -275,7 +222,8 @@ void diagnose()
   {
     //make function
     char status[50];
-    String str_status; 
+    String str_status;
+    File e;
     memset(status, '\0', sizeof(status));
     int nextUpload = (millis() - last_wake);
     int minutes = (nextUpload / 60000);
@@ -284,38 +232,49 @@ void diagnose()
     switch (cmd)
     {
     case '0':
+      Serial.print("Free Memory: ");
+      Serial.println(freeMemory(), DEC);
+      break;
+    case '1':
       Serial.print("Satcom count: ");
       Serial.println(satcom_count);
       break;
-    case '1':
+    case '2':
       Serial.print("Satcom frequency: ");
       Serial.println(satcom_freq);
       break;
-    case '2':
+    case '3':
       Serial.print("is_retry: ");
       Serial.println(is_retry);
       break;
-    case '3':
+    case '4':
       Serial.print("Retry count: ");
       Serial.println(retry_count);
       break;
-    case '4':
+    case '5':
       Serial.print("Last Message: ");
       Serial.print(minutes);
       Serial.print(":");
       Serial.println(seconds);
       break;
-    case '5':
+    case '6':
       Serial.print("Messages remaining to be retrieved: ");
       Serial.println(modem.getWaitingMessageCount());
       break;
-    case '6':
+    case '7':
       collectStatus(status);
       str_status = String(status);
       break;
-    case '7':
+    case '8':
       Serial.println("Forcing satcom...");
       satcom_count = satcom_freq;
+      break;
+    case '9':
+      Serial.println("checking sd...");
+      e = SD.open(folder, FILE_READ);
+      Serial.print("Value of e: ");
+      Serial.println(e);
+      e.close();
       break;
     default:
       Serial.println("Invalid command.");
@@ -327,125 +286,51 @@ void diagnose()
  * Function: 
  * Description: 5 for state
 *****************************************************/
-bool verifyOSC(OSCMessage *current, uint8_t numFields)
+bool verify(char messageIn[])
 {
-  int count = 0;
-  char buffer[150];
-  char newMsg[150];
-  memset(buffer, '\0', sizeof(buffer));
-  memset(newMsg, '\0', sizeof(newMsg));
-  //Generalize the checksum tto handle both state and GPS data
-
-  String raw = get_data_value(current, numFields - 1);
-  uint32_t checksum = functionHandler(raw);
-
-#if DEBUG
-  Serial.println();
-  Serial.println("Message to verify: ");
-  PrintMsg(*current);
-  Serial.print("CHECKSUM: ");
-  Serial.println(checksum);
-#endif
-
-  oscMsg_to_string(buffer, current);
-  for (int i = 0; i < strlen(buffer); i++)
+  if (str_flag)
   {
-    if (buffer[i] == ',')
+    str_flag = false;
+    if (strcmp(getValueAt(messageIn, 0), "/GPS") == 0)
     {
-      count++;
-      if (count == numFields)
-        break;
+      if (verifyMsg(messageIn, 11))
+      {
+        message_count++;
+        return true;
+      }
+      else
+      {
+        failed_count++;
+        memset(messageIn, '\0', sizeof(messageIn));
+      }
     }
-    newMsg[i] = buffer[i];
-    crc.update(buffer[i]);
+    else if (strcmp(getValueAt(messageIn, 0), "/State") == 0)
+    {
+      if (verifyMsg(messageIn, 6))
+      {
+        message_count++;
+        return true;
+      }
+      else
+      {
+        failed_count++;
+        memset(messageIn, '\0', sizeof(messageIn));
+      }
+    }
+    else
+    {
+      failed_count++;
+      memset(messageIn, '\0', sizeof(messageIn));
+    }
   }
-  uint32_t test_checksum = crc.finalize();
-
-#if DEBUG
-  Serial.print("Calculated checksum: ");
-  Serial.println(test_checksum);
-#endif
-  crc.reset();
-
-  //packet intact
-  if (test_checksum == checksum)
-  {
-#if DEBUG
-    Serial.println("Checksums match, dropping checksum");
-#endif
-    current->empty();
-    stringToOSCmsg(newMsg, current);
-    return true;
-  }
-
-#if DEBUG
-  Serial.println("Checksums don't match, tossing string");
-#endif
   return false;
 }
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description:  Interrupt service routine for ring indicator interrupts
+ *               ring indicator is a low pulse, followed by another low pulse 10 seconds later
 *****************************************************/
-void compareNMEA(OSCMessage *current, OSCMessage *best)
-{
-  char buf[5];
-
-#if DEBUG
-  Serial.println();
-  Serial.println("COMPARING: ");
-  PrintMsg(*current);
-  Serial.println("---- AND ----");
-  PrintMsg(*best);
-  Serial.println();
-#endif
-
-  //necessary to go through character conversion becuase the value is stored in the OSC message as a string
-  memset(buf, '\0', sizeof(buf));
-  get_data_value(current, 7).toCharArray(buf, sizeof(buf));
-  char modeCur = buf[0];
-  memset(buf, '\0', sizeof(buf));
-
-  get_data_value(best, 7).toCharArray(buf, sizeof(buf));
-  char modeBest = buf[0];
-  memset(buf, '\0', sizeof(buf));
-
-#if DEBUG
-  Serial.print("Value of current mode: ");
-  Serial.println(modeCur);
-  Serial.print("Value of best mode: ");
-  Serial.println(modeBest);
-#endif
-
-  if (stringRank(modeCur) > stringRank(modeBest))
-  {
-    best->empty();
-    deep_copy_message(current, best);
-
-#if DEBUG
-    Serial.println("New best position: ");
-    PrintMsg(*best);
-    Serial.println('\n');
-#endif
-  }
-  else if (stringRank(modeCur) == stringRank(modeBest))
-  {
-    if (get_data_value(current, 9).toFloat() > get_data_value(best, 9).toFloat())
-    {
-      best->empty();
-      deep_copy_message(current, best);
-#if DEBUG
-      Serial.println("Current string has a higher RTK ratio: ");
-      PrintMsg(*best);
-      Serial.println('\n');
-#endif
-    }
-  }
-}
-
-/* Interrupt service routine for ring indicator interrupts*/
-//ring indicator is a low pulse, followed by another low pulse 10 seconds later
 void toggleUpdate()
 {
   static uint8_t low_count = 0;
@@ -463,53 +348,64 @@ void toggleUpdate()
 }
 
 /*************************************
- * The one bug I kow of in this code, occurs if the SD fails to open on upload. 
- * This will cause another node wake cycle to be written to the best data folder. 
- * This actually is not a critical bug at all but something to keep in mind for refractoring
+ * 
+ * 
  *************************************/
-void attemptSend(bool bulk)
+//Tool this code to continue creating packets until every node on the network has had its data logged
+//For each node in the network
+//  find the best GPS and latest state and append it to the packet up ot 340 bytes
+void attemptSend()
 {
-  String node_num;
-  char packet[340];
-  char buf[100];
-  memset(packet, '\0', sizeof(packet));
-  memset(buf, '\0', sizeof(buf));
-
   bool packetized = false;
-  if (bulk)
-    packetized = bulkUpload(packet, "/RETRY.TXT");
-  else
-    packetized = createPacket(packet, "/CYCLE.TXT");
+  char packet[340];
+  char node_num[2];
+  memset(packet, '\0', sizeof(packet));
 
-  if (packetized && getNetwork()) //bulkUpload(bulk, "/RETRY.TXT")
+  for (int i = 0; i < NODE_NUM; i++)
   {
-#if DEBUG
-    Serial.print("PACKET CREATED: ");
-    Serial.println(packet);
-    Serial.println();
-#endif
+    //nested while loop to ensure that we remain under 340 bytes for the satcom upload
+    memset(node_num, '\0', sizeof(node_num));
+    itoa(i, node_num, 10);
+    packetized = addMsg(packet, node_num, "/CYCLE.TXT");
 
-    if (!FORCE_SATCOM_FAILURE && successfulUpload(packet)) //REMOTE CONFIG TEST
+    if (packetized && getNetwork())
     {
+      if (!FORCE_SATCOM_FAILURE && successfulUpload(packet)) //REMOTE CONFIG TEST
+      {
 #if DEBUG
-      Serial.println("Successfully sent message!");
+        Serial.println("Successfully sent message!");
 #endif
+      }
+      else
+      {
+#if DEBUG
+        Serial.println("Message failed to send.");
+#endif
+        write_to_retry(packet);
+      }
     }
     else
     {
 #if DEBUG
-      Serial.println("Message failed to send.");
+      Serial.println("Network not available or failed to create a packet during this wake cycle, writing to retry folder...");
 #endif
-      node_num = "0";
-      write_to_retry(packet, node_num);
+      write_to_retry(packet);
     }
   }
-  else
+}
+
+/*****************************************************
+ * Function: 
+ * Description:
+*****************************************************/
+void readLine(char buf[], File e)
+{
+  char input;
+  input = e.read();
+  while (input != '\n') // if char not  eol
   {
-    write_to_retry(packet, node_num);
-#if DEBUG
-    Serial.println("Network not available or failed to create a packet during this wake cycle, writing to retry folder...");
-#endif
+    append(buf, input);
+    input = e.read();
   }
 }
 
@@ -517,105 +413,63 @@ void attemptSend(bool bulk)
  * Function: 
  * Description:
 *****************************************************/
-void write_to_retry(char packet[], String node_num)
+void addElem(char msg[], char buf[])
 {
-#if DEBUG
-  Serial.print("FAILED TO SEND, WRITING TO NODE ");
-  Serial.print(node_num);
-  Serial.println(" RETRY FOLDER.");
-#endif
-  char buf[100];
-  char *token = strtok(packet, "#");
-  while (token != NULL)
-  {
-    snprintf(buf, sizeof(buf), "%s", token);
-    write_sd_str(node_num, "/RETRY.TXT", buf);
-    memset(buf, '\0', sizeof(buf));
-    token = strtok(NULL, "#");
-  }
+  if(strlen(msg)!=0)
+    strcat(msg, "#");
+  strcat(msg, buf);
 }
 
 /*****************************************************
- * Function: 
- * Description:
+ * Function:    Takes a node number and file name, finds the latest and highest quality position for the given folder
+ * Description: 
 *****************************************************/
-bool createPacket(char *buf, const char *file)
+//Tool this code to create packets for every node on the network up to 340 bytes
+bool addMsg(char *msg, char *node_num, const char *file)
 {
-  String folder;
-  String gpsStr;
   File e;
+  char cur[MAX_LENGTH];
+  char path[MAX_FILE];
+  char best[MAX_LENGTH];
+  char latestState[MAX_LENGTH];
+  memset(latestState, '\0', sizeof(latestState));
+  memset(best, '\0', sizeof(best));
+  memset(cur, '\0', sizeof(cur));
+  createFilePath(path, node_num, file);
 
-  char stateBuf[100];
-  memset(stateBuf, '\0', sizeof(stateBuf));
+  e = SD.open(path, FILE_READ);
 
-  OSCMessage latestState;
-  latestState.empty();
-
-  OSCMessage cur;
-  cur.empty();
-
-  OSCMessage best("/GPS");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("X");
-  best.add("0");
-
-  String node = "0";
-  folder = "NODE_" + node;
-  e = SD.open(folder + file, FILE_READ);
-  if (e.size() > 0)
+  if (e && e.size() > 0)
   {
     while (e.available())
     {
-      gpsStr = e.readStringUntil('\n');
-      gpsStr.toCharArray(buf, gpsStr.length());
-      stringToOSCmsg(buf, &cur);
-      if (get_address_string(&cur).equals("/GPS")) //check ifthe string is a state message
+      readLine(cur, e);
+      if (strcmp(getValueAt(cur, 0), "/GPS") == 0)
+        compareNMEA(cur, best);
+      else if (strcmp(getValueAt(cur, 0), "/State") == 0)
       {
-        compareNMEA(&cur, &best);
+        memset(latestState, '\0', sizeof(latestState));
+        strcpy(latestState, cur);
       }
-      else if (get_address_string(&cur).equals("/State"))
-      {
-        latestState.empty();
-        deep_copy_message(&cur, &latestState); //the lower the state strings are in the file the more recent, after encountering a new one simply update the state
-      }
-      cur.empty();
-      memset(buf, '\0', sizeof(buf));
+      memset(cur, '\0', sizeof(cur));
     }
 
-    oscMsg_to_string(buf, &best);
+    addElem(msg, best);
+    addElem(msg, latestState);
 
 #if DEBUG
-    Serial.println("BEST STRING FOR THE CURRENT UPLOAD CYCLE");
-    Serial.println(buf);
+    Serial.print("PACKET CREATED: ");
+    Serial.println(msg);
+    Serial.println();
 #endif
 
-    if (latestState.bytes() > 8) //check if we have a state string, if so concatenate the state string with the best GPS string for this satcom cycle, an empty OSC string apparantly has 8 bytes
-    {
-      oscMsg_to_string(stateBuf, &latestState);
-
-#if DEBUG
-      Serial.println("BEST LATEST FOR THE CURRENT UPLOAD CYCLE");
-      Serial.println(stateBuf);
-#endif
-
-      strcat(buf, "#");
-      strcat(buf, stateBuf);
-      memset(stateBuf, '\0', sizeof(stateBuf));
-    }
-
-    SD.remove(folder + file);
-    e = SD.open(folder + "/CYCLE.TXT", FILE_WRITE);
+    e.close();
+    SD.remove(path); //Fix ME
+    e = SD.open(path, FILE_WRITE);
     if (e)
     {
       e.close();
     }
-
     return true;
   }
   else
@@ -624,97 +478,23 @@ bool createPacket(char *buf, const char *file)
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description: fix this function, verify that all node messages are valid, test retry routine!!!
 *****************************************************/
-bool bulkUpload(char *buf, const char *file)
+void write_to_retry(char packet[])
 {
-  String folder;
-  String gpsStr;
-  File e, t;
-
-  char buffer[100];
-  memset(buffer, '\0', sizeof(buffer));
+#if DEBUG
+  Serial.println("FAILED TO SEND, WRITING TO NODE 0 RETRY FOLDER.");
+#endif
+  char buf[MAX_LENGTH];
   memset(buf, '\0', sizeof(buf));
-
-  String node = "0";
-  folder = "NODE_" + node;
-
-  t = SD.open(folder + "/TEMP.TXT", FILE_WRITE);
-  if (!t)
+  char *token = strtok(packet, "#");
+  while (token != NULL)
   {
-    return false;
+    snprintf(buf, sizeof(buf), "%s", token);
+    write_sd_str("/RETRY.TXT", buf);
+    memset(buf, '\0', sizeof(buf));
+    token = strtok(NULL, "#");
   }
-
-  e = SD.open(folder + file, FILE_READ);
-  if (e.size() > 0) //redundant logic Refractor
-  {
-    if (e)
-    {
-      while (e.available())
-      {
-        gpsStr = e.readStringUntil('\n');
-        if ((strlen(buf) + gpsStr.length() + 1) >= 340)
-        {
-          t.println(gpsStr);
-        }
-        else
-        {
-          strcat(buf, "#");                           //place the delimiter
-          gpsStr.toCharArray(buffer, sizeof(buffer)); //test that this works
-          strcat(buf, buffer);
-          memset(buffer, '\0', sizeof(buffer));
-        }
-      }
-      e.close();
-      t.close();
-    }
-    else
-    {
-      t.close();
-      return false;
-    }
-  }
-
-  SD.remove(folder + file);                       //remove the old retry folder
-  e = SD.open(folder + "/RETRY.TXT", FILE_WRITE); //create a new retry folder
-  if (e)
-  {
-#if DEBUG
-    Serial.println("New copy of " + folder + "/RETRY.TXT created...");
-#endif
-  }
-  else
-  { //it is very important that I verify that the program can recover from this, it will create this folder whenever it uploads, so I think im good as long as I do not delete the contents of temp
-    t.close();
-    return false;
-  }
-
-  //Create a temp file so I can copy the retry file over, delete it, then create a new retry file copy the contents of temp over. Terribly inefficient work around becuase file renaming is not supported.
-  t = SD.open(folder + "/TEMP.TXT", FILE_READ);
-  if (!t)
-  {
-    return false;
-  }
-
-  if (t.size() > 0)
-  {
-#if DEBUG
-    Serial.println("Copying data from TEMP over to the new RETRY file");
-#endif
-    memset(buffer, '\0', sizeof(buffer));
-    while (t.available())
-    {
-      gpsStr = t.readStringUntil('\n');
-      gpsStr.trim();
-      gpsStr.toCharArray(buffer, sizeof(buffer)); //find where a new byte is being added!!!
-      write_sd_str(node, "/RETRY.TXT", buffer);
-      memset(buffer, '\0', sizeof(buffer));
-    }
-  }
-  SD.remove(folder + "/TEMP.TXT");
-  e.close();
-  t.close();
-  return true;
 }
 
 /*****************************************************
@@ -746,11 +526,14 @@ void collectStatus(char status[])
   File root = SD.open("/");
   sprintf(status, "%d", satcom_count);
   strcat(status, ",");
-  sprintf(status+strlen(status), "%d", satcom_freq);
+  sprintf(status + strlen(status), "%d", satcom_freq);
   strcat(status, ",");
-  SDsize(root, size);
-  root.close();
-  sprintf(status + strlen(status), "%d", size);
+  if (root)
+  {
+    SDsize(root, size);
+    root.close();
+    sprintf(status + strlen(status), "%d", size);
+  }
   nextUpload = (millis() - last_wake);
   int minutes = (nextUpload / 60000);
   int seconds = (nextUpload - (minutes * 60000)) / 1000;
@@ -758,6 +541,13 @@ void collectStatus(char status[])
   sprintf(status + strlen(status), "%d", minutes);
   strcat(status, ":");
   sprintf(status + strlen(status), "%d", seconds);
+  strcat(status, ",");
+  int mem = freeMemory();
+  sprintf(status + strlen(status), "%d", mem);
+  strcat(status, ",");
+  sprintf(status + strlen(status), "%d", message_count);
+  strcat(status, ",");
+  sprintf(status + strlen(status), "%d", failed_count);
 #if DEBUG
   String str_status = String(status);
   Serial.print("HUB STATUS: ");
@@ -782,7 +572,6 @@ void update()
   err = modem.getSignalQuality(signalQuality);
   if (signalQuality > 0 && getNetwork())
   {
-    //err = modem.sendReceiveSBDBinary(buffer, bufferSize, buffer, bufferSize);
     collectStatus(status);
     err = modem.sendReceiveSBDText(status, (uint8_t *)buffer, bufferSize);
     if (err == ISBD_SUCCESS && checkBuf(buffer))
@@ -791,13 +580,17 @@ void update()
       if (ret > 0 && ret < 672) //minimum satcom uploads of one upload per week
       {
         satcom_freq = ret;
+#if Debug
         Serial.print("System will now be sending satcom uploads every ");
         Serial.print(ret);
         Serial.println(" messages");
+#endif
       }
+#if DEBUG
       Serial.println();
       Serial.print("Messages remaining to be retrieved: ");
       Serial.println(modem.getWaitingMessageCount());
+#endif
     }
   }
   //force a string upload
@@ -860,16 +653,19 @@ bool successfulUpload(const char *message)
 *****************************************************/
 void check_retry()
 {
-  String folder;
   File e;
-  String node = "0"; //REFRACTOR
-  folder = "NODE_" + node;
-  e = SD.open(folder + "/RETRY.TXT", FILE_READ);
+  char path[MAX_FILE];
+
+  //will need to be eventually tooled to scan through directories for each node on the network
+  createFilePath(path, "0", "/RETRY.TXT"); //FIX ME
+
+  e = SD.open(path, FILE_READ);
   if (e.size() > 0)
     is_retry = true;
   else
     is_retry = false;
 
+  e.close();
 #if DEBUG
   if (is_retry)
     Serial.println("RETRY TOGGLED ON");
@@ -882,8 +678,9 @@ void check_retry()
 *****************************************************/
 void initialize_nodes()
 {
-  Serial.println("Creating directories for each node in the network...");
+  //only use of strings and dynamic memory allocation occurs in this initialization routine
   String folder;
+  Serial.println("Creating directories for each node in the network...");
   File e;
   for (int i = 0; i < NODE_NUM; i++)
   {
@@ -1015,7 +812,7 @@ uint8_t getSignalQuality()
  * Function: 
  * Description:
 *****************************************************/
-void append(char *s, char c)
+void append(char s[], char c)
 {
   int len = strlen(s);
   s[len] = c;
@@ -1026,76 +823,48 @@ void append(char *s, char c)
  * Function: 
  * Description:
 *****************************************************/
-void gpsProc(OSCMessage &msg)
+void processData(char msg[])
 {
 #if DEBUG
-  PrintMsg(msg);
+  Serial.println();
+  print_Msg(msg);
 #endif
-  String node_num = "0";
-  char write_buffer[100];
-  memset(write_buffer, '\0', sizeof(write_buffer));
-  oscMsg_to_string(write_buffer, &msg);
-  write_sd_str(node_num, "/GPS_LOGS.TXT", write_buffer);
-  msg.empty();
+  //cycle.txt contains all data for the current satcom upload cycle.
+  write_sd_str("/CYCLE.TXT", msg);
+  if (strcmp(getValueAt(msg, 0), "/GPS") == 0)
+    write_sd_str("/GPS_LOGS.TXT", msg);
+  else if (strcmp(getValueAt(msg, 0), "/State") == 0)
+    write_sd_str("/S_LOGS.TXT", msg);
 }
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description: 
 *****************************************************/
-void gpsBest(OSCMessage &msg)
+void createFilePath(char path[], char *node_num, const char *file)
 {
-#if DEBUG
-  Serial.println();
-  Serial.println("BEST STRING FOR UPLOAD CYCLE: ");
-  PrintMsg(msg);
-#endif
-  String node_num = "0";
-  char write_buffer[100];
-  memset(write_buffer, '\0', sizeof(write_buffer));
-  oscMsg_to_string(write_buffer, &msg);
-  write_sd_str(node_num, "/CYCLE.TXT", write_buffer);
-  satcom_count++;
-  msg.empty();
-}
-
-/*****************************************************
- * Function:         
- * Description:   
-*****************************************************/
-void stateProc(OSCMessage &msg)
-{
-#if DEBUG
-  Serial.println();
-  PrintMsg(msg);
-#endif
-  String node_num = "0";
-  char write_buffer[100];
-  memset(write_buffer, '\0', sizeof(write_buffer));
-  oscMsg_to_string(write_buffer, &msg);
-  write_sd_str(node_num, "/S_LOGS.TXT", write_buffer);
-  memset(write_buffer, '\0', sizeof(write_buffer)); //prevent newline from making spaces in write_sd
-  oscMsg_to_string(write_buffer, &msg);
-  write_sd_str(node_num, "/CYCLE.TXT", write_buffer);
-  msg.empty();
+  strcpy(path, folder);
+  strcat(path, node_num);
+  strcat(path, file);
 }
 
 /*****************************************************
  * Function: 
- * Description:
+ * Description: 
 *****************************************************/
-void write_sd_str(String node, const char *file, char message[])
+void write_sd_str(const char *file, char message[])
 {
-  String folder;
   File e;
-  int num = 0;
+  int num;
+  char path[MAX_LENGTH];
+  memset(path, '\0', sizeof(path));
+  createFilePath(path, getValueAt(message, 1), file);
 
-  folder = "NODE_" + node;
-  e = SD.open(folder + file, FILE_WRITE);
+  e = SD.open(path, FILE_WRITE);
   if (e)
   {
-    append(message, '\n');
     num = e.write(message, strlen(message));
+    e.write("\n", 1);
     e.close();
 
 #if DEBUG
@@ -1109,58 +878,6 @@ void write_sd_str(String node, const char *file, char message[])
       Serial.println("Error writing to SD card");
 #endif
   }
-}
-
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
-void oscMsg_to_string(char *osc_string, OSCMessage *msg)
-{
-  char data_type;
-  data_value value;
-  int addr_len = 40;
-  char addr_buf[addr_len];
-
-  memset(osc_string, '\0', sizeof(osc_string));
-  memset(addr_buf, '\0', addr_len);
-  msg->getAddress(addr_buf, 0);
-  strcat(osc_string, addr_buf);
-
-  for (int j = 0; j < msg->size(); j++)
-  {
-    data_type = msg->getType(j);
-    switch (data_type)
-    {
-    case 'f':
-      value.f = msg->getFloat(j);
-      snprintf(addr_buf, addr_len, ",f%lu", value.u);
-      strcat(osc_string, addr_buf);
-      break;
-
-    case 'i':
-      value.i = msg->getInt(j);
-      snprintf(addr_buf, addr_len, ",i%lu", value.u);
-      strcat(osc_string, addr_buf);
-      break;
-
-    case 's':
-      char data_buf[40];
-      msg->getString(j, data_buf, sizeof(data_buf));
-      snprintf(addr_buf, addr_len, ",s%s", data_buf);
-      strcat(osc_string, addr_buf);
-      break;
-
-    default:
-      if (data_type != '\0')
-      {
-        LOOM_DEBUG_Println("Invalid message arg type");
-      }
-      break;
-    }
-  }
-  if (msg != NULL)
-    strcat(osc_string, " ");
 }
 
 /*****************************************************
@@ -1191,60 +908,6 @@ void update_time()
 void SERCOM1_Handler()
 {
   Serial2.IrqHandler();
-}
-
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
-void stringToOSCmsg(char *osc_string, OSCMessage *bndl)
-{
-  bndl->empty();
-  data_value value_union;
-  char buf[strlen(osc_string) + 1];
-  char *p = buf, *p2 = NULL;
-  char *token = NULL, *msg_token = NULL;
-  strcpy(buf, osc_string);
-  OSCMessage *msg;
-  msg_token = strtok_r(p, " ", &p);
-  while (msg_token != NULL & strlen(msg_token) > 0)
-  {
-    p2 = msg_token;
-    token = strtok_r(p2, ",", &p2);
-    msg = &(bndl->setAddress(token));
-    token = strtok_r(NULL, ",", &p2);
-    uint8_t count = 0;
-
-    while (token != NULL & strlen(token) > 0)
-    {
-      if (token[0] == 'f')
-      {
-        value_union.u = strtoul(&token[1], NULL, 0);
-        msg->add(value_union.f);
-      }
-      else if (token[0] == 'i')
-      {
-        value_union.u = strtoul(&token[1], NULL, 0);
-        msg->add(value_union.i);
-      }
-      else if (token[0] == 's')
-      {
-        msg->add(&token[1]);
-      }
-      token = strtok_r(p2, ",", &p2);
-      count++;
-    }
-    msg_token = strtok_r(p, " ", &p);
-  }
-}
-
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
-void PrintMsg(OSCMessage &msg)
-{
-  print_message(&msg);
 }
 
 /*****************************************************

@@ -10,7 +10,6 @@
 void GPSToFiles(char *, int *, int, HardwareSerial &);
 bool verify(char *);
 void getFieldContents(char *, char *, uint8_t);
-void sendMessage(OSCMessage *, HardwareSerial &);
 int stringRank(char);
 void oscMsg_to_string(char *osc_string, OSCMessage *msg);
 
@@ -18,7 +17,9 @@ int sent = 0;
 CRC32 crc;
 // fill the OSCMessage in the order UTC, Lat, Lon, Alt, Mode, Age, Ratio
 // nmea string must be PSTI030
-void fillGPSMsgFormat(char *, OSCMessage &);
+void printMsg(char msg[]);
+void sendMessage(char msg[], HardwareSerial &);
+void fillGPSMsgFormat(char *pstiThirtyString, char msg[]);
 
 bool processGPS(char *filename, int fromNode, HardwareSerial &serialPort)
 {
@@ -72,6 +73,8 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 	int len;
 	memset(field, '\0', FILL_SIZE + 1);
 	File temp;
+	char msg[200];
+	memset(msg, '\0', sizeof(msg));
 	// Check that nmea string is in correct format
 
 	if (!verify(nmeaString))
@@ -116,12 +119,18 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 				*bestStringPrev = quality;
 				Serial.print("sending packet: ");
 				Serial.println(sent++);
-				OSCMessage msg("/GPS"); // address
-				msg.add((int32_t)fromNode);
+				strcat(msg, "/GPS");
+				strcat(msg, ",");
+				strcat(msg, "0");
+				strcat(msg, ",");
 				fillGPSMsgFormat(nmeaString, msg);
 				Serial.println(nmeaString);
-				print_message(&msg, 1);
-				sendMessage(&msg, serialPort);
+				Serial.print("Length: ");
+				Serial.println(strlen(msg));
+				printMsg(msg);
+				Serial.print("Length: ");
+				Serial.println(strlen(msg));
+				sendMessage(msg, serialPort);
 				delay(50);
 			}
 		}
@@ -130,18 +139,30 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 	memset(field, '\0', FILL_SIZE + 1);
 }
 
+void printMsg(char* msg)
+{
+	char buf[150];
+	memset(buf, '\0', sizeof(buf));
+	strcpy(buf, msg);
+	uint8_t count = 0;
+	char *token = strtok(buf, ",");
+	while (token != NULL)
+	{
+		Serial.print(count);
+		Serial.print(": \t");
+		Serial.println(token);
+		token = strtok(NULL, ",");
+		count++;
+	}
+}
 
-void addChecksum(OSCMessage &msg)
+void addChecksum(char msg[])
 {
 	char sum[20];
 	memset(sum, '\0', sizeof(sum));
-	char buffer[120];
-	memset(buffer, '\0', sizeof(buffer));
-	//convert the OSC message to a string, produce the checksum and append to message
-	oscMsg_to_string(buffer, &msg);
-	for (uint8_t i = 0; i < strlen(buffer) - 1; i++)
+	for (uint8_t i = 0; i < strlen(msg) - 1; i++)
 	{
-		crc.update(buffer[i]);
+		crc.update(msg[i]);
 	}
 	uint32_t checksum = crc.finalize();
 	crc.reset();
@@ -150,37 +171,47 @@ void addChecksum(OSCMessage &msg)
 	Serial.print("CHECKSUM: ");
 	Serial.println(checksum);
 #endif
-
 	String check = String(checksum);
 	check.toCharArray(sum, sizeof(sum));
-	msg.add((const char *)sum);
+	strcat(msg, sum);
+	Serial.print("Sum: ");
+	Serial.println(sum);
 }
 
 ///GPS,i0,s115954.000,s0000.0000000,s00000.0000000,s0.000,sN,s0.0,s0.0
 // fill the OSCMessage in the order UTC, Lat, N/S, Lon, E/W, Alt, Mode, Age, Ratio
 // nmea string must be PSTI030
-void fillGPSMsgFormat(char *pstiThirtyString, OSCMessage &msg)
+void fillGPSMsgFormat(char *pstiThirtyString, char msg[])
 {
 	char toFill[FILL_SIZE + 1];
 	memset(toFill, '\0', FILL_SIZE + 1);
 	getFieldContents(pstiThirtyString, toFill, 2);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 4);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 5);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 6);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 7);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 8);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 13);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 14);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	getFieldContents(pstiThirtyString, toFill, 15);
-	msg.add((const char *)toFill);
+	strcat(msg, toFill);
+	strcat(msg, ",");
 	addChecksum(msg);
 }
 
@@ -257,10 +288,16 @@ int stringRank(char indicator)
 	}
 }
 
-void sendMessage(OSCMessage *output, HardwareSerial &serialPort)
+void sendMessage(char msg[], HardwareSerial &serialPort)
 {
 	serialPort.write(byte(2)); // start of text
-	output->send(serialPort);
+	for (int i = 0; i < strlen(msg); i++)
+	{
+		Serial.print(msg[i]);
+		serialPort.write(msg[i]);
+	}
+	Serial.println();
+	Serial.println("Done");
 	serialPort.write(byte(4)); // End of transmission
 }
 

@@ -70,7 +70,7 @@ void mmaSetupSlideSentinel();
 // Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
 #define RTC_WAKE_PERIOD 30      // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
 #define STANDARD_WAKE 360     // Length of time to take measurements under periodic wake condition,     5 mines in minutes
-#define ALERT_WAKE 360          // Length of time to take measurements under acceleration wake condition
+#define ALERT_WAKE 360         // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
@@ -634,6 +634,8 @@ void resetFlags() {
 }
 
 void sendState(Adafruit_MMA8451 device){
+  char msg [150];
+  memset(msg, '\0', sizeof(msg));  
   String reading;
   int raw;
   float voltage;
@@ -641,29 +643,33 @@ void sendState(Adafruit_MMA8451 device){
   memset(buf, '\0', sizeof(buf));         //clear the buffer
   float divider_const = 1.12;
   device.getEvent(&event);
-  OSCMessage msg("/State");   
+  strcat(msg,"/State");
+	strcat(msg, ","); 
   reading = "0";
-  msg.add((char*)reading.c_str());      
+  strcat(msg,reading.c_str());
+	strcat(msg, ",");     
   reading = device.x;
-  msg.add((char*)reading.c_str());      // accel x
+  strcat(msg,reading.c_str());      // accel x
+  strcat(msg, ",");
   reading = device.y;
-  msg.add((char*)reading.c_str());      // accel y
+  strcat(msg,reading.c_str());      // accel y
+  strcat(msg, ",");
   reading = device.z;
-  msg.add((char*)reading.c_str());      // accel z
-  //msg.add(15.0);                        // Temperature standin
-
+  strcat(msg,reading.c_str());      // accel z
+  strcat(msg, ",");
   raw = analogRead(BATTERYPIN);
   raw = map(raw, 0, 4095, 0, 3480);   
   voltage = (raw/1000)*divider_const;  
   snprintf(buf, sizeof(buf), "%f", voltage);
-  msg.add((char*)buf);                    // Battery voltage
+  strcat(msg,buf);                    // Battery voltage
+  strcat(msg, ",");
   //add a checksum to the message
   addChecksum(msg);
   #if DEBUG
     Serial.println();
-    print_message(&msg, 1);
+    printMsg(msg);
   #endif
-  sendMessage(&msg, Serial3);
+  sendMessage(msg, Serial3);
 }
 
 void tryStandby() {
