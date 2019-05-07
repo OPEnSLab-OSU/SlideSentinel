@@ -18,7 +18,7 @@
 #define chipSelect 10 	// Adafruit Feathers use GPIO 10
 						// This can be changed if also using Ethernet 
 						// Featherwing which uses the same CS pin
-
+#define LOOM_DEBUG    1		
 // ================================================================ 
 // ===                        STRUCTURES                        === 
 // ================================================================ 
@@ -81,7 +81,7 @@ void setup_sd()
 	} else {
 		LOOM_DEBUG_Println("done");
 		SD_working = true;
-	}
+	}	
 }
 
 

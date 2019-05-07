@@ -128,8 +128,6 @@ void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSer
 				Serial.print("Length: ");
 				Serial.println(strlen(msg));
 				printMsg(msg);
-				Serial.print("Length: ");
-				Serial.println(strlen(msg));
 				sendMessage(msg, serialPort);
 				delay(50);
 			}
@@ -290,15 +288,16 @@ int stringRank(char indicator)
 
 void sendMessage(char msg[], HardwareSerial &serialPort)
 {
-	serialPort.write(byte(2)); // start of text
+	serialPort.write(byte('*')); // start of text
 	for (int i = 0; i < strlen(msg); i++)
 	{
 		Serial.print(msg[i]);
 		serialPort.write(msg[i]);
 	}
-	Serial.println();
-	Serial.println("Done");
-	serialPort.write(byte(4)); // End of transmission
+	serialPort.write(byte('!')); // End of transmission, pad this with more 4's
+	serialPort.write(byte('!'));
+	serialPort.write(byte('!')); 
+	serialPort.write(byte('!')); 
 }
 
 void oscMsg_to_string(char *osc_string, OSCMessage *msg)

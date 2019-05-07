@@ -127,13 +127,13 @@
 #endif
 
 // --- SD Options ---
-#define is_sd         1	// 1 to enable SD card 
+#define is_sd         0	// 1 to enable SD card 
 #if is_sd == 1
 	// Does NOT automatically save to SD
 	// This works more like a filter than an automator,
 	// with a minimum of sdSaveMinDelay between saves
 	// Uses millis
-	#define sdSaveFilter 1 	// 1 to enable a millis delay to SD 
+	#define sdSaveFilter 0 	// 1 to enable a millis delay to SD 
 	#define sdSaveMinDelay   1  // minimum delay in seconds between saves (only applies sdSaveFilter is 1)
 
 	#define sdBroadcastSave  0  // 1 to broadcast on communication platforms when data is saved to SD, 0 to not 

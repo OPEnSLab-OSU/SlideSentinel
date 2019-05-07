@@ -165,9 +165,11 @@ void Loom_begin()
 
 
 	// Data Logging Platform setups
+	/*
 	#if is_sd == 1
+		Serial.println("setting sd up!!!");
 		setup_sd();
-	#endif
+	#endif*/
 	#if is_pushingbox == 1
 		setup_pushingbox();
 	#endif
