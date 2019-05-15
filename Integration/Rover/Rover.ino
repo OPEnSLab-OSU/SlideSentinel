@@ -31,7 +31,7 @@
 /***************************************
  * Notes on Power consumption: 
  * 
- * Low Power:             4.53 mA nominally
+ * Low Power:             4.53 mA 
  * Polling for position:  ~170 mA
  * Trasmitting:           ~190 mA (Z9-T require power supply which can supply 800mA, radio nominally draws 50mA during tx)
  * Solar Charging:        Provides up to 180 mA current (direct sunlight on a bright day)
@@ -69,7 +69,6 @@ void mmaSetupSlideSentinel();
 #define CELLULAR 0
 
 // Define mode constants
-// serial monitor must be opened before device will start to function in debug mode
 #define RTC_MODE 1 // enable RTC interrupts
 #define SD_WRITE 1 // enable SD card logging
 #define NODE_NUM 0 // ID for node
@@ -77,18 +76,17 @@ void mmaSetupSlideSentinel();
 #define BAUD 115200 // reading and writing occurs at
 
 // ======== Timer periods for different measurement conditions ==========
-// Feel free to edit or change these, be aware of race condition when wake period is longer than WAKE time, device may go to sleep indefinitely (not tested)
-#define RTC_WAKE_PERIOD 30 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 420   // Length of time to take measurements under periodic wake condition,     5 mines in minutes
-#define ALERT_WAKE 420      // Length of time to take measurements under acceleration wake condition
+#define RTC_WAKE_PERIOD 60 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 1200  // Length of time to take measurements under periodic wake condition,     5 mines in minutes
+#define ALERT_WAKE 1200      // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
 // (can possibly use A5 and/or 13, they are defined as UART but unused in this implementation)
-#define ACCEL_EN_PIN A1    // Interrupt driven, connect to switch for toggle
+#define ACCEL_EN_PIN A1    // Interrupt driven, connect to switch for toggle, REMOVE
 #define GPS_EN_PIN A2      // Attach to RESET on relay
-#define ALERT_WAKE_PIN A3  // Attach A3 to int1 on accelerometer
 #define GPS_DISABLE_PIN A4 // Attach to SET on relay
+#define ALERT_WAKE_PIN A3  // Attach A3 to int1 on accelerometer
 #define VBATPIN A7         // Labeled pin 9
 #define RTC_WAKE_PIN 5     // Attach to SQW pin on RTC
 #define SERIAL2_RX 12      // Rx pin for first serial port
@@ -97,15 +95,16 @@ void mmaSetupSlideSentinel();
 #define SERIAL3_TX 6
 #define BATTERYPIN A0 //ADDED
 
-//Holds an NMEA string
+// Holds an NMEA string
 struct nmeaData
 {
   char data[GPS_BUFFER_LEN];
   int len;
 };
 
+// Object instantiation
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-RTC_DS3231 RTC_DS; //  instance of DS3231 RTC
+RTC_DS3231 RTC_DS;            //Rover code does not use Loom RTC implementation
 
 // ======== Hardware Serial Port 2 ==========
 // RX pin 12, TX pin 11, configuring for rover UART
@@ -122,6 +121,7 @@ void SERCOM5_Handler()
   Serial3.IrqHandler();
 }
 
+// Global variables 
 sensors_event_t event;
 struct nmeaData dataIn;
 String accel_data;
@@ -139,6 +139,7 @@ volatile bool accelEnFlag = false;
 volatile bool accelEn;
 volatile bool TimerFlag = false;
 volatile bool RTCFlag = false;
+volatile bool stateSent = false;
 
 volatile int HR = 8;        // Hr of the day we want alarm to go off
 volatile int MIN = 0;       // Min of each hour we want alarm to go off
@@ -221,11 +222,11 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(ALERT_WAKE_PIN), wakeUpAccel, LOW);
   Serial.println("Interrupt attached");
 
-  mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
+  mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //When this register is read it clears the interrupt for the transient detection
   timer = millis();
   count = 0;
-  /*initialize RTC*/
 
+  /*initialize RTC*/
 #if RTC_MODE == 1
   //RTC stuff init//
 #if DEBUG == 1
@@ -643,7 +644,10 @@ void alertFlagCheck()
     Serial.println("Processor wake from accelerometer");
     uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
     mmaPrintIntSRC(dataRead);
-    sendState(mma, true);
+    if(!stateSent){
+      stateSent = true; 
+      sendState(mma, true);
+    }
     accelFlag = false; // reset flag, clear the interrupt
     interruptReset();
     alertFlag = false;
@@ -682,7 +686,7 @@ void resetFlags()
   TakeSampleFlag = false;
 }
 
-void sendState(Adafruit_MMA8451 device, bool accelInt)
+void sendState(Adafruit_MMA8451 device, bool accel)
 {
   char msg[150];
   memset(msg, '\0', sizeof(msg));
@@ -693,7 +697,7 @@ void sendState(Adafruit_MMA8451 device, bool accelInt)
   memset(buf, '\0', sizeof(buf)); //clear the buffer
   float divider_const = 1.12;
   device.getEvent(&event);
-  if (accelInt)
+  if (accel)
     strcat(msg, "/Accel");
   else
     strcat(msg, "/State");
@@ -758,6 +762,7 @@ void tryStandby()
     // ====================== Sleep here and wait for int (accel or RTC) ======================
     USBDevice.attach();
     gps_on();
+    stateSent = false; 
 #if DEBUG == 1
     //digitalWrite(LED_BUILTIN, HIGH);
     delay(5000); // give user 5s to close and reopen serial monitor!

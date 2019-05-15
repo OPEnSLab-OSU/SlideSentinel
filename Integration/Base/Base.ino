@@ -1,92 +1,78 @@
-/********************** PROGRAM DEXCRIPTION *********************
- 
- ****************************************************************/
-
 /*
+    Title:          Slide Sentinel Base Station
+    Last modified:  May 10th, 2019 
+    Author:         Kamron Ebrahimi
+
+    Components: 
+    - Adafruit Feather M0 Adalogger
+    - Navspark S2525F8-GL-RTK EVB 
+    - Rock Seven RockBLOCK+
+    - 16 GB microSD card (industrial rated)
+    - Freewave Z9-T 
+
+
 IMPORTANT URL'S:
 https://rockblock.rock7.com/Operations
 https://postproxy.azurewebsites.net
-future development: http://engineeringnotes.blogspot.com/2015/01/nmea-checksum-calculator-code.html
 
-optional force upload 
-set verbosity
-Dont filter for best on every upload, log all data to cycle.txt then iterate through SD and grab the best string and latest state
-Rethink the pertinent data which should be sent
-Tag messages sent from accelerometer wake up, clean up accelerometer data, state data should be the first sent piece of data on wake up 
-
-ROCKBLOCK PCB
-use level shifter IC, verify that all connections are valid, re-wire the board with the new IC, find new voltage regulator
 */
 
 #include <SD.h>
 #include <SPI.h>
-#include "wiring_private.h"
-#include "IridiumSBD.h"
-#include "MessageParser.h"
+#include <wiring_private.h>
+#include <IridiumSBD.h>
 #include <EnableInterrupt.h>
 #include <MemoryFree.h>
+#include <Adafruit_SleepyDog.h>
+#include "MessageParser.h"
 
 #define DEBUG 1
 #define DEBUG_SD 1
-#define TOGGLE_SATCOM true        //turns SATCOM uploads on or off
+#define TOGGLE_SATCOM true         //turns SATCOM uploads on or off
 #define FORCE_SATCOM_FAILURE false //forces satcom to always fail for debug purposes
-#define TOGGLE_UPDATES true       //turns on interrupt based Hub configuration
-#define FORCE_UPDATE false        //forces the update routine to occur for testing
+#define TOGGLE_UPDATES true        //turns on interrupt based Hub configuration
+#define FORCE_UPDATE false         //forces the update routine to occur for testing
 #define TOGGLE_RETRY true
+
 #define NODE_NUM 1
 #define NET_AV 19
 #define RING_INDICATOR_PIN A3
 #define IridiumSerial Serial1
-#define NODE_TIMER 20  //for asking the hub when the next upload will occur (min)
 #define MAX_LENGTH 150 //every buffer declared in this program is initialized with this length, Packets longer than 150 will always be dropped
 #define MAX_FILE 30
 
-//RF Communication
-void Serial2_setup();
-
-//Satcom
-void initRockblock();
-uint8_t getSignalQuality();
-uint8_t getNetwork();
-bool successfulUpload(const char *message);
-
-//String manipulation
-void append(char *s, char c);
-
-//SD Card Logging
-void initialize_nodes();
-
-//Globals
+// Global variable declarations
 bool is_retry;
 volatile bool update_flag;
 bool str_flag;
 bool wake_complete;
-unsigned long satcom_count;
-unsigned long retry_timer;
-unsigned long retry_timer_prev;
-unsigned long satcom_freq;
-unsigned long retry_freq;
-unsigned long last_wake;
+uint16_t accel_count;
 uint16_t failed_count;
 uint16_t retry_count;
-unsigned long message_count;
+uint16_t satcom_count;
+uint16_t message_count;
+uint8_t satcom_freq;
+unsigned long retry_timer;
+unsigned long retry_timer_prev;
+unsigned long retry_freq;
+unsigned long last_wake;
 const char *folder = "NODE_";
 
-//Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
+// Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
 Uart Serial2(&sercom1, 13, 4, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+
+// Object instantiation
 IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void setup()
 {
-  Serial.begin(115200); //Opens the main serial port to communicate with the computer
+#if DEBUG
+  Serial.begin(115200);
+#endif
 
-  //Loom_begin();
+  int countdownMS = Watchdog.enable(30000);
   setup_sd();
-  Serial2_setup(); //Serial port for communicating with Freewave radios
+  Serial2_setup(); //Serial port used to communicate with the Freewave Z9-T
   initRockblock();
   initialize_nodes();
   getNetwork();
@@ -100,12 +86,12 @@ void setup()
   str_flag = false;
   wake_complete = false;
 
-  satcom_freq = 2;     //number of node messages between satcom uploads
-  retry_freq = 180000; //check for updates once a day
+  satcom_freq = 6;     //number of node messages between satcom uploads
+  retry_freq = 180000; //check for updates once a day (ms)
   retry_count = 0;
   failed_count = 0;
   message_count = 0;
-
+  accel_count = 0;
   retry_timer_prev = 0;
   retry_timer = millis();
 
@@ -113,8 +99,6 @@ void setup()
   Serial.print(satcom_freq);
   Serial.println(" messages...");
   Serial.println("Setup Complete.. ");
-
-  serialFlush();
 }
 
 /*****************************************************
@@ -123,56 +107,13 @@ void setup()
 *****************************************************/
 void loop()
 {
-  unsigned long internal_time_cur;
-  unsigned long internal_time;
-  int count = 0;
-  char messageIn[MAX_LENGTH];
-  memset(messageIn, '\0', sizeof(messageIn));
   diagnose();
+  Watchdog.reset();
 
+  //read data
   if (Serial2.available())
   {
-    internal_time_cur = millis();
-    while (millis() - internal_time_cur < 5000)
-    {
-      char input;
-      if (Serial2.available())
-      {
-        if (input = Serial2.read() == (byte)'*')
-        {
-          internal_time = millis();
-          while (millis() - internal_time < 5000)
-          {
-            if (Serial2.available())
-            {
-              input = Serial2.read();
-              count++; //for preventing buffer overflow
-              if (input == (byte)'!' || count == MAX_LENGTH - 1)
-              {
-                str_flag = true;
-                break;
-              }
-              append(messageIn, input);
-            }
-          }
-        }
-        count = 0;
-        internal_time_cur = millis();
-      }
-
-      //if a message was successfully collected dispatch its contents HERE
-      if (verify(messageIn))
-        processData(messageIn);
-      memset(messageIn, '\0', sizeof(messageIn));
-    }
-    if (wake_complete)
-    {
-      satcom_count++;
-      wake_complete = false;
-    }
-    //when done receiving all data for the wake cycle process the best captured position
-    last_wake = millis(); //for determining when the next satcom upload will occur
-    serialFlush();
+    readData();
   }
 
   //check to make a satcom uplaod
@@ -187,7 +128,6 @@ void loop()
   //attempt retry
   if (TOGGLE_RETRY && (is_retry && ((retry_timer - retry_timer_prev) > retry_freq) && TOGGLE_SATCOM))
   {
-
 #if DEBUG
     Serial.println("ATTEMPTING RETRY");
 #endif
@@ -212,10 +152,58 @@ void loop()
   update_time();
 }
 
-/*****************************************************
- * Function: 
- * Description: 5 for state
-*****************************************************/
+
+void readData()
+{
+  unsigned long internal_time_cur;
+  unsigned long internal_time;
+  int count = 0;
+  char messageIn[MAX_LENGTH];
+  memset(messageIn, '\0', sizeof(messageIn));
+  internal_time_cur = millis();
+  while (millis() - internal_time_cur < 5000)
+  {
+    char input;
+    if (Serial2.available())
+    {
+      if (input = Serial2.read() == (byte)'*')
+      {
+        internal_time = millis();
+        while (millis() - internal_time < 5000)
+        {
+          if (Serial2.available())
+          {
+            input = Serial2.read();
+            count++; //for preventing buffer overflow
+            if (input == (byte)'!' || count == MAX_LENGTH - 1)
+            {
+              str_flag = true;
+              break;
+            }
+            append(messageIn, input);
+          }
+        }
+      }
+      count = 0;
+      internal_time_cur = millis();
+    }
+
+    //if a message was successfully collected dispatch its contents HERE
+    if (verify(messageIn))
+      processData(messageIn);
+    memset(messageIn, '\0', sizeof(messageIn));
+  }
+  if (wake_complete)
+  {
+    satcom_count++;
+    wake_complete = false;
+  }
+  //when done receiving all data for the wake cycle process the best captured position
+  last_wake = millis(); //for determining when the next satcom upload will occur
+  serialFlush();
+}
+
+
 void diagnose()
 {
   char cmd;
@@ -285,10 +273,7 @@ void diagnose()
   }
 }
 
-/*****************************************************
- * Function: 
- * Description: 5 for state
-*****************************************************/
+
 bool verify(char messageIn[])
 {
   if (str_flag)
@@ -329,6 +314,7 @@ bool verify(char messageIn[])
   return false;
 }
 
+
 /*****************************************************
  * Function: 
  * Description:  Interrupt service routine for ring indicator interrupts
@@ -350,13 +336,7 @@ void toggleUpdate()
   }
 }
 
-/*************************************
- * 
- * 
- *************************************/
-//Tool this code to continue creating packets until every node on the network has had its data logged
-//For each node in the network
-//  find the best GPS and latest state and append it to the packet up ot 340 bytes
+// Eventually we will have seperate SatcomCount for each node on the network
 void attemptSend(bool retry)
 {
   bool packetized = false;
@@ -406,10 +386,7 @@ void attemptSend(bool retry)
   }
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
+
 void readLine(char buf[], File e)
 {
   char input;
@@ -421,10 +398,7 @@ void readLine(char buf[], File e)
   }
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
+
 void addElem(char msg[], char buf[])
 {
   if (strlen(msg) != 0)
@@ -432,10 +406,7 @@ void addElem(char msg[], char buf[])
   strcat(msg, buf);
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
+
 void setup_sd()
 {
   Serial.println("Initializing SD card...");
@@ -457,7 +428,7 @@ void setup_sd()
 *****************************************************/
 //Tool this code to create packets for every node on the network up to 340 bytes
 bool addMsg(char *msg, char *node_num, const char *file)
-{
+{ 
   File e;
   char cur[MAX_LENGTH];
   char path[MAX_FILE];
@@ -492,7 +463,6 @@ bool addMsg(char *msg, char *node_num, const char *file)
       }
       memset(cur, '\0', sizeof(cur));
     }
-    Serial.println("out of loop.");
     addElem(msg, best);
 
     //Accelerometer data takes priority over state data to be uploaded
@@ -502,7 +472,7 @@ bool addMsg(char *msg, char *node_num, const char *file)
       addElem(msg, latestState);
 
     e.close();
-    SD.remove(path); //Fix ME
+    SD.remove(path);
     e = SD.open(path, FILE_WRITE);
     if (e)
     {
@@ -514,10 +484,6 @@ bool addMsg(char *msg, char *node_num, const char *file)
     return false;
 }
 
-/*****************************************************
- * Function: 
- * Description: Eventually will need to decompose packets by # delimeter and place each packet back in respective retry folder, /G and /S
-*****************************************************/
 void write_to_retry(char packet[])
 {
 #if DEBUG
@@ -539,10 +505,6 @@ void write_to_retry(char packet[])
   }
 }
 
-/*****************************************************
- * Function: 
- * Description: 
-*****************************************************/
 void SDsize(File dir, int &size)
 {
   while (true)
@@ -558,10 +520,6 @@ void SDsize(File dir, int &size)
   }
 }
 
-/*****************************************************
- * Function: 
- * Description: 
-*****************************************************/
 void collectStatus(char status[])
 {
   int size = 0, nextUpload;
@@ -590,6 +548,8 @@ void collectStatus(char status[])
   sprintf(status + strlen(status), "%d", message_count);
   strcat(status, ",");
   sprintf(status + strlen(status), "%d", failed_count);
+  strcat(status, ",");
+  sprintf(status + strlen(status), "%d", accel_count);
 #if DEBUG
   String str_status = String(status);
   Serial.print("HUB STATUS: ");
@@ -597,10 +557,7 @@ void collectStatus(char status[])
 #endif
 }
 
-/*****************************************************
- * Function: 
- * Description: 
-*****************************************************/
+//why did the hub not upload an accel message if it did receive one
 void update()
 {
   char buffer[50];
@@ -635,15 +592,10 @@ void update()
 #endif
     }
   }
-  //force a string upload
   satcom_count = satcom_freq;
   attachInterrupt(digitalPinToInterrupt(RING_INDICATOR_PIN), toggleUpdate, FALLING);
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 bool checkBuf(char buffer[])
 {
   int i = 0;
@@ -658,10 +610,6 @@ bool checkBuf(char buffer[])
   return true;
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 bool successfulUpload(const char *message)
 {
   int err;
@@ -689,16 +637,12 @@ bool successfulUpload(const char *message)
   }
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void check_retry()
 {
   File e;
   char path[MAX_FILE];
   memset(path, '\0', sizeof(path));
-  createFilePath(path, "0", "/RETRY.TXT"); //FIX ME
+  createFilePath(path, "0", "/RETRY.TXT");
   e = SD.open(path, FILE_READ);
   if (e)
   {
@@ -713,12 +657,7 @@ void check_retry()
     Serial.println("RETRY TOGGLED ON");
 #endif
 }
-//51
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void initialize_nodes()
 {
   //only use of strings and dynamic memory allocation occurs in this initialization routine
@@ -771,10 +710,6 @@ void initialize_nodes()
   Serial.println("Directories complete!");
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void initRockblock()
 {
   Serial.println("Initializing RockBlock...");
@@ -814,10 +749,6 @@ void initRockblock()
   is_retry = false;
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 uint8_t getNetwork()
 {
 #if DEBUG
@@ -830,10 +761,6 @@ uint8_t getNetwork()
   return digitalRead(NET_AV);
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 uint8_t getSignalQuality()
 {
   //determine current signal quality
@@ -851,10 +778,6 @@ uint8_t getSignalQuality()
   return signalQuality;
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void append(char s[], char c)
 {
   int len = strlen(s);
@@ -862,10 +785,7 @@ void append(char s[], char c)
   s[len + 1] = '\0';
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
+//Update this before deployment
 void processData(char msg[])
 {
 #if DEBUG
@@ -888,13 +808,10 @@ void processData(char msg[])
   else if (strcmp(getValueAt(msg, 0), "/Accel") == 0)
   {
     write_sd_str("/S_LOGS.TXT", msg);
+    accel_count++;
   }
 }
 
-/*****************************************************
- * Function: 
- * Description: 
-*****************************************************/
 void createFilePath(char path[], char *node_num, const char *file)
 {
   strcpy(path, folder);
@@ -902,10 +819,6 @@ void createFilePath(char path[], char *node_num, const char *file)
   strcat(path, file);
 }
 
-/*****************************************************
- * Function: 
- * Description: Needs to use the message node number field
-*****************************************************/
 void write_sd_str(const char *file, char message[])
 {
   File e;
@@ -934,10 +847,6 @@ void write_sd_str(const char *file, char message[])
   }
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void Serial2_setup()
 {
   Serial2.begin(115200);        //rx on rover to pin 10
@@ -946,28 +855,16 @@ void Serial2_setup()
   pinPeripheral(13, PIO_SERCOM);
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void update_time()
 {
   retry_timer = millis();
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void SERCOM1_Handler()
 {
   Serial2.IrqHandler();
 }
 
-/*****************************************************
- * Function: 
- * Description:
-*****************************************************/
 void serialFlush()
 {
   while (Serial2.available() > 0)

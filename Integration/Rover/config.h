@@ -292,7 +292,7 @@
 #if is_rtc == 1
 	// Select only one of the below options
 	#define is_rtc3231 0 	// RTC DS 3231 Featherwing
-	#define is_rtc8523 1	// RTC Adalogger Featherwing with PCF8523 RTC (the one with SD card)
+	#define is_rtc8523 0	// RTC Adalogger Featherwing with PCF8523 RTC (the one with SD card)
 #endif
 
 
