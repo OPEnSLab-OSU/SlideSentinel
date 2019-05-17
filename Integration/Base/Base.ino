@@ -70,7 +70,7 @@ void setup()
   Serial.begin(115200);
 #endif
 
-  int countdownMS = Watchdog.enable(30000);
+  //int countdownMS = Watchdog.enable(30000);
   setup_sd();
   Serial2_setup(); //Serial port used to communicate with the Freewave Z9-T
   initRockblock();
@@ -108,7 +108,7 @@ void setup()
 void loop()
 {
   diagnose();
-  Watchdog.reset();
+  //Watchdog.reset();
 
   //read data
   if (Serial2.available())

@@ -203,7 +203,7 @@ void compareNMEA(char current[], char best[])
     else if (stringRank(modeCur) == stringRank(modeBest))
     {
         //check the RTK ratio
-        if ((float)atof(getValueAt(current, 10)) > (float)atof(getValueAt(best, 10)))
+        if ((float)atof(getValueAt(current, 10)) >= (float)atof(getValueAt(best, 10)))
         {
             memset(best, '\0', sizeof(best)); //delete the old best message
             strcpy(best, current);            //copy over the new best message
