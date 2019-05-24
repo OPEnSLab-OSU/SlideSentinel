@@ -63,14 +63,13 @@ Uart Serial2(&sercom1, 13, 4, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 // Object instantiation
 IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);
+//int countdownMS = Watchdog.enable(600000);
 
 void setup()
 {
 #if DEBUG
   Serial.begin(115200);
 #endif
-
-  //int countdownMS = Watchdog.enable(30000);
   setup_sd();
   Serial2_setup(); //Serial port used to communicate with the Freewave Z9-T
   initRockblock();
@@ -86,7 +85,7 @@ void setup()
   str_flag = false;
   wake_complete = false;
 
-  satcom_freq = 6;     //number of node messages between satcom uploads
+  satcom_freq = 2;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day (ms)
   retry_count = 0;
   failed_count = 0;
@@ -152,7 +151,6 @@ void loop()
   update_time();
 }
 
-
 void readData()
 {
   unsigned long internal_time_cur;
@@ -193,7 +191,7 @@ void readData()
       processData(messageIn);
     memset(messageIn, '\0', sizeof(messageIn));
   }
-  if (wake_complete)
+  if (wake_complete)      //I need to move incrementing the satcom count
   {
     satcom_count++;
     wake_complete = false;
@@ -436,6 +434,7 @@ bool addMsg(char *msg, char *node_num, const char *file)
   char latestState[MAX_LENGTH];
   char accelerometer[MAX_LENGTH];
   bool accelFlag = false;
+  bool stateFlag = false; 
   memset(accelerometer, '\0', sizeof(accelerometer));
   memset(latestState, '\0', sizeof(latestState));
   memset(best, '\0', sizeof(best));
@@ -451,7 +450,8 @@ bool addMsg(char *msg, char *node_num, const char *file)
       if (strcmp(getValueAt(cur, 0), "/GPS") == 0)
         compareNMEA(cur, best);
       else if (strcmp(getValueAt(cur, 0), "/State") == 0)
-      {
+      { 
+        stateFlag = true; 
         memset(latestState, '\0', sizeof(latestState));
         strcpy(latestState, cur);
       }
@@ -468,7 +468,7 @@ bool addMsg(char *msg, char *node_num, const char *file)
     //Accelerometer data takes priority over state data to be uploaded
     if (accelFlag)
       addElem(msg, accelerometer);
-    else
+    else if(stateFlag)
       addElem(msg, latestState);
 
     e.close();
@@ -802,6 +802,7 @@ void processData(char msg[])
   else if (strcmp(getValueAt(msg, 0), "/State") == 0)
   {
     write_sd_str("/S_LOGS.TXT", msg);
+    write_sd_str("/GPS_LOGS.TXT", "CYCLE");
     wake_complete = true;
   }
   //do not toggle wake complete for accelerometer messages

@@ -38,7 +38,6 @@
  *                        In shaded enviroments, provides ~25 mA current
  * ************************************/
 
-
 // Library edits for libraries that don't have #ifdef statements :(
 
 // IMPORTANT: Edit the feather m0 variant.cpp to comment out lines:
@@ -76,9 +75,9 @@ void mmaSetupSlideSentinel();
 #define BAUD 115200 // reading and writing occurs at
 
 // ======== Timer periods for different measurement conditions ==========
-#define RTC_WAKE_PERIOD 60 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 1200  // Length of time to take measurements under periodic wake condition,     5 mines in minutes
-#define ALERT_WAKE 1200      // Length of time to take measurements under acceleration wake condition
+#define RTC_WAKE_PERIOD 120 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 1800 // Length of time to take measurements under periodic wake condition,     5 mines in minutes
+#define ALERT_WAKE 1800     // Length of time to take measurements under acceleration wake condition
 
 // ======== Pin Assignments, no need to change ==========
 // Other pins in use: 13, 10 for UART
@@ -104,7 +103,7 @@ struct nmeaData
 
 // Object instantiation
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-RTC_DS3231 RTC_DS;            //Rover code does not use Loom RTC implementation
+RTC_DS3231 RTC_DS; //Rover code does not use Loom RTC implementation
 
 // ======== Hardware Serial Port 2 ==========
 // RX pin 12, TX pin 11, configuring for rover UART
@@ -121,7 +120,7 @@ void SERCOM5_Handler()
   Serial3.IrqHandler();
 }
 
-// Global variables 
+// Global variables
 sensors_event_t event;
 struct nmeaData dataIn;
 String accel_data;
@@ -130,6 +129,7 @@ unsigned long int timer, count, temp_timer, alert_timer;
 String RTC_monthString, RTC_dayString, RTC_hrString, RTC_minString, RTC_timeString = "", stringTransmit = "";
 
 const char *CurrentWakeGPS = "CRWKG";
+const char *AllLogs = "ALL.TXT";
 const char *CurrentWakeState = "CRWKS";
 
 // Declare RTC/Accelerometer specific variables
@@ -266,33 +266,9 @@ void loop()
   RTCFlagCheck();   // reset RTC interrupts
   enCheck();        // check accelerometer enable
   alertFlagCheck(); // reset accelerometer interrupts,
-  readSerial();     // read from serial port if available
-
+  readPSTI();       // read from serial port if available
   tryStandby();
 } // End loop section
-
-bool sd_save_elem_nodelim(char *file, char *data)
-{
-#if is_lora == 1
-  digitalWrite(8, HIGH); // if using LoRa
-#endif
-  SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
-
-  sdFile = SD.open(file, FILE_WRITE);
-
-  if (sdFile)
-  {
-    LOOM_DEBUG_Println4("Saving ", data, " to SD file: ", file);
-    sdFile.print(data);
-  }
-  else
-  {
-    LOOM_DEBUG_Println2("Error opening: ", file);
-    return false;
-  }
-  sdFile.close();
-  return true;
-}
 
 // comment/uncomment these to enable functionality described
 /* Transient detection donfiguration for mma accelerometer, use this format and Adafruit_MMA8451::writeRegister8_public to configure registers */
@@ -495,34 +471,73 @@ void setRTCAlarm()
   RTC_DS.alarmInterrupt(1, true);                //code to pull microprocessor out of sleep is tied to the time -> here
 }
 
-void readSerial()
+/*
+Reads an entire block of different NMEA strings, the rover reads in NMEA strings and sipatches them to CRWKG, then when ready to send rewrites these strings to ALL
+Notes:  This function needs to be retooled to only grab high quality positional readings. 
+        We need longer wake cycles to get steady state 10.0 RTK fixes. Waking for 30 minutes is the best option however the rover produces
+        An enormous amount of strings at this wake time the majority of which are garbage. Iterating through all of the generated strings
+        takes a substantial amount of time.
+
+        This function needs to be completely redone, to verify and parse things
+
+        BIG ISSUES: 
+        1.) With this read policy 6191 PSTI,030 strings out of 6389 come in garbled example: $PSTI,030,081345.000,A,4433.9963884,N,12317$GPGGA,081346.000,4433.9963822,N,12317.6170101,W,4,12,1.4,85.154,M,-23.500,M,,0000*5A
+        2.) The above observation occured after writing to both ALL and CRWKG, prior to this change the rover was reading blocks of data here, writing that data to CRWKG then when dispatching all of the data it was verifying and writing good messages to ALL.TXT
+        3.) We need to migrate all logging here because it consumes too much time to iterate over CRWKG verify and then write to ALL.TXT while sending.
+        4.) New Serial Reading Policy
+            a.) Only look for PSTI 030 strings
+            b.) Verify it 
+            c.) Write it to ALL and CRWKG
+*/
+void readPSTI()
 {
-  // read data if data is available and buffer isn't full
-  if (Serial2.available())
+  uint16_t i = 0; //safety index
+  char input;
+  char buffer[GPS_BUFFER_LEN];
+  memset(buffer, '\0', sizeof(buffer));
+  if (PSTI(buffer, '$') && PSTI(buffer, 'P') && PSTI(buffer, 'S') && PSTI(buffer, 'T') && PSTI(buffer, 'I') && PSTI(buffer, ',') && PSTI(buffer, '0') && PSTI(buffer, '3') && PSTI(buffer, '0'))
   {
-    if (dataIn.len < GPS_BUFFER_LEN)
+    while (Serial2.available())
     {
-      dataIn.data[dataIn.len] = Serial2.read();
-      dataIn.len += 1;
-    }
-    // write date from buffer to SD if buffer is full
-    else
-    {
-      dataIn.data[GPS_BUFFER_LEN] = 0;
-      sd_save_elem_nodelim((char *)CurrentWakeGPS, dataIn.data);
-      memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
-      dataIn.len = 0;
-      dataIn.data[dataIn.len] = Serial2.read();
-      dataIn.len += 1;
+      input = Serial2.read();
+      i++; 
+      if (input == 13)
+      { //read till <CR>
+        append(buffer, '\n');
+        //verify the NMEA checksum, if its good write the string to SD
+        if (verifyChecksum(buffer))
+        {
+          sd_save_elem_nodelim((char *)CurrentWakeGPS, buffer);
+          sd_save_elem_nodelim((char *)AllLogs, buffer);
+        };
+        memset(buffer, '\0', sizeof(buffer));
+        return;
+      }
+      //this simply protects the code in case a <CR> doesnt get received, we cannot go over the buffer limit
+      if(i == GPS_BUFFER_LEN){
+        memset(buffer, '\0', sizeof(buffer));
+        return; 
+      }
+      append(buffer, input);
     }
   }
-  // write data to SD if serial is not available and buffer has data
-  else if (dataIn.len)
+  memset(buffer, '\0', sizeof(buffer));
+}
+
+
+bool PSTI(char buf[], char chr)
+{
+  char input;
+  if (Serial2.available())
   {
-    dataIn.data[dataIn.len] = 0; // ensure data is c string
-    sd_save_elem_nodelim((char *)CurrentWakeGPS, dataIn.data);
-    memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
-    dataIn.len = 0;
+    input = Serial2.read();
+    if (input == chr)
+    {
+      append(buf, input);
+      return true;
+    }
+    else
+      return false;
   }
 }
 
@@ -644,8 +659,9 @@ void alertFlagCheck()
     Serial.println("Processor wake from accelerometer");
     uint8_t dataRead = mma.readRegister8(MMA8451_REG_TRANSIENT_SRC); //clear the interrupt register
     mmaPrintIntSRC(dataRead);
-    if(!stateSent){
-      stateSent = true; 
+    if (!stateSent)
+    {
+      stateSent = true;
       sendState(mma, true);
     }
     accelFlag = false; // reset flag, clear the interrupt
@@ -691,11 +707,7 @@ void sendState(Adafruit_MMA8451 device, bool accel)
   char msg[150];
   memset(msg, '\0', sizeof(msg));
   String reading;
-  int raw;
-  float voltage;
-  char buf[10];
-  memset(buf, '\0', sizeof(buf)); //clear the buffer
-  float divider_const = 1.12;
+
   device.getEvent(&event);
   if (accel)
     strcat(msg, "/Accel");
@@ -713,20 +725,27 @@ void sendState(Adafruit_MMA8451 device, bool accel)
   strcat(msg, ",");
   reading = device.z;
   strcat(msg, reading.c_str()); // accel z
-  strcat(msg, ",");
-  raw = analogRead(BATTERYPIN);
-  raw = map(raw, 0, 4095, 0, 3480);
-  voltage = (raw / 1000) * divider_const;
-  snprintf(buf, sizeof(buf), "%f", voltage);
-  strcat(msg, buf); // Battery voltage
-  strcat(msg, ",");
+  getVoltage(msg);
+
   //add a checksum to the message
+  strcat(msg, ",");
   addChecksum(msg);
-#if DEBUG
-  Serial.println();
-  printMsg(msg);
-#endif
   sendMessage(msg, Serial3);
+}
+
+void getVoltage(char msg[])
+{
+  int raw;
+  float voltage;
+  char buf[10];
+  memset(buf, '\0', sizeof(buf)); //clear the buffer
+  float divider_const = 1.12;
+  raw = analogRead(BATTERYPIN);
+  raw = map(raw, 0, 4095, 0, 3700);
+  voltage = ((float)raw / 1000);
+  snprintf(buf, sizeof(buf), "%f", voltage);
+  strcat(msg, ",");
+  strcat(msg, buf); // Battery voltage
 }
 
 void tryStandby()
@@ -752,7 +771,7 @@ void tryStandby()
     USBDevice.detach();
     while (Serial2.available())
     {
-      readSerial();
+      readPSTI();
     } // load the rest of the gps strings that are ready
 
     delay(20);        // delay is so that the gps switch doesn't trigger accelerometer wake
@@ -762,7 +781,7 @@ void tryStandby()
     // ====================== Sleep here and wait for int (accel or RTC) ======================
     USBDevice.attach();
     gps_on();
-    stateSent = false; 
+    stateSent = false;
 #if DEBUG == 1
     //digitalWrite(LED_BUILTIN, HIGH);
     delay(5000); // give user 5s to close and reopen serial monitor!
@@ -836,3 +855,38 @@ void gps_off()
   delay(10);
   digitalWrite(GPS_DISABLE_PIN, LOW);
 }
+
+/*
+void readSerial()
+{
+  // read data if data is available and buffer isn't full
+  if (Serial2.available())
+  {
+    if (dataIn.len < GPS_BUFFER_LEN)
+    {
+      dataIn.data[dataIn.len] = Serial2.read();
+      dataIn.len += 1;
+    }
+    // write date from buffer to SD if buffer is full
+    else
+    {
+      dataIn.data[GPS_BUFFER_LEN] = 0;
+      sd_save_elem_nodelim((char *)CurrentWakeGPS, dataIn.data);
+      sd_save_elem_nodelim((char *)AllLogs, dataIn.data);
+      memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
+      dataIn.len = 0;
+      dataIn.data[dataIn.len] = Serial2.read();
+      dataIn.len += 1;
+    }
+  }
+  // write data to SD if serial is not available and buffer has data
+  else if (dataIn.len)
+  {
+    dataIn.data[dataIn.len] = 0; // ensure data is c string
+    sd_save_elem_nodelim((char *)CurrentWakeGPS, dataIn.data);
+    sd_save_elem_nodelim((char *)AllLogs, dataIn.data);
+    memset(dataIn.data, '\0', GPS_BUFFER_LEN + 1);
+    dataIn.len = 0;
+  }
+}
+*/

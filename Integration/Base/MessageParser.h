@@ -151,7 +151,7 @@ bool verifyMsg(char current[], uint8_t numFields)
 }
 
 /*****************************************************
- * Function: 
+ * Function: /GPS,0,134750.000,4433.9939923,N,12317.6161536,W,68.227,F,1.0,1.0
  * Description:  
 *****************************************************/
 void compareNMEA(char current[], char best[])
@@ -202,8 +202,14 @@ void compareNMEA(char current[], char best[])
     }
     else if (stringRank(modeCur) == stringRank(modeBest))
     {
-        //check the RTK ratio
-        if ((float)atof(getValueAt(current, 10)) >= (float)atof(getValueAt(best, 10)))
+        char buf1[10]; 
+        char buf2[10];
+        memset(buf, '\0', sizeof(buf1));
+        memset(buf, '\0', sizeof(buf2));
+        strcpy(buf1, getValueAt(current, 10));
+        strcpy(buf2, getValueAt(best, 10));
+
+        if (atof(buf1) >= atof(buf2))
         {
             memset(best, '\0', sizeof(best)); //delete the old best message
             strcpy(best, current);            //copy over the new best message

@@ -1,36 +1,46 @@
 #include <SD.h>
-#include <OSCMessage.h>
 #include <CRC32.h>
 
 #define BUFFER_SIZE 200
 #define FILL_SIZE 25
-
+#define DEBUG 1
 #define PSTI_30_UTC
 
-void GPSToFiles(char *, int *, int, HardwareSerial &);
-bool verify(char *);
+void isRTKTen(char *nmeaString);
+bool verifyChecksum(char *nmeaString);
 void getFieldContents(char *, char *, uint8_t);
 int stringRank(char);
-void oscMsg_to_string(char *osc_string, OSCMessage *msg);
+byte stringChecksum(char *s);
+bool sd_save_elem_nodelim(char *file, char *data);
+void readLine(char buf[], File e);
 
 int sent = 0;
+const char *BestLogs = "BEST.TXT";
+const char *BestCur = "CUR.TXT";
 CRC32 crc;
-// fill the OSCMessage in the order UTC, Lat, Lon, Alt, Mode, Age, Ratio
-// nmea string must be PSTI030
 void printMsg(char msg[]);
 void sendMessage(char msg[], HardwareSerial &);
 void fillGPSMsgFormat(char *pstiThirtyString, char msg[]);
+uint8_t collectTens(char *filename);
+void dispatchTens(char *filename, HardwareSerial &serialPort);
 
-bool processGPS(char *filename, int fromNode, HardwareSerial &serialPort)
+void processGPS(char *filename, int fromNode, HardwareSerial &serialPort)
 {
-	int bestStringPrev = -1; // quality indicator
-
-	char buffer[BUFFER_SIZE + 1];
-	char nextRead;
-
 	SD.begin(chipSelect);
-	File fileIn = SD.open(filename, FILE_READ);
 
+	//move all RTK fixes with ratio 10.0 to BEST.TXT
+	if(collectTens(filename)){
+		Serial.println("DONE COLLECTING"); 
+		dispatchTens("CUR.TXT", serialPort);
+	}
+}
+
+//move all RTK fixes in CRWKG with ratio 10.0 to BEST.TXT
+uint8_t collectTens(char *filename)
+{
+	File fileIn = SD.open(filename, FILE_READ);
+	char buffer[BUFFER_SIZE + 1];
+	memset(buffer, '\0', sizeof(buffer));
 	if (!fileIn)
 	{
 		LOOM_DEBUG_Print("SD could not open file properly: ");
@@ -38,106 +48,100 @@ bool processGPS(char *filename, int fromNode, HardwareSerial &serialPort)
 		return 0;
 	}
 
+	//read through all of the logged data and find the 10 values
+	Serial.println("printing everything");
 	while (fileIn.available())
 	{
-		int i = 0;
-		memset((char *)buffer, '\0', BUFFER_SIZE + 1);
-		buffer[i++] = fileIn.read();
-		while (fileIn.peek() != '$' && fileIn.available())
-		{
-			nextRead = fileIn.read();
-			buffer[i++] = nextRead;
-			if (i >= BUFFER_SIZE || nextRead == -1)
-			{
-				break;
-			}
-		}
-		if (i < BUFFER_SIZE)
-		{
-			GPSToFiles(buffer, &bestStringPrev, fromNode, serialPort);
-		}
+		readLine(buffer, fileIn);
+#if DEBUG
+		Serial.println(buffer);
+#endif
+		isRTKTen(buffer);
+		memset(buffer, '\0', sizeof(buffer));
 	}
+
+	//Remove CRWKG
 	fileIn.close();
 	if (!SD.remove(filename))
 	{
 		Serial.print("could not remove");
 		Serial.println(filename);
 	}
+	return 1; 
 }
 
-// Send the GPS String to the proper files if formatted properly
-void GPSToFiles(char *nmeaString, int *bestStringPrev, int fromNode, HardwareSerial &serialPort)
+//send all tens found to the base station
+void dispatchTens(char *filename, HardwareSerial &serialPort)
 {
-	// first segment verifies the string and sends it to the all valid measurements file
-	char field[FILL_SIZE + 1];
-	int len;
-	memset(field, '\0', FILL_SIZE + 1);
-	File temp;
-	char msg[200];
-	memset(msg, '\0', sizeof(msg));
-	// Check that nmea string is in correct format
-
-	if (!verify(nmeaString))
-		return;
-
-	if (nmeaString[0] == '\0')
+	File fileIn = SD.open(filename, FILE_READ);
+	char buffer[BUFFER_SIZE + 1];
+	char nmea[BUFFER_SIZE + 1];
+	memset(buffer, '\0', sizeof(buffer));
+	memset(nmea, '\0', sizeof(nmea));
+	if (fileIn.size() > 0)
 	{
-		Serial.println("Null found at start of nmea");
-		return;
-	}
-
-	temp = SD.open("ALL.TXT", FILE_WRITE);
-	if (!temp)
-	{
-		Serial.println("Could not open tempfile");
-	}
-	len = temp.print(nmeaString);
-	temp.close();
-
-	getFieldContents(nmeaString, field, 0);
-	if (field[0] == '\0')
-	{
-		Serial.print("No field contents");
-		return;
-	}
-
-	if (!strcmp(field, "PSTI"))
-	{
-		Serial.println(field);
-		getFieldContents(nmeaString, field, 1);
-		if (!strcmp(field, "030"))
+		while (fileIn.available())
 		{
-			Serial.println(field);
-			getFieldContents(nmeaString, field, 13);
-			int quality = stringRank(field[0]);
-			Serial.print("quality: ");
-			Serial.println(field);
-			if (quality < *bestStringPrev)
-				return;
-			else if (quality >= *bestStringPrev)
-			{
-				*bestStringPrev = quality;
-				Serial.print("sending packet: ");
-				Serial.println(sent++);
-				strcat(msg, "/GPS");
-				strcat(msg, ",");
-				strcat(msg, "0");
-				strcat(msg, ",");
-				fillGPSMsgFormat(nmeaString, msg);
-				Serial.println(nmeaString);
-				Serial.print("Length: ");
-				Serial.println(strlen(msg));
-				printMsg(msg);
-				sendMessage(msg, serialPort);
-				delay(50);
-			}
+			readLine(nmea, fileIn);
+			strcat(buffer, "/GPS");
+			strcat(buffer, ",");
+			strcat(buffer, "0");
+			strcat(buffer, ",");
+			fillGPSMsgFormat(nmea, buffer);
+			sendMessage(buffer, serialPort);
+			delay(50);
+			memset(buffer, '\0', sizeof(buffer));
+			memset(nmea, '\0', sizeof(nmea));
 		}
 	}
 
+	//Remove CUR.TXT, all of the 10's for the wake cycle
+	fileIn.close();
+	if (!SD.remove("CUR.TXT"))
+	{
+		Serial.print("could not remove");
+		Serial.println(filename);
+	}
+}
+
+void append(char s[], char c)
+{
+	int len = strlen(s);
+	s[len] = c;
+	s[len + 1] = '\0';
+}
+
+void readLine(char buf[], File e)
+{
+	char input;
+	input = e.read();
+	while (input != '\n') // if char not  eol
+	{
+		append(buf, input);
+		input = e.read();
+	}
+}
+
+//Checks if passed string is RTK with a fix ratio of 10.0
+void isRTKTen(char *nmeaString)
+{
+	char field[FILL_SIZE + 1];
+	char msg[200];
+	memset(field, '\0', FILL_SIZE + 1);
+	memset(msg, '\0', sizeof(msg));
+
+	getFieldContents(nmeaString, field, 15);
+	if (atof(field) == 10.0)
+	{
+		append(nmeaString, '\n');
+		sd_save_elem_nodelim((char *)BestLogs, nmeaString);
+		sd_save_elem_nodelim((char *)BestCur, nmeaString);
+		printMsg(msg);
+	}
 	memset(field, '\0', FILL_SIZE + 1);
 }
 
-void printMsg(char* msg)
+void printMsg(char *msg)
 {
 	char buf[150];
 	memset(buf, '\0', sizeof(buf));
@@ -154,6 +158,7 @@ void printMsg(char* msg)
 	}
 }
 
+//Adds a 32 bit checksum to any data sent from the rover to base station
 void addChecksum(char msg[])
 {
 	char sum[20];
@@ -176,9 +181,6 @@ void addChecksum(char msg[])
 	Serial.println(sum);
 }
 
-///GPS,i0,s115954.000,s0000.0000000,s00000.0000000,s0.000,sN,s0.0,s0.0
-// fill the OSCMessage in the order UTC, Lat, N/S, Lon, E/W, Alt, Mode, Age, Ratio
-// nmea string must be PSTI030
 void fillGPSMsgFormat(char *pstiThirtyString, char msg[])
 {
 	char toFill[FILL_SIZE + 1];
@@ -213,29 +215,99 @@ void fillGPSMsgFormat(char *pstiThirtyString, char msg[])
 	addChecksum(msg);
 }
 
-bool verify(char *nmeaString)
+/*
+Note: 	It does not take a trivial amount of time to parse through all of the data points for a 30 minute wake cycle
+		Consider only logging to SD if the data point is of quality. Currently the Rover wakes, writes all collected NMEA data
+		to CRKWG and ALL.TXT (we want to verify before writing). 
+		At the end of the wake cycle the Rover iterates over all of the lines of the file verifies each one and checks if it is of 
+		quality 10.0. If so the rover will log it to BEST.TXT and CUR.TXT. After completing this the Rover sends all data logged in CUR.TXT.
+		Finally the Rover removes CUR.TXT and CRKGW.
+
+		WHAT WE WANT TO DO:
+		1.) Read data blocks
+		2.) Iterate over collected strings dropping strings with bad checksum
+		3.) Write valid strings to ALL.TXT and CRWKG.TXT (maybe even omit everything that is not PSTI, GPGGA has number satellites used in fix?) We will need to reduce the size
+		4.) Consider some search algorithm, Iterate of CRKGW take the middle element out of the longest streak. use UTC time to determine longest block
+		5.) Send multiple copies of this string
+
+		POINTS OF CONCERN:
+		1.) 22/May/2019 16:06:30 and 22/May/2019 04:08:53 we received 6 messages and 3 of them were failures, send copies!
+*/
+bool verifyChecksum(char nmeaString[])
 {
-	int length = strlen(nmeaString);
-	if (length < 2)
+	static uint32_t bad_count = 0;
+	static uint32_t good_count = 0;
+	char *pch;
+	char buffer[BUFFER_SIZE + 1];
+	char chkbuf[50];
+	uint8_t chksum;
+	memset(chkbuf, '\0', sizeof(chkbuf));
+	memset(buffer, '\0', sizeof(buffer));
+	pch = strrchr(nmeaString, '*'); //take the last occurence of the '*' character
+	if (pch == NULL)
 	{
+		Serial.println("Invald string");
+		bad_count++;
 		return false;
 	}
-	if (nmeaString[length - 1] != '\n' || nmeaString[length - 2] != '\r')
+	strcpy(chkbuf, pch + 1);
+	memset(chkbuf + 2, '\0', sizeof(chkbuf) - 2); //chop out the ending <CR><LF> and \n
+
+	//testing to generate the checksum
+	chksum = (uint8_t)strtol(chkbuf, NULL, 16);
+
+	//We need the $.*\* portion of the stirng
+	uint16_t i = 0;
+	while (nmeaString + i != pch - 1)
 	{
-		Serial.print((int)nmeaString[length - 2]);
-		Serial.print(",");
-		Serial.println((int)nmeaString[length - 1]);
-		return false;
-		memset(nmeaString, '\0', BUFFER_SIZE + 1);
+		buffer[i] = nmeaString[i + 1];
+		i++;
 	}
-	return true;
+
+#if DEBUG
+	Serial.print("NMEA CHECKSUM: "); //CHECKSUM is ascii encoded HEX
+	Serial.print(chksum);
+	Serial.print(", ");
+	Serial.print(chkbuf);
+	Serial.println();
+	Serial.print("ORIGINAL: ");
+	Serial.print(nmeaString);
+	Serial.print("BUFFER: ");
+	Serial.println(buffer);
+	Serial.print("CHECKSUM: ");
+	Serial.println(stringChecksum(buffer));
+	Serial.println();
+	Serial.print("good count: ");
+	Serial.println(good_count);
+	Serial.print("bad count: ");
+	Serial.println(bad_count);
+#endif
+
+	if (stringChecksum(buffer) == chksum)
+	{
+		good_count++;
+		return true;
+	}
+	else
+	{
+		bad_count++;
+		return false;
+	}
+}
+
+//function for calculating the 8 bit checksum on NMEA strings
+byte stringChecksum(char *s)
+{
+	byte c = 0;
+	while (*s != '\0')
+		c ^= *s++;
+	return c;
 }
 
 // parse a nmea string and return contents of field corresponding to fieldNum
 // index starts at 0 with string type
 void getFieldContents(char *nmeaString, char *toFill, uint8_t fieldNum)
 {
-
 	memset(toFill, '\0', strlen(toFill));
 	int index = 0, position = 0, fillIndex = 0;
 	while (nmeaString[index] != '\0')
@@ -288,62 +360,37 @@ int stringRank(char indicator)
 
 void sendMessage(char msg[], HardwareSerial &serialPort)
 {
+	printMsg(msg);
 	serialPort.write(byte('*')); // start of text
 	for (int i = 0; i < strlen(msg); i++)
 	{
-		Serial.print(msg[i]);
 		serialPort.write(msg[i]);
 	}
 	serialPort.write(byte('!')); // End of transmission, pad this with more 4's
 	serialPort.write(byte('!'));
-	serialPort.write(byte('!')); 
-	serialPort.write(byte('!')); 
+	serialPort.write(byte('!'));
+	serialPort.write(byte('!'));
 }
 
-void oscMsg_to_string(char *osc_string, OSCMessage *msg)
+bool sd_save_elem_nodelim(char *file, char *data)
 {
-	char data_type;
-	data_value value;
-	int addr_len = 40;
-	char addr_buf[addr_len];
+#if is_lora == 1
+	digitalWrite(8, HIGH); // if using LoRa
+#endif
+	SD.begin(chipSelect); // It seems that SD card may become 'unsetup' sometimes, so re-setup
 
-	memset(osc_string, '\0', sizeof(osc_string));
-	memset(addr_buf, '\0', addr_len);
-	msg->getAddress(addr_buf, 0);
-	strcat(osc_string, addr_buf);
+	sdFile = SD.open(file, FILE_WRITE);
 
-	for (int j = 0; j < msg->size(); j++)
+	if (sdFile)
 	{
-		data_type = msg->getType(j);
-		switch (data_type)
-		{
-		case 'f':
-			value.f = msg->getFloat(j);
-			snprintf(addr_buf, addr_len, ",f%lu", value.u);
-			strcat(osc_string, addr_buf);
-			break;
-
-		case 'i':
-			value.i = msg->getInt(j);
-			snprintf(addr_buf, addr_len, ",i%lu", value.u);
-			strcat(osc_string, addr_buf);
-			break;
-
-		case 's':
-			char data_buf[40];
-			msg->getString(j, data_buf, sizeof(data_buf));
-			snprintf(addr_buf, addr_len, ",s%s", data_buf);
-			strcat(osc_string, addr_buf);
-			break;
-
-		default:
-			if (data_type != '\0')
-			{
-				LOOM_DEBUG_Println("Invalid message arg type");
-			}
-			break;
-		}
+		LOOM_DEBUG_Println4("Saving ", data, " to SD file: ", file);
+		sdFile.print(data);
 	}
-	if (msg != NULL)
-		strcat(osc_string, " ");
+	else
+	{
+		LOOM_DEBUG_Println2("Error opening: ", file);
+		return false;
+	}
+	sdFile.close();
+	return true;
 }
