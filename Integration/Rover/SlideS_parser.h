@@ -215,24 +215,6 @@ void fillGPSMsgFormat(char *pstiThirtyString, char msg[])
 	addChecksum(msg);
 }
 
-/*
-Note: 	It does not take a trivial amount of time to parse through all of the data points for a 30 minute wake cycle
-		Consider only logging to SD if the data point is of quality. Currently the Rover wakes, writes all collected NMEA data
-		to CRKWG and ALL.TXT (we want to verify before writing). 
-		At the end of the wake cycle the Rover iterates over all of the lines of the file verifies each one and checks if it is of 
-		quality 10.0. If so the rover will log it to BEST.TXT and CUR.TXT. After completing this the Rover sends all data logged in CUR.TXT.
-		Finally the Rover removes CUR.TXT and CRKGW.
-
-		WHAT WE WANT TO DO:
-		1.) Read data blocks
-		2.) Iterate over collected strings dropping strings with bad checksum
-		3.) Write valid strings to ALL.TXT and CRWKG.TXT (maybe even omit everything that is not PSTI, GPGGA has number satellites used in fix?) We will need to reduce the size
-		4.) Consider some search algorithm, Iterate of CRKGW take the middle element out of the longest streak. use UTC time to determine longest block
-		5.) Send multiple copies of this string
-
-		POINTS OF CONCERN:
-		1.) 22/May/2019 16:06:30 and 22/May/2019 04:08:53 we received 6 messages and 3 of them were failures, send copies!
-*/
 bool verifyChecksum(char nmeaString[])
 {
 	static uint32_t bad_count = 0;

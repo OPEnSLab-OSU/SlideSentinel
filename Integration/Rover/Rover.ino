@@ -471,24 +471,7 @@ void setRTCAlarm()
   RTC_DS.alarmInterrupt(1, true);                //code to pull microprocessor out of sleep is tied to the time -> here
 }
 
-/*
-Reads an entire block of different NMEA strings, the rover reads in NMEA strings and sipatches them to CRWKG, then when ready to send rewrites these strings to ALL
-Notes:  This function needs to be retooled to only grab high quality positional readings. 
-        We need longer wake cycles to get steady state 10.0 RTK fixes. Waking for 30 minutes is the best option however the rover produces
-        An enormous amount of strings at this wake time the majority of which are garbage. Iterating through all of the generated strings
-        takes a substantial amount of time.
 
-        This function needs to be completely redone, to verify and parse things
-
-        BIG ISSUES: 
-        1.) With this read policy 6191 PSTI,030 strings out of 6389 come in garbled example: $PSTI,030,081345.000,A,4433.9963884,N,12317$GPGGA,081346.000,4433.9963822,N,12317.6170101,W,4,12,1.4,85.154,M,-23.500,M,,0000*5A
-        2.) The above observation occured after writing to both ALL and CRWKG, prior to this change the rover was reading blocks of data here, writing that data to CRWKG then when dispatching all of the data it was verifying and writing good messages to ALL.TXT
-        3.) We need to migrate all logging here because it consumes too much time to iterate over CRWKG verify and then write to ALL.TXT while sending.
-        4.) New Serial Reading Policy
-            a.) Only look for PSTI 030 strings
-            b.) Verify it 
-            c.) Write it to ALL and CRWKG
-*/
 void readPSTI()
 {
   uint16_t i = 0; //safety index
