@@ -85,7 +85,7 @@ void setup()
   str_flag = false;
   wake_complete = false;
 
-  satcom_freq = 2;     //number of node messages between satcom uploads
+  satcom_freq = 1;     //number of node messages between satcom uploads
   retry_freq = 180000; //check for updates once a day (ms)
   retry_count = 0;
   failed_count = 0;
@@ -191,7 +191,7 @@ void readData()
       processData(messageIn);
     memset(messageIn, '\0', sizeof(messageIn));
   }
-  if (wake_complete)      //I need to move incrementing the satcom count
+  if (wake_complete) //I need to move incrementing the satcom count
   {
     satcom_count++;
     wake_complete = false;
@@ -200,7 +200,6 @@ void readData()
   last_wake = millis(); //for determining when the next satcom upload will occur
   serialFlush();
 }
-
 
 void diagnose()
 {
@@ -271,7 +270,6 @@ void diagnose()
   }
 }
 
-
 bool verify(char messageIn[])
 {
   if (str_flag)
@@ -279,7 +277,7 @@ bool verify(char messageIn[])
     str_flag = false;
     if (strcmp(getValueAt(messageIn, 0), "/GPS") == 0)
     {
-      if (verifyMsg(messageIn, 11))
+      if (verifyMsg(messageIn, 11)) //incremented due to included confidence factor
       {
         message_count++;
         return true;
@@ -290,7 +288,7 @@ bool verify(char messageIn[])
         memset(messageIn, '\0', sizeof(messageIn));
       }
     }
-    else if (strcmp(getValueAt(messageIn, 0), "/State") == 0 || strcmp(getValueAt(messageIn, 0), "/Accel") == 0)
+    else if (strcmp(getValueAt(messageIn, 0), "/Accel") == 0 || strcmp(getValueAt(messageIn, 0), "/State") == 0)
     {
       if (verifyMsg(messageIn, 6))
       {
@@ -312,11 +310,9 @@ bool verify(char messageIn[])
   return false;
 }
 
-
 /*****************************************************
  * Function: 
- * Description:  Interrupt service routine for ring indicator interrupts
- *               ring indicator is a low pulse, followed by another low pulse 10 seconds later
+ * Description: 
 *****************************************************/
 void toggleUpdate()
 {
@@ -384,7 +380,6 @@ void attemptSend(bool retry)
   }
 }
 
-
 void readLine(char buf[], File e)
 {
   char input;
@@ -396,14 +391,12 @@ void readLine(char buf[], File e)
   }
 }
 
-
 void addElem(char msg[], char buf[])
 {
   if (strlen(msg) != 0)
     strcat(msg, "#");
   strcat(msg, buf);
 }
-
 
 void setup_sd()
 {
@@ -426,7 +419,7 @@ void setup_sd()
 *****************************************************/
 //Tool this code to create packets for every node on the network up to 340 bytes
 bool addMsg(char *msg, char *node_num, const char *file)
-{ 
+{
   File e;
   char cur[MAX_LENGTH];
   char path[MAX_FILE];
@@ -434,24 +427,25 @@ bool addMsg(char *msg, char *node_num, const char *file)
   char latestState[MAX_LENGTH];
   char accelerometer[MAX_LENGTH];
   bool accelFlag = false;
-  bool stateFlag = false; 
+  bool stateFlag = false;
   memset(accelerometer, '\0', sizeof(accelerometer));
   memset(latestState, '\0', sizeof(latestState));
   memset(best, '\0', sizeof(best));
   memset(cur, '\0', sizeof(cur));
   createFilePath(path, node_num, file);
 
-  e = SD.open(path, FILE_READ);
+  e = SD.open(path, FILE_READ); //memory leak is here, what happens when you successfully open the file but there are no bytes. The file opens you lose 48 bytes and never close it
   if (e && e.size() > 0)
   {
     while (e.available())
     {
       readLine(cur, e);
+      //was running compareNMEA within this if statement, no longer need to because the orver is processing this
       if (strcmp(getValueAt(cur, 0), "/GPS") == 0)
-        compareNMEA(cur, best);
+         compareNMEA(cur, best);
       else if (strcmp(getValueAt(cur, 0), "/State") == 0)
-      { 
-        stateFlag = true; 
+      {
+        stateFlag = true;
         memset(latestState, '\0', sizeof(latestState));
         strcpy(latestState, cur);
       }
@@ -468,7 +462,7 @@ bool addMsg(char *msg, char *node_num, const char *file)
     //Accelerometer data takes priority over state data to be uploaded
     if (accelFlag)
       addElem(msg, accelerometer);
-    else if(stateFlag)
+    else if (stateFlag)
       addElem(msg, latestState);
 
     e.close();
@@ -481,7 +475,10 @@ bool addMsg(char *msg, char *node_num, const char *file)
     return true;
   }
   else
+  {
+    e.close(); //dont forget to close if the size if not large enough
     return false;
+  }
 }
 
 void write_to_retry(char packet[])

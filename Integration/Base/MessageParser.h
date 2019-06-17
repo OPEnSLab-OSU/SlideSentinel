@@ -64,7 +64,7 @@ void print_Msg(char msg[])
  * Function: 
  * Description: 5 for state
 *****************************************************/
-char* getValueAt(char src[], int pos)
+char *getValueAt(char src[], int pos)
 {
     char buf[MAX_LENGTH];
     memset(buf, '\0', sizeof(buf));
@@ -88,7 +88,7 @@ char* getValueAt(char src[], int pos)
  * Function: 
  * Description: 5 for state
 *****************************************************/
-bool verifyMsg(char current[], uint8_t numFields)
+bool verifyMsg(char current[], uint8_t chkField)
 {
     int count = 0;
     char buffer[MAX_LENGTH];
@@ -97,7 +97,7 @@ bool verifyMsg(char current[], uint8_t numFields)
     memset(buffer, '\0', sizeof(buffer));
     memset(newMsg, '\0', sizeof(newMsg));
 
-    chk = getValueAt(current, numFields);
+    chk = getValueAt(current, chkField);
     if (chk == NULL)
         return false;
 
@@ -119,7 +119,7 @@ bool verifyMsg(char current[], uint8_t numFields)
         if (current[i] == ',')
         {
             count++;
-            if (count == numFields)
+            if (count == chkField)
                 break;
         }
         newMsg[i] = current[i];
@@ -154,6 +154,56 @@ bool verifyMsg(char current[], uint8_t numFields)
  * Function: /GPS,0,134750.000,4433.9939923,N,12317.6161536,W,68.227,F,1.0,1.0
  * Description:  
 *****************************************************/
+void compareNMEA(char current[], char best[])
+{
+
+#if DEBUG
+    Serial.println();
+    Serial.println("COMPARING: ");
+    print_Msg(current);
+    Serial.println("---- AND ----");
+    print_Msg(best);
+    Serial.println();
+#endif
+
+    char buf[MAX_LENGTH];
+    char buf2[MAX_LENGTH];
+    char *ptr;
+    memset(buf, '\0', sizeof(buf));
+    memset(buf2, '\0', sizeof(buf2));
+
+    //grab the current numTens
+    strcpy(buf, getValueAt(current, 7));
+
+    //grab the best numTens
+    ptr = getValueAt(best, 7);
+
+    //check if this is the first packet sent this round and best is uninitialized, copy directly over if so
+    if (ptr == NULL)
+    {
+        Serial.println("Best uninitialized copying over current!");
+        memset(best, '\0', sizeof(best));
+        strcpy(best, current);
+    }
+    else
+    {
+        strcpy(buf2, ptr);
+        Serial.println("Checking if current is better than best!");
+        Serial.print("Best ten: ");
+        Serial.println(buf2);
+        Serial.print("Cur ten: ");
+        Serial.println(buf);
+        //get bests numTens count
+        if (atoi(buf) >= atoi(buf2))
+        {
+            Serial.println("Current has more tens copying over  to best");
+            memset(best, '\0', sizeof(best));
+            strcpy(best, current);
+        }
+    }
+}
+
+/*
 void compareNMEA(char current[], char best[])
 {
 
@@ -220,4 +270,4 @@ void compareNMEA(char current[], char best[])
 #endif
         }
     }
-}
+}*/
