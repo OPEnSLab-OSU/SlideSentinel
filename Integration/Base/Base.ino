@@ -40,6 +40,8 @@ https://postproxy.azurewebsites.net
 #define IridiumSerial Serial1
 #define MAX_LENGTH 150 //every buffer declared in this program is initialized with this length, Packets longer than 150 will always be dropped
 #define MAX_FILE 30
+#define SERIAL2_TX 11
+#define SERIAL2_RX 13
 
 // Global variable declarations
 bool is_retry;
@@ -58,8 +60,8 @@ unsigned long retry_freq;
 unsigned long last_wake;
 const char *folder = "NODE_";
 
-// Serial Port Init, RX pin 13, TX pin 10, configuring for rover UART
-Uart Serial2(&sercom1, 13, 4, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+// Serial Port Init, RX pin 13, TX pin 11, configuring for rover UART
+Uart Serial2(&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_1, UART_TX_PAD_2);
 
 // Object instantiation
 IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);

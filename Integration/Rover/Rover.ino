@@ -21,19 +21,17 @@
  *                        In shaded enviroments, provides ~25 mA current
  * ************************************/
 
-//disabled sending of state and gps in trystandby
-
 #define DEBUG 1 // allow printing to serial monitor,
 #define DEBUG_SD 1
 
-#define RTC_WAKE_PERIOD 60 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define RTC_WAKE_PERIOD 30 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
 #define STANDARD_WAKE 1800 // Length of time to take measurements under periodic wake condition
 #define ALERT_WAKE 1800     // Length of time to take measurements under acceleration wake condition
 
 // Debugging flags
 #define TOGGLE_SLEEP true
 #define TOGGLE_NIGHT_SLEEP false
-#define TOGGLE_WDT true
+#define TOGGLE_WDT false
 #define TOGGLE_TX true
 
 #define RTC_MODE 1 // enable RTC interrupts
@@ -48,8 +46,6 @@
 #define RTC_WAKE_PIN 5     // Attach to SQW pin on RTC
 #define SERIAL2_RX 12      // Rx pin for first serial port
 #define SERIAL2_TX 11      // Tx pin for first serial port
-#define SERIAL3_RX A5
-#define SERIAL3_TX 6
 #define BATTERYPIN A1
 #define chipSelect 4
 
@@ -69,13 +65,6 @@ Uart Serial2(&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler()
 {
     Serial2.IrqHandler();
-}
-
-// Hardware Serial Port 3
-Uart Serial3(&sercom5, SERIAL3_RX, SERIAL3_TX, SERCOM_RX_PAD_0, UART_TX_PAD_2);
-void SERCOM5_Handler()
-{
-    Serial3.IrqHandler();
 }
 
 // Global variables
@@ -129,9 +118,10 @@ void setup()
 {
     setup_sd();
     Serial.begin(115200);
+
     //Setup UART
-    Serial3Setup();
-    Serial2Setup();
+    Serial2Setup();             // GPS UART
+    Serial1.begin(115200);      // Radio UART
 
     //configureAccelerometer
     mmaSetupSlideSentinel();
@@ -507,7 +497,7 @@ void sendState(Adafruit_MMA8451 device, bool accel)
 
     for (uint8_t i = 0; i < 20; i++)
     {
-        sendMessage(msg, Serial3);
+        sendMessage(msg, Serial1);
         delay(50);
     }
 }
@@ -534,7 +524,7 @@ void tryStandby()
         if (!nightFlag)
         {
 #if TOGGLE_TX
-            processGPS((char *)CurrentWakeGPS, NODE_NUM, Serial3);
+            processGPS((char *)CurrentWakeGPS, NODE_NUM, Serial1);
             sendState(mma, false);
 #endif
             Serial.println("GPS data written out");
@@ -616,14 +606,6 @@ void Serial2Setup()
     // Assign pins 11,12 SERCOM functionality, internal function
     pinPeripheral(SERIAL2_TX, PIO_SERCOM); //Private functions for serial communication
     pinPeripheral(SERIAL2_RX, PIO_SERCOM);
-}
-
-void Serial3Setup()
-{
-    // Assign pins 10 & 13 SERCOM functionality, internal function
-    Serial3.begin(115200);
-    pinPeripheral(SERIAL3_TX, PIO_SERCOM); //Private functions for serial communication
-    pinPeripheral(SERIAL3_RX, PIO_SERCOM_ALT);
 }
 
 void mmaPrintIntSRC(uint8_t dataRead)
