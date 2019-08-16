@@ -5,9 +5,9 @@
 #Piksi Multi 
 
 ## Whats being tested?
-#Accuracy
-#Continuity
-#Availability
-#Time To First Fix 
+###Accuracy
+###Continuity
+###Availability
+###Time To First Fix 
 
 
