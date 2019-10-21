@@ -11,22 +11,13 @@
 #include "SlideS_parser.h"
 #include <RTClibExtended.h>
 
-/***************************************
- * Power consumption: 
- * 
- * Low Power:             4.53 mA 
- * Polling for position:  ~170 mA
- * Trasmitting:           ~190 mA (Z9-T require power supply which can supply 800mA, radio draws 50mA during tx)
- * Solar Charging:        Provides up to 180 mA current (direct sunlight on a bright day)
- *                        In shaded enviroments, provides ~25 mA current
- * ************************************/
 
 #define DEBUG 1 // allow printing to serial monitor,
 #define DEBUG_SD 1
 
-#define RTC_WAKE_PERIOD 30 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
-#define STANDARD_WAKE 1800 // Length of time to take measurements under periodic wake condition
-#define ALERT_WAKE 1800     // Length of time to take measurements under acceleration wake condition
+#define RTC_WAKE_PERIOD 1 // Interval to wake and take sample in Min, reset alarm based on this period (Bo - 5 min), 15 min
+#define STANDARD_WAKE 20  // Length of time to take measurements under periodic wake condition
+#define ALERT_WAKE 20     // Length of time to take measurements under acceleration wake condition
 
 // Debugging flags
 #define TOGGLE_SLEEP true
@@ -116,12 +107,14 @@ void wakeUp_RTC()
 
 void setup()
 {
-    setup_sd();
     Serial.begin(115200);
+    while(!Serial);
+
+    setup_sd();
 
     //Setup UART
-    Serial2Setup();             // GPS UART
-    Serial1.begin(115200);      // Radio UART
+    Serial2Setup();        // GPS UART
+    Serial1.begin(115200); // Radio UART
 
     //configureAccelerometer
     mmaSetupSlideSentinel();

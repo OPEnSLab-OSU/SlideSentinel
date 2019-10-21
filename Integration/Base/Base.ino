@@ -60,8 +60,7 @@ unsigned long retry_freq;
 unsigned long last_wake;
 const char *folder = "NODE_";
 
-// Serial Port Init, RX pin 13, TX pin 11, configuring for rover UART
-Uart Serial2(&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_1, UART_TX_PAD_2);
+
 
 // Object instantiation
 IridiumSBD modem(IridiumSerial, -1, RING_INDICATOR_PIN);
@@ -73,10 +72,10 @@ void setup()
   Serial.begin(115200);
 #endif
   setup_sd();
-  Serial2_setup(); //Serial port used to communicate with the Freewave Z9-T
-  initRockblock();
+  Serial1.begin(115200);
+  //initRockblock();
   initialize_nodes();
-  getNetwork();
+  //getNetwork();
   pinMode(RING_INDICATOR_PIN, INPUT);
 
 #if TOGGLE_UPDATES
@@ -112,7 +111,7 @@ void loop()
   //Watchdog.reset();
 
   //read data
-  if (Serial2.available())
+  if (Serial1.available())
   {
     readData();
   }
@@ -164,16 +163,16 @@ void readData()
   while (millis() - internal_time_cur < 5000)
   {
     char input;
-    if (Serial2.available())
+    if (Serial1.available())
     {
-      if (input = Serial2.read() == (byte)'*')
+      if (input = Serial1.read() == (byte)'*')
       {
         internal_time = millis();
         while (millis() - internal_time < 5000)
         {
-          if (Serial2.available())
+          if (Serial1.available())
           {
-            input = Serial2.read();
+            input = Serial1.read();
             count++; //for preventing buffer overflow
             if (input == (byte)'!' || count == MAX_LENGTH - 1)
             {
@@ -847,28 +846,17 @@ void write_sd_str(const char *file, char message[])
   }
 }
 
-void Serial2_setup()
-{
-  Serial2.begin(115200);        //rx on rover to pin 10
-                                //Assign pins 10 & 13 SERCOM functionality, internal function
-  pinPeripheral(4, PIO_SERCOM); //Private functions for serial communication
-  pinPeripheral(13, PIO_SERCOM);
-}
 
 void update_time()
 {
   retry_timer = millis();
 }
 
-void SERCOM1_Handler()
-{
-  Serial2.IrqHandler();
-}
 
 void serialFlush()
 {
-  while (Serial2.available() > 0)
+  while (Serial1.available() > 0)
   {
-    char t = Serial2.read();
+    char t = Serial1.read();
   }
 }
