@@ -35,13 +35,13 @@ bool SN74LVC2G53::disableSwitch(){
     return true;
 }
 
-void SN74LVC2G53::radioToFeather(){
+void SN74LVC2G53::COMtoY1(){
     digitalWrite(m_switchPin, LOW);
     m_switchDir = 1;
     printDirection();
 }
 
-void SN74LVC2G53::radioToGNSS(){
+void SN74LVC2G53::COMtoY2(){
     digitalWrite(m_switchPin, HIGH);
     m_switchDir = 2;
     printDirection();
