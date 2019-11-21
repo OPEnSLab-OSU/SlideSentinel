@@ -114,6 +114,7 @@ void loop()
                 Serial.println("sendtoWait failed");
         }
         // Start RTK 
+        // Switch Mux flow from gnss to radio
         if (buf[0] == 'a')
         {
 
@@ -122,6 +123,7 @@ void loop()
             useRelay(GNSS_ON_PIN);
         }
         // End RTK
+        // Switch mux flow from feather to radio 
         else if (buf[0] == 'b')
         {
             Serial.println("(A0 HIGH) FEATHER_M0 -----> RADIO");
@@ -159,7 +161,7 @@ void test()
             Serial.println("(A0 HIGH) FEATHER_M0 -----> RADIO");
             digitalWrite(SPDT_SEL, HIGH);
             break;
-        case '6':
+        case '6': // Write to COM SAT
             Serial2.println("TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST");
             Serial.println("Writing data out...");
             break;

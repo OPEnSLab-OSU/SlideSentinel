@@ -16,6 +16,7 @@
 // RADIO INTERFACE
 #define RST 6
 #define CD 10
+
 // COMMUNICATION OVER SERIAL1
 
 // Switch Pin Def
