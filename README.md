@@ -1,5 +1,7 @@
 # SlideSentinel
 [![DOI](https://zenodo.org/badge/136069337.svg)](https://zenodo.org/badge/latestdoi/136069337)
+
+![AGU Poster](https://github.com/OPEnSLab-OSU/SlideSentinel/blob/feature_readingQuality/Documentation/Photos/Diagrams/AGU%20Slide%20Sentinel%202019%20FINAL%20.png)
 ## How to Setup
 Install the arduino IDE, follow the adafruit [guide](https://learn.adafruit.com/adafruit-feather-m0-basic-proto/overview), and install LOOM with it dependencies with its guide [here](https://github.com/OPEnSLab-OSU/InternetOfAg/tree/master/Arduino_and_Loom_Setup)
 
