@@ -7,6 +7,8 @@
 #include "MAX4280.h"
 #include "MAX3243.h" 
 #include "FreewaveRadio.h"
+#include "VoltageReg.h"
+#include "SN74LVC2G53.h"
 
 
 // Test Toggle
@@ -15,16 +17,20 @@
 // RADIO INTERFACE
 #define RST 6
 #define CD 10
+#define IS_Z9C true
+Freewave radio = Freewave(RST, CD, IS_Z9C);
 // COMMUNICATION OVER SERIAL1
 
 // Switch Pin Def
-#define SPDT_SEL A0
+#define SPDT_SEL 14
+SN74LVC2G53 mux = SN74LVC2G53(SPDT_SEL, -1);
 
 // SD CARD CONSTANTS
 #define SD_CS 18
 
 // PMC REGULATOR
 #define VCC2_EN 13 
+PoluluVoltageReg vcc2 = PoluluVoltageReg(VCC2_EN);
 
 // MAX4280 relay driver
 #define MAX_CS 9
@@ -275,11 +281,11 @@ void advancedTest()
             break;
         case '6':
             Serial.println("RADIO -----> FEATHER M0 (A0 LOW)");
-            digitalWrite(SPDT_SEL, LOW);
+            mux.comY1();
             break;
         case '7':
             Serial.println("RADIO -----> GNSS RECEIVER (A0 HIGH)");
-            digitalWrite(SPDT_SEL, HIGH);
+            mux.comY2();
             break;
         case '8':
             Serial.println("RS232 ---> OFF (Driving it LOW)");
@@ -291,13 +297,11 @@ void advancedTest()
             break;
         case 'r':
             Serial.println("Resetting the radio, DRIVING RST LOW");
-            digitalWrite(RST, LOW);
-            delay(2000);
-            digitalWrite(RST, HIGH);
+            radio.reset();
             break;
         case 't':
             Serial.print("STATE of CD pin: ");
-            Serial.println(digitalRead(CD));
+            radio.channel_busy();
             break;
         case 'w':
             setRTCAlarm();
@@ -329,7 +333,11 @@ void advancedTest()
             break;
         case 'x':
             Serial.println("Turning off VCC2");
-            digitalWrite(VCC2_EN, LOW);
+            vcc2.disable();
+            break;
+        case 'y':
+            Serial.println("Turning on VCC2");
+            vcc2.enable();
             break;
         }
     }
