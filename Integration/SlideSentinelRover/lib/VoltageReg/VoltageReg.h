@@ -10,7 +10,7 @@ class PoluluVoltageReg {
         void enable();
         void disable();
     private: 
-        uint8_t m_en_pin;
+        uint8_t m_en;
 };
 
 #endif // _VOLTAGEREG_H_

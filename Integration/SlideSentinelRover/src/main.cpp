@@ -9,7 +9,7 @@
 #include "FreewaveRadio.h"
 #include "VoltageReg.h"
 #include "SN74LVC2G53.h"
-
+#include "PMController.h"
 
 // Test Toggle
 #define ADVANCED true
@@ -34,11 +34,11 @@ PoluluVoltageReg vcc2 = PoluluVoltageReg(VCC2_EN);
 
 // MAX4280 relay driver
 #define MAX_CS 9
-#define GNSS_RESET 3
-#define GNSS_SET 2
-#define RADIO_RESET 1
-#define RADIO_SET 0
 MAX4280 max4280 = MAX4280(MAX_CS, &SPI);
+
+// PMController
+PMController pmController = PMController(&max4280, &vcc2, false, true);
+
 
 // RS232 Interface Pin Def
 #define FORCEOFF_N A5
@@ -260,20 +260,16 @@ void advancedTest()
         switch (cmd)
         {
         case '1':
-            Serial.println("set gnss");
-            max4280.assertRail(GNSS_SET);
+            pmController.enableGNSS();
             break;
         case '2':
-            Serial.println("reset gnss");
-            max4280.assertRail(GNSS_RESET);
+            pmController.disableGNSS();
             break;
         case '3':
-            Serial.println("set radio");
-            max4280.assertRail(RADIO_SET);
+            pmController.enableRadio();
             break;
         case '4':
-            Serial.println("reset radio");
-            max4280.assertRail(RADIO_RESET);
+            pmController.disableRadio();
             break;
         case '5':
             Serial1.println("TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST");

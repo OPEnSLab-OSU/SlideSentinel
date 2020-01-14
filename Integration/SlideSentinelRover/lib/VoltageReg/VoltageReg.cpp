@@ -1,14 +1,14 @@
 #include "VoltageReg.h"
 
 PoluluVoltageReg::PoluluVoltageReg(uint8_t en){
-    m_en_pin = en;
-    pinMode(m_en_pin, OUTPUT);
+    m_en = en;
+    pinMode(m_en, OUTPUT);
 }
 
 void PoluluVoltageReg::enable(){
-    digitalWrite(m_en_pin, HIGH);
+    digitalWrite(m_en, HIGH);
 }
 
 void PoluluVoltageReg::disable(){
-    digitalWrite(m_en_pin, LOW);
+    digitalWrite(m_en, LOW);
 }

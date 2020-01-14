@@ -9,7 +9,7 @@ class MAX3243 {
         void enable();
         void disable();
     private: 
-        uint8_t m_forceoff_pin; 
+        uint8_t m_forceoff; 
 };
 
 #endif // _MAX3243_H_

@@ -10,9 +10,9 @@ class Freewave {
         bool channel_busy();
         void reset();
     private: 
-        uint8_t m_reset_pin;
-        uint8_t m_cd_pin;
-        bool m_is_z9c;
+        uint8_t m_rst;
+        uint8_t m_cd;
+        bool m_z9c;
 };
 
 #endif // _FREEWAVERADIO_H_
