@@ -7,7 +7,7 @@ Console::Console()
 
 void Console::setDebug(bool debug) 
 {
-    m_debug = debug;11
+    m_debug = debug;
 }
 
 void Console::debug(const char* message)
