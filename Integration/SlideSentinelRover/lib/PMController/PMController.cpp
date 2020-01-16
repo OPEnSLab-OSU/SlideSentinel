@@ -2,11 +2,9 @@
 #include "Console.h"
 #define DEBUG true
 
-PMController::PMController(MAX4280* max4280, PoluluVoltageReg* vcc2, bool GNSSrail2, bool radioRail2){
-    m_GNSSRail2 = GNSSrail2;
-    m_RadioRail2 = radioRail2;
-    m_max4280 = max4280;
-    m_vcc2 = vcc2;
+PMController::PMController(MAX4280* max4280, PoluluVoltageReg* vcc2, bool GNSSrail2, bool radioRail2) : 
+    m_GNSSRail2( GNSSrail2 ), m_RadioRail2( radioRail2 ), m_max4280( max4280 ), m_vcc2 ( vcc2 )
+{
     console.debug("PMController Initialized");
 }
 

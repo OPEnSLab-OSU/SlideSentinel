@@ -110,7 +110,7 @@ void loop()
             Serial.println((char *)buf);
 
             // Send a reply back to the originator client
-            if (!manager.sendtoWait(data, sizeof(data), from))
+            if (!manager.sendtoWait(data, sizeof(data), from))  //SEND CONFIG DATA TIED TO THIS
                 Serial.println("sendtoWait failed");
         }
         // Start RTK 

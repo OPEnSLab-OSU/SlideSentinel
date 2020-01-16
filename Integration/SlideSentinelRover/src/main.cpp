@@ -10,20 +10,32 @@
 #include "VoltageReg.h"
 #include "SN74LVC2G53.h"
 #include "PMController.h"
+#include "ComController.h"
+
 
 // Test Toggle
 #define ADVANCED true
+
+//COMMUNICATION
+#define RADIO_BAUD 115200
+#define CLIENT_ADDR 1
+#define SERVER_ADDR 0
 
 // RADIO INTERFACE
 #define RST 6
 #define CD 10
 #define IS_Z9C true
 Freewave radio = Freewave(RST, CD, IS_Z9C);
-// COMMUNICATION OVER SERIAL1
 
 // Switch Pin Def
 #define SPDT_SEL 14
 SN74LVC2G53 mux = SN74LVC2G53(SPDT_SEL, -1);
+
+// RS232 Interface Pin Def
+#define FORCEOFF_N A5
+MAX3243 max3243 = MAX3243(FORCEOFF_N);
+
+ComController comController = ComController(&radio, &max3243, &mux, &Serial1, RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
 
 // SD CARD CONSTANTS
 #define SD_CS 18
@@ -37,12 +49,9 @@ PoluluVoltageReg vcc2 = PoluluVoltageReg(VCC2_EN);
 MAX4280 max4280 = MAX4280(MAX_CS, &SPI);
 
 // PMController
+StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
 PMController pmController = PMController(&max4280, &vcc2, false, true);
 
-
-// RS232 Interface Pin Def
-#define FORCEOFF_N A5
-MAX3243 max3243 = MAX3243(FORCEOFF_N);
 
 // Instatiate ACCELEROMETER Object
 #define ACCEL_INT A3
@@ -335,9 +344,22 @@ void advancedTest()
             Serial.println("Turning on VCC2");
             vcc2.enable();
             break;
+        case '$':
+            Serial.println("Turning BASE station ON");
+            comController.request(doc);
+            delay(500);
+            break;
+        case '#':      
+            Serial.println("Turning BASE station OFF");
+            char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
+            deserializeJson(doc, test);
+            comController.upload(doc);
+            delay(500);
+            break;
         }
     }
 
+/*
     if (Serial1.available())
     {
         Serial.print(Serial1.read());
@@ -347,14 +369,16 @@ void advancedTest()
     {
         Serial.print(Serial2.read());
     }
+*/
 }
 
 
 void setup()
 {
     Serial.begin(115200);
-    while (!Serial)
-        ;
+    while (1){
+        Serial.println("moose");
+    }
 
     // SPI INIT
     SPI.begin();

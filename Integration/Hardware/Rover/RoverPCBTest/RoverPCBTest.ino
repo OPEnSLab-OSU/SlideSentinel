@@ -79,7 +79,7 @@ void Serial2Setup(uint16_t baudrate)
 {
     Serial2.begin(baudrate);
     // Assign pins 11,12 SERCOM functionality, internal function
-    pinPeripheral(SERIAL2_TX, PIO_SERCOM); //Private functions for serial communication
+    pinPeripheral(SERIAL2_TX, PIO_SERCOM); // Private functions for serial communication
     pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
 
