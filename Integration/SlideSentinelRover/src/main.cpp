@@ -5,57 +5,47 @@
 #include "RTClibExtended.h"
 #include "wiring_private.h" // Pin peripheral
 #include "MAX4280.h"
-#include "MAX3243.h" 
+#include "MAX3243.h"
 #include "FreewaveRadio.h"
 #include "VoltageReg.h"
 #include "SN74LVC2G53.h"
 #include "PMController.h"
 #include "ComController.h"
 
-
 // Test Toggle
 #define ADVANCED true
 
-//COMMUNICATION
+// COMMUNICATION CONTROLLER
 #define RADIO_BAUD 115200
-#define CLIENT_ADDR 1
-#define SERVER_ADDR 0
-
-// RADIO INTERFACE
+#define CLIENT_ADDR 2
+#define SERVER_ADDR 1
 #define RST 6
 #define CD 10
 #define IS_Z9C true
-Freewave radio = Freewave(RST, CD, IS_Z9C);
-
-// Switch Pin Def
 #define SPDT_SEL 14
-SN74LVC2G53 mux = SN74LVC2G53(SPDT_SEL, -1);
-
-// RS232 Interface Pin Def
 #define FORCEOFF_N A5
-MAX3243 max3243 = MAX3243(FORCEOFF_N);
 
-ComController comController = ComController(&radio, &max3243, &mux, &Serial1, RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
+Freewave radio(RST, CD, IS_Z9C);
+SN74LVC2G53 mux(SPDT_SEL, -1);
+MAX3243 max3243(FORCEOFF_N);
+ComController* comController;
 
-// SD CARD CONSTANTS
+
+// POWER MANAGEMENT CONTROLLER
 #define SD_CS 18
-
-// PMC REGULATOR
-#define VCC2_EN 13 
-PoluluVoltageReg vcc2 = PoluluVoltageReg(VCC2_EN);
-
-// MAX4280 relay driver
+#define VCC2_EN 13
 #define MAX_CS 9
-MAX4280 max4280 = MAX4280(MAX_CS, &SPI);
 
-// PMController
+PoluluVoltageReg vcc2(VCC2_EN);
+MAX4280 max4280(MAX_CS, &SPI);
+PMController pmController(&max4280, &vcc2, false, true);
+
+// GLOBAL DOCUMENT
 StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
-PMController pmController = PMController(&max4280, &vcc2, false, true);
-
 
 // Instatiate ACCELEROMETER Object
 #define ACCEL_INT A3
-Adafruit_MMA8451 mma = Adafruit_MMA8451();
+Adafruit_MMA8451 mma;
 
 // Instatiate RTC Object
 #define RTC_INT 5
@@ -81,8 +71,6 @@ void Serial2Setup(uint16_t baudrate)
     pinPeripheral(SERIAL2_TX, PIO_SERCOM); //Private functions for serial communication
     pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
-
-
 
 void mmaSetupSlideSentinel()
 {
@@ -226,10 +214,9 @@ void rtcInt()
     attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
 }
 
-
 void setRTCAlarm()
 {
-    DateTime now = RTC_DS.now(); // Check the current time
+    DateTime now = RTC_DS.now();                                      // Check the current time
     MIN = (now.minute() + RTC_WAKE_PERIOD) % 60;                      // wrap-around using modulo every 60 sec
     HR = (now.hour() + ((now.minute() + RTC_WAKE_PERIOD) / 60)) % 24; // quotient of now.min+periodMin added to now.hr, wraparound every 24hrs
 
@@ -246,17 +233,17 @@ void setRTCAlarm()
 
 void setup_sd()
 {
-  Serial.println("Initializing SD card...");
+    Serial.println("Initializing SD card...");
 
-  if (!SD.begin(SD_CS))
-  {
-    Serial.println("SD Initialization failed!");
-    Serial.println("Will continue anyway, but SD functions will be skipped");
-  }
-  else
-  {
-    Serial.println("initialization complete");
-  }
+    if (!SD.begin(SD_CS))
+    {
+        Serial.println("SD Initialization failed!");
+        Serial.println("Will continue anyway, but SD functions will be skipped");
+    }
+    else
+    {
+        Serial.println("initialization complete");
+    }
 }
 
 void advancedTest()
@@ -330,9 +317,9 @@ void advancedTest()
             //...Sleep
             //Enable USB
             USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-          //  max4280.assertRail(RADIO_SET);
+            //  max4280.assertRail(RADIO_SET);
             delay(1000);
-          //  max4280.assertRail(RADIO_RESET);
+            //  max4280.assertRail(RADIO_RESET);
             Serial.begin(115200);
             Serial.println("Awake");
             break;
@@ -344,22 +331,22 @@ void advancedTest()
             Serial.println("Turning on VCC2");
             vcc2.enable();
             break;
-        case '$':
+        case 'o':
             Serial.println("Turning BASE station ON");
-            comController.request(doc);
+            comController->request(doc);
             delay(500);
             break;
-        case '#':      
+        case 'p':      
             Serial.println("Turning BASE station OFF");
             char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
             deserializeJson(doc, test);
-            comController.upload(doc);
+            comController->upload(doc);
             delay(500);
             break;
         }
     }
 
-/*
+    
     if (Serial1.available())
     {
         Serial.print(Serial1.read());
@@ -369,36 +356,22 @@ void advancedTest()
     {
         Serial.print(Serial2.read());
     }
-*/
-}
 
+}
 
 void setup()
 {
     Serial.begin(115200);
-    while (1){
-        Serial.println("moose");
-    }
+    while (!Serial)
+        ;
+    
+    // Place instatiation here, Serial1 is not in the same compilation unit as ComController
+    static ComController _comController(&radio, &max3243, &mux, &Serial1, RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
+    comController = &_comController;
 
     // SPI INIT
     SPI.begin();
     SPI.setClockDivider(SPI_CLOCK_DIV8);
-
-    // RADIO INIT
-    Serial1.begin(115200);
-    pinMode(RST, OUTPUT);
-    digitalWrite(RST, HIGH);
-    pinMode(CD, INPUT);
-
-    // RS232 INIT
-    max3243.disable();
-
-    // RELAY DRIVER INIT
-    max4280.clear();
-
-    // SPDT INIT
-    pinMode(SPDT_SEL, OUTPUT);
-    digitalWrite(SPDT_SEL, HIGH);
 
     // ACCELEROMETER INIT
     Serial.println("Setting up MMA");
@@ -424,14 +397,9 @@ void setup()
                         GCLK_CLKCTRL_GEN_GCLK1 |
                         GCLK_CLKCTRL_CLKEN;
 
-
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
     setup_sd();
-
-    // REGULATOR INIT
-    pinMode(VCC2_EN, OUTPUT);
-    digitalWrite(VCC2_EN, HIGH);
 }
 
 void loop()

@@ -32,8 +32,8 @@
 #define ROCK_RINGAL A3
 
 // Reliable Datagram usage
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
+#define CLIENT_ADDRESS 2
+#define SERVER_ADDRESS 1
 RH_Serial driver(Serial1);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 uint8_t buf[RH_SERIAL_MAX_MESSAGE_LEN];

@@ -7,6 +7,7 @@ class Freewave {
     
     public: 
         Freewave(uint8_t reset, uint8_t cd, bool is_z9c);
+        bool getZ9C();
         bool channel_busy();
         void reset();
     private: 

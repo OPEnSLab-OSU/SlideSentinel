@@ -33,5 +33,5 @@ void PMController::disableRadio() {
     if(m_RadioRail2)
         m_vcc2->disable();
     m_max4280->assertRail(1);
-    console.debug("GNSS off");
+    console.debug("radio off");
 }

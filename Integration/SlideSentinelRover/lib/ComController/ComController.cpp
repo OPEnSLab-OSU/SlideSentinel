@@ -7,6 +7,7 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux
 {
     m_serial->begin(m_baud);
     m_mux->comY1();
+    m_max3243->disable();
     m_driver = new RH_Serial(*m_serial);
     m_manager = new RHReliableDatagram(*m_driver, m_clientId);
 }
@@ -28,6 +29,8 @@ void ComController::setRetries(uint8_t num)
 
 bool ComController::_send(char msg[])
 {
+    Serial.println(msg);
+    Serial.println(strlen(msg));
     if (m_manager->sendtoWait((uint8_t *)msg, strlen(msg), m_serverId))
         return true;
     else
@@ -44,10 +47,15 @@ bool ComController::_receive(char buf[])
 }
 
 bool ComController::request(JsonDocument &doc)
-{
+{   
+    m_mux->comY1();
+    if(m_radio->getZ9C())
+        m_max3243->enable();
+
     if (!_send((char *)m_RTS))
     {
-        console.debug("No ACK from server");  
+        console.debug("No ACK from server"); 
+        m_max3243->disable(); 
         deserializeJson(doc, m_ACK_ERR);
         return false;
     }
@@ -56,6 +64,7 @@ bool ComController::request(JsonDocument &doc)
     if (!_receive(m_buf))
     {
         console.debug("Server ACK but no reply"); 
+        m_max3243->disable(); 
         deserializeJson(doc, m_REP_ERR);
         return false;
     }
@@ -80,6 +89,7 @@ bool ComController::upload(JsonDocument &doc)
         return false;
     }
 
+    m_max3243->disable(); 
     console.debug("Succesfully uploaded"); 
     return true;
 }
