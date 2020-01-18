@@ -32,8 +32,8 @@
 #define ROCK_RINGAL A3
 
 // Reliable Datagram usage
-#define CLIENT_ADDRESS 2
-#define SERVER_ADDRESS 1
+#define CLIENT_ADDRESS 1
+#define SERVER_ADDRESS 2
 RH_Serial driver(Serial1);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 uint8_t buf[RH_SERIAL_MAX_MESSAGE_LEN];
@@ -93,10 +93,11 @@ void setup()
 
 void loop()
 {
-    test();
+    //test();
     memset(buf, '\0', sizeof(buf));
     if (manager.available())
     {
+        Serial.println("here");
         // Turn this high so the base can send an ACK!
         digitalWrite(SPDT_SEL, HIGH);
         // Wait for a message addressed to us from the client
@@ -110,10 +111,10 @@ void loop()
             Serial.println((char *)buf);
 
             // Send a reply back to the originator client
-            if (!manager.sendtoWait(data, sizeof(data), from))  //SEND CONFIG DATA TIED TO THIS
+            if (!manager.sendtoWait(data, sizeof(data), from)) //SEND CONFIG DATA TIED TO THIS
                 Serial.println("sendtoWait failed");
         }
-        // Start RTK 
+        // Start RTK
         /*
         if (buf[0] == 'a')
         {
@@ -183,8 +184,11 @@ void test()
             break;
         }
     }
-    if(Serial1.available())
-        Serial.print((char)Serial1.read());
+    if (Serial1.available())
+    {
+        char c = Serial1.read();
+        Serial.print(c);
+    }
 }
 
 void setup_sd()

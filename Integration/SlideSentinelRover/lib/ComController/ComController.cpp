@@ -10,6 +10,7 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux
     m_max3243->disable();
     m_driver = new RH_Serial(*m_serial);
     m_manager = new RHReliableDatagram(*m_driver, m_clientId);
+    m_manager->init();
 }
 
 void ComController::_clearBuffer()
@@ -29,9 +30,11 @@ void ComController::setRetries(uint8_t num)
 
 bool ComController::_send(char msg[])
 {
+    uint8_t size = strlen(msg);
     Serial.println(msg);
-    Serial.println(strlen(msg));
-    if (m_manager->sendtoWait((uint8_t *)msg, strlen(msg), m_serverId))
+    Serial.println(size);
+    Serial.println(m_serverId);
+    if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
         return true;
     else
         return false;
@@ -39,8 +42,9 @@ bool ComController::_send(char msg[])
 
 bool ComController::_receive(char buf[])
 {
-    uint8_t len = strlen(buf);
-    if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout))
+    uint8_t len = sizeof(buf);
+    uint8_t from;
+    if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
         return true;
     else
         return false;

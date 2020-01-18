@@ -17,8 +17,8 @@
 
 // COMMUNICATION CONTROLLER
 #define RADIO_BAUD 115200
-#define CLIENT_ADDR 2
-#define SERVER_ADDR 1
+#define CLIENT_ADDR 1
+#define SERVER_ADDR 2
 #define RST 6
 #define CD 10
 #define IS_Z9C true

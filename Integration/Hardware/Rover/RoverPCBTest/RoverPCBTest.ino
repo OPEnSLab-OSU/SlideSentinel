@@ -306,7 +306,7 @@ void advancedTest()
 
     if (Serial1.available())
     {
-        Serial.print(Serial1.read());
+        Serial.print((char)Serial1.read());
     }
 
     if (Serial2.available())
