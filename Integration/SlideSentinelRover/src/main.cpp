@@ -11,6 +11,7 @@
 #include "SN74LVC2G53.h"
 #include "PMController.h"
 #include "ComController.h"
+#include "Battery.h"
 
 // Test Toggle
 #define ADVANCED true
@@ -35,10 +36,12 @@ ComController* comController;
 #define SD_CS 18
 #define VCC2_EN 13
 #define MAX_CS 9
+#define BAT 15
 
 PoluluVoltageReg vcc2(VCC2_EN);
 MAX4280 max4280(MAX_CS, &SPI);
-PMController pmController(&max4280, &vcc2, false, true);
+Battery batReader(BAT);
+PMController pmController(&max4280, &vcc2, &batReader, false, true);
 
 // GLOBAL DOCUMENT
 StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
@@ -289,11 +292,14 @@ void advancedTest()
             break;
         case 'r':
             Serial.println("Resetting the radio, DRIVING RST LOW");
-            radio.reset();
+            comController->resetRadio();
             break;
         case 't':
             Serial.print("STATE of CD pin: ");
-            radio.channel_busy();
+            if(comController->channelBusy())
+                Serial.println("BUSY");
+            else
+                Serial.println("NOT BUSY");
             break;
         case 'w':
             setRTCAlarm();
@@ -308,20 +314,23 @@ void advancedTest()
             break;
         case 's':
             Serial.println("Sleeping");
-            //Disable USB
-            USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
-            //Enter sleep mode
-            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-            __DSB();
-            __WFI();
-            //...Sleep
-            //Enable USB
-            USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-            //  max4280.assertRail(RADIO_SET);
-            delay(1000);
-            //  max4280.assertRail(RADIO_RESET);
+            pmController.sleep();
+            pmController.enableGNSS();
+            delay(2000);
+            pmController.disableGNSS();
             Serial.begin(115200);
             Serial.println("Awake");
+            break;
+        case 'd':
+            Serial.print("reading battery voltage: ");
+            Serial.println(pmController.readBat());
+            break;
+        case 'f':
+            Serial.print("reading battery voltage string: ");
+            char volt[20];
+            memset(volt, '\0', sizeof(char)*20);
+            pmController.readBatStr(volt);
+            Serial.println(volt);
             break;
         case 'x':
             Serial.println("Turning off VCC2");
@@ -332,8 +341,13 @@ void advancedTest()
             vcc2.enable();
             break;
         case 'o':
+            char buffer[RH_SERIAL_MAX_MESSAGE_LEN];
+            memset(buffer, '\0', sizeof(char)*RH_SERIAL_MAX_MESSAGE_LEN);
             Serial.println("Turning BASE station ON");
             comController->request(doc);
+            serializeJson(doc, buffer);
+            Serial.print("Config Received:    ");
+            Serial.println(buffer);
             delay(500);
             break;
         case 'p':      
@@ -388,7 +402,7 @@ void setup()
     // GNSS INIT
     Serial2Setup(GNSS_BAUD);
 
-    // Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
+    /* Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
     SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
 
     // INIT EXTERNAL OSCILLATOR FOR RISING AND FALLING interrupts  // Configure EIC to use GCLK1 which uses XOSC32K
@@ -396,6 +410,7 @@ void setup()
     GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
                         GCLK_CLKCTRL_GEN_GCLK1 |
                         GCLK_CLKCTRL_CLKEN;
+    */
 
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);

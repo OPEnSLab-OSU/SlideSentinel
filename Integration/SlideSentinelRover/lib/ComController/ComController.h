@@ -27,6 +27,7 @@ class ComController {
         const char* m_REP_ERR;
         const char* m_SER_ERR;
         char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
+
         bool _send(char msg[]);
         bool _receive(char buf[]);
         void _clearBuffer();
@@ -37,7 +38,8 @@ class ComController {
         bool upload(JsonDocument &doc);
         void setTimeout(uint16_t time);
         void setRetries(uint8_t num);
-
+        void resetRadio();
+        bool channelBusy();
 };
 
 #endif // _COMCONTROLLER_H_

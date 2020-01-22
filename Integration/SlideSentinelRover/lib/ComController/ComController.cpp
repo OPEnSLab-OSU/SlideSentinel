@@ -15,7 +15,26 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux
 
 void ComController::_clearBuffer()
 {
-    memset(m_buf, '\0', sizeof(m_buf) / sizeof(m_buf[0]));
+    memset(m_buf, '\0', sizeof(char)*RH_SERIAL_MAX_MESSAGE_LEN);
+}
+
+bool ComController::_send(char msg[])
+{
+    uint8_t size = strlen(msg);
+    if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
+        return true;
+    else
+        return false;
+}
+
+bool ComController::_receive(char buf[])
+{
+    uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
+    uint8_t from;
+    if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
+        return true;
+    else
+        return false;
 }
 
 void ComController::setTimeout(uint16_t time)
@@ -28,27 +47,6 @@ void ComController::setRetries(uint8_t num)
     m_manager->setRetries(num);
 }
 
-bool ComController::_send(char msg[])
-{
-    uint8_t size = strlen(msg);
-    Serial.println(msg);
-    Serial.println(size);
-    Serial.println(m_serverId);
-    if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
-        return true;
-    else
-        return false;
-}
-
-bool ComController::_receive(char buf[])
-{
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-    if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
-        return true;
-    else
-        return false;
-}
 
 bool ComController::request(JsonDocument &doc)
 {   
@@ -96,4 +94,15 @@ bool ComController::upload(JsonDocument &doc)
     m_max3243->disable(); 
     console.debug("Succesfully uploaded"); 
     return true;
+}
+
+void ComController::resetRadio()
+{
+    m_radio->reset();
+}
+
+
+bool ComController::channelBusy()
+{
+    return m_radio->channel_busy();
 }
