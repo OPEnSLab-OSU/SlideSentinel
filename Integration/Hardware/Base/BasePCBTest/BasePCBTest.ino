@@ -89,11 +89,18 @@ void setup()
     // SPDT INIT, Feather receives data
     pinMode(SPDT_SEL, OUTPUT);
     digitalWrite(SPDT_SEL, HIGH);
+
+    // prevent radio reset
+    pinMode(RST, OUTPUT);
+    digitalWrite(RST, HIGH);
+
+    pinMode(VCC2_EN, OUTPUT);
+    digitalWrite(VCC2_EN, HIGH);
 }
 
 void loop()
 {
-    test();
+    //test();
     memset(buf, '\0', sizeof(buf));
     if (manager.available())
     {
@@ -110,7 +117,7 @@ void loop()
             Serial.println((char *)buf);
 
             // Send a reply back to the originator client
-            if (!manager.sendtoWait(data, sizeof(data), from))
+            if (!manager.sendtoWait(data, sizeof(data), from))  //SEND CONFIG DATA TIED TO THIS
                 Serial.println("sendtoWait failed");
         }
         // Start RTK 
@@ -179,7 +186,16 @@ void test()
             digitalWrite(VCC2_EN, LOW);
             Serial.println("Turning off second voltage rail");
             break;
+        case 'f':
+            Serial.println("Resetting the radio, DRIVING RST LOW");
+            digitalWrite(RST, LOW);
+            delay(2000);
+            digitalWrite(RST, HIGH);
+            break;
         }
+    }
+    if(Serial1.available()){
+        Serial.print((char)Serial1.read());
     }
 }
 

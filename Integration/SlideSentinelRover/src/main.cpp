@@ -5,42 +5,50 @@
 #include "RTClibExtended.h"
 #include "wiring_private.h" // Pin peripheral
 #include "MAX4280.h"
-#include "MAX3243.h" 
+#include "MAX3243.h"
 #include "FreewaveRadio.h"
-
+#include "VoltageReg.h"
+#include "SN74LVC2G53.h"
+#include "PMController.h"
+#include "ComController.h"
+#include "Battery.h"
 
 // Test Toggle
 #define ADVANCED true
 
-// RADIO INTERFACE
+// COMMUNICATION CONTROLLER
+#define RADIO_BAUD 115200
+#define CLIENT_ADDR 1
+#define SERVER_ADDR 2
 #define RST 6
 #define CD 10
-// COMMUNICATION OVER SERIAL1
-
-// Switch Pin Def
-#define SPDT_SEL A0
-
-// SD CARD CONSTANTS
-#define SD_CS 18
-
-// PMC REGULATOR
-#define VCC2_EN 13 
-
-// MAX4280 relay driver
-#define MAX_CS 9
-#define GNSS_RESET 3
-#define GNSS_SET 2
-#define RADIO_RESET 1
-#define RADIO_SET 0
-MAX4280 max4280 = MAX4280(MAX_CS, &SPI);
-
-// RS232 Interface Pin Def
+#define IS_Z9C true
+#define SPDT_SEL 14
 #define FORCEOFF_N A5
-MAX3243 max3243 = MAX3243(FORCEOFF_N);
+
+Freewave radio(RST, CD, IS_Z9C);
+SN74LVC2G53 mux(SPDT_SEL, -1);
+MAX3243 max3243(FORCEOFF_N);
+ComController* comController;
+
+
+// POWER MANAGEMENT CONTROLLER
+#define SD_CS 18
+#define VCC2_EN 13
+#define MAX_CS 9
+#define BAT 15
+
+PoluluVoltageReg vcc2(VCC2_EN);
+MAX4280 max4280(MAX_CS, &SPI);
+Battery batReader(BAT);
+PMController pmController(&max4280, &vcc2, &batReader, false, true);
+
+// GLOBAL DOCUMENT
+StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
 
 // Instatiate ACCELEROMETER Object
 #define ACCEL_INT A3
-Adafruit_MMA8451 mma = Adafruit_MMA8451();
+Adafruit_MMA8451 mma;
 
 // Instatiate RTC Object
 #define RTC_INT 5
@@ -66,8 +74,6 @@ void Serial2Setup(uint16_t baudrate)
     pinPeripheral(SERIAL2_TX, PIO_SERCOM); //Private functions for serial communication
     pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
-
-
 
 void mmaSetupSlideSentinel()
 {
@@ -154,7 +160,7 @@ void configInterrupts(Adafruit_MMA8451 device)
     // MMA8451_REG_TRANSIENT_THS
     // Transient interrupt threshold in units of .06g
     //Acceptable range is 1-127
-    dataToWrite = 0x2F;
+    dataToWrite = 0x1F;
     device.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, dataToWrite);
 
     dataToWrite = 0;
@@ -211,10 +217,9 @@ void rtcInt()
     attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
 }
 
-
 void setRTCAlarm()
 {
-    DateTime now = RTC_DS.now(); // Check the current time
+    DateTime now = RTC_DS.now();                                      // Check the current time
     MIN = (now.minute() + RTC_WAKE_PERIOD) % 60;                      // wrap-around using modulo every 60 sec
     HR = (now.hour() + ((now.minute() + RTC_WAKE_PERIOD) / 60)) % 24; // quotient of now.min+periodMin added to now.hr, wraparound every 24hrs
 
@@ -231,17 +236,17 @@ void setRTCAlarm()
 
 void setup_sd()
 {
-  Serial.println("Initializing SD card...");
+    Serial.println("Initializing SD card...");
 
-  if (!SD.begin(SD_CS))
-  {
-    Serial.println("SD Initialization failed!");
-    Serial.println("Will continue anyway, but SD functions will be skipped");
-  }
-  else
-  {
-    Serial.println("initialization complete");
-  }
+    if (!SD.begin(SD_CS))
+    {
+        Serial.println("SD Initialization failed!");
+        Serial.println("Will continue anyway, but SD functions will be skipped");
+    }
+    else
+    {
+        Serial.println("initialization complete");
+    }
 }
 
 void advancedTest()
@@ -254,20 +259,16 @@ void advancedTest()
         switch (cmd)
         {
         case '1':
-            Serial.println("set gnss");
-            max4280.assertRail(GNSS_SET);
+            pmController.enableGNSS();
             break;
         case '2':
-            Serial.println("reset gnss");
-            max4280.assertRail(GNSS_RESET);
+            pmController.disableGNSS();
             break;
         case '3':
-            Serial.println("set radio");
-            max4280.assertRail(RADIO_SET);
+            pmController.enableRadio();
             break;
         case '4':
-            Serial.println("reset radio");
-            max4280.assertRail(RADIO_RESET);
+            pmController.disableRadio();
             break;
         case '5':
             Serial1.println("TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST");
@@ -275,11 +276,11 @@ void advancedTest()
             break;
         case '6':
             Serial.println("RADIO -----> FEATHER M0 (A0 LOW)");
-            digitalWrite(SPDT_SEL, LOW);
+            mux.comY1();
             break;
         case '7':
             Serial.println("RADIO -----> GNSS RECEIVER (A0 HIGH)");
-            digitalWrite(SPDT_SEL, HIGH);
+            mux.comY2();
             break;
         case '8':
             Serial.println("RS232 ---> OFF (Driving it LOW)");
@@ -291,13 +292,14 @@ void advancedTest()
             break;
         case 'r':
             Serial.println("Resetting the radio, DRIVING RST LOW");
-            digitalWrite(RST, LOW);
-            delay(2000);
-            digitalWrite(RST, HIGH);
+            comController->resetRadio();
             break;
         case 't':
             Serial.print("STATE of CD pin: ");
-            Serial.println(digitalRead(CD));
+            if(comController->channelBusy())
+                Serial.println("BUSY");
+            else
+                Serial.println("NOT BUSY");
             break;
         case 'w':
             setRTCAlarm();
@@ -312,24 +314,53 @@ void advancedTest()
             break;
         case 's':
             Serial.println("Sleeping");
-            //Disable USB
-            USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
-            //Enter sleep mode
-            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-            __DSB();
-            __WFI();
-            //...Sleep
-            //Enable USB
-            USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-          //  max4280.assertRail(RADIO_SET);
-            delay(1000);
-          //  max4280.assertRail(RADIO_RESET);
+            pmController.disableGNSS();
+            pmController.disableRadio();
+            pmController.sleep();
+
+           
+
             Serial.begin(115200);
+            pmController.enableGNSS();
+            delay(2000);
+            pmController.disableGNSS();
             Serial.println("Awake");
+            break;
+        case 'd':
+            Serial.print("reading battery voltage: ");
+            Serial.println(pmController.readBat());
+            break;
+        case 'f':
+            Serial.print("reading battery voltage string: ");
+            char volt[20];
+            memset(volt, '\0', sizeof(char)*20);
+            pmController.readBatStr(volt);
+            Serial.println(volt);
             break;
         case 'x':
             Serial.println("Turning off VCC2");
-            digitalWrite(VCC2_EN, LOW);
+            vcc2.disable();
+            break;
+        case 'y':
+            Serial.println("Turning on VCC2");
+            vcc2.enable();
+            break;
+        case 'o':
+            char buffer[RH_SERIAL_MAX_MESSAGE_LEN];
+            memset(buffer, '\0', sizeof(char)*RH_SERIAL_MAX_MESSAGE_LEN);
+            Serial.println("Turning BASE station ON");
+            comController->request(doc);
+            serializeJson(doc, buffer);
+            Serial.print("Config Received:    ");
+            Serial.println(buffer);
+            delay(500);
+            break;
+        case 'p':      
+            Serial.println("Turning BASE station OFF");
+            char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
+            deserializeJson(doc, test);
+            comController->upload(doc);
+            delay(500);
             break;
         }
     }
@@ -343,34 +374,22 @@ void advancedTest()
     {
         Serial.print(Serial2.read());
     }
-}
 
+}
 
 void setup()
 {
     Serial.begin(115200);
     while (!Serial)
         ;
+    
+    // Place instatiation here, Serial1 is not in the same compilation unit as ComController
+    static ComController _comController(&radio, &max3243, &mux, &Serial1, RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
+    comController = &_comController;
 
     // SPI INIT
     SPI.begin();
     SPI.setClockDivider(SPI_CLOCK_DIV8);
-
-    // RADIO INIT
-    Serial1.begin(115200);
-    pinMode(RST, OUTPUT);
-    digitalWrite(RST, HIGH);
-    pinMode(CD, INPUT);
-
-    // RS232 INIT
-    max3243.disable();
-
-    // RELAY DRIVER INIT
-    max4280.clear();
-
-    // SPDT INIT
-    pinMode(SPDT_SEL, OUTPUT);
-    digitalWrite(SPDT_SEL, HIGH);
 
     // ACCELEROMETER INIT
     Serial.println("Setting up MMA");
@@ -384,26 +403,16 @@ void setup()
     pinMode(RTC_INT, INPUT_PULLUP); //active low interrupts
     initializeRTC();
 
+    // must be done after first call to attac1hInterrupt()
+    pmController.init();
+
     // GNSS INIT
     Serial2Setup(GNSS_BAUD);
-
-    // Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
-    SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
-
-    // INIT EXTERNAL OSCILLATOR FOR RISING AND FALLING interrupts  // Configure EIC to use GCLK1 which uses XOSC32K
-    // This has to be done after the first call to attachInterrupt()
-    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
-                        GCLK_CLKCTRL_GEN_GCLK1 |
-                        GCLK_CLKCTRL_CLKEN;
-
-
+    
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
-    setup_sd();
 
-    // REGULATOR INIT
-    pinMode(VCC2_EN, OUTPUT);
-    digitalWrite(VCC2_EN, HIGH);
+    setup_sd();
 }
 
 void loop()

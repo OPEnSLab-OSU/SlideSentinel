@@ -79,7 +79,7 @@ void Serial2Setup(uint16_t baudrate)
 {
     Serial2.begin(baudrate);
     // Assign pins 11,12 SERCOM functionality, internal function
-    pinPeripheral(SERIAL2_TX, PIO_SERCOM); //Private functions for serial communication
+    pinPeripheral(SERIAL2_TX, PIO_SERCOM); // Private functions for serial communication
     pinPeripheral(SERIAL2_RX, PIO_SERCOM);
 }
 
@@ -306,7 +306,7 @@ void advancedTest()
 
     if (Serial1.available())
     {
-        Serial.print(Serial1.read());
+        Serial.print((char)Serial1.read());
     }
 
     if (Serial2.available())
