@@ -4,19 +4,9 @@
 
 PMController::PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2, Battery* bat, bool GNSSrail2, bool radioRail2) : 
     m_max4280(max4280), m_vcc2(vcc2), m_bat(bat), m_GNSSRail2(GNSSrail2), m_RadioRail2(radioRail2)
-{
-    // Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
-    SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
-
-    // Configure EIC to use GCLK1 which uses XOSC32K
-    // This has to be done after the first call to attachInterrupt()
-    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
-                        GCLK_CLKCTRL_GEN_GCLK1 |
-                        GCLK_CLKCTRL_CLKEN;
-    
+{   
     // Enable sprintf function on SAMD21
     asm(".global _printf_float");
-    console.debug("PMController Initialized");
 }
 
 void PMController::enableGNSS()
@@ -65,6 +55,7 @@ void PMController::sleep()
 {
     // Disable USB
     USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
+    
     // Enter sleep mode
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
     __DSB();
@@ -73,5 +64,5 @@ void PMController::sleep()
 
     // Enable USB
     USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-    // FIX ME!
 }
+

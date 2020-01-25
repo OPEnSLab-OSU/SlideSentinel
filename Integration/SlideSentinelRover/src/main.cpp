@@ -160,7 +160,7 @@ void configInterrupts(Adafruit_MMA8451 device)
     // MMA8451_REG_TRANSIENT_THS
     // Transient interrupt threshold in units of .06g
     //Acceptable range is 1-127
-    dataToWrite = 0x2F;
+    dataToWrite = 0x1F;
     device.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, dataToWrite);
 
     dataToWrite = 0;
@@ -314,11 +314,16 @@ void advancedTest()
             break;
         case 's':
             Serial.println("Sleeping");
+            pmController.disableGNSS();
+            pmController.disableRadio();
             pmController.sleep();
+
+           
+
+            Serial.begin(115200);
             pmController.enableGNSS();
             delay(2000);
             pmController.disableGNSS();
-            Serial.begin(115200);
             Serial.println("Awake");
             break;
         case 'd':
@@ -360,7 +365,6 @@ void advancedTest()
         }
     }
 
-    
     if (Serial1.available())
     {
         Serial.print(Serial1.read());
@@ -402,7 +406,7 @@ void setup()
     // GNSS INIT
     Serial2Setup(GNSS_BAUD);
 
-    /* Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
+    // Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
     SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
 
     // INIT EXTERNAL OSCILLATOR FOR RISING AND FALLING interrupts  // Configure EIC to use GCLK1 which uses XOSC32K
@@ -410,10 +414,10 @@ void setup()
     GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
                         GCLK_CLKCTRL_GEN_GCLK1 |
                         GCLK_CLKCTRL_CLKEN;
-    */
-
+    
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
+
     setup_sd();
 }
 
