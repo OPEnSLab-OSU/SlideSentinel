@@ -16,6 +16,7 @@ class PMController {
 
     public: 
         PMController(MAX4280* max4280, PoluluVoltageReg* vcc2, Battery* bat, bool GNSSrail2, bool radioRail2);
+        void init();
         float readBat();
         void readBatStr(char buf[]);
         void disableGNSS();

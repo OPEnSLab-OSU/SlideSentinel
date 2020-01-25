@@ -403,17 +403,11 @@ void setup()
     pinMode(RTC_INT, INPUT_PULLUP); //active low interrupts
     initializeRTC();
 
+    // must be done after first call to attac1hInterrupt()
+    pmController.init();
+
     // GNSS INIT
     Serial2Setup(GNSS_BAUD);
-
-    // Set the XOSC32K to run in standby, external 32 KHz clock must be used for interrupt detection in order to catch falling edges
-    SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
-
-    // INIT EXTERNAL OSCILLATOR FOR RISING AND FALLING interrupts  // Configure EIC to use GCLK1 which uses XOSC32K
-    // This has to be done after the first call to attachInterrupt()
-    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
-                        GCLK_CLKCTRL_GEN_GCLK1 |
-                        GCLK_CLKCTRL_CLKEN;
     
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
