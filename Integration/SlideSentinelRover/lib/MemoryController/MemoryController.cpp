@@ -1,4 +1,4 @@
-#include "ComController.h"
+#include "MemoryController.h"
 #include "Console.h"
 
 ComController::ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux, HardwareSerial *serial, uint32_t baud, uint8_t clientId, uint8_t serverId) : 

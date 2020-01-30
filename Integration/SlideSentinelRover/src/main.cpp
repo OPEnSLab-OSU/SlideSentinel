@@ -31,7 +31,7 @@ SN74LVC2G53 mux(SPDT_SEL, -1);
 MAX3243 max3243(FORCEOFF_N);
 ComController* comController;
 
-
+// Make sure you change the com level to TTL on the receiver!!!
 // POWER MANAGEMENT CONTROLLER
 #define SD_CS 18
 #define VCC2_EN 13
@@ -190,6 +190,27 @@ void clearRTCAlarm()
     RTC_DS.alarmInterrupt(2, false);
 }
 
+
+
+void readGNSS()
+{
+    if(Serial2.available())
+    {
+        Serial.print((char)Serial2.read());
+    }
+}
+
+bool writeData(char *file, char *data)
+{
+	auto sdFile = SD.open(file, FILE_WRITE);
+	if(!sdFile)
+        return false;
+
+    sdFile.print(data);
+	sdFile.close();
+	return true;
+}
+
 void initializeRTC()
 {
     if (!RTC_DS.begin())
@@ -234,19 +255,18 @@ void setRTCAlarm()
     attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
 }
 
-void setup_sd()
+bool setup_sd()
 {
     Serial.println("Initializing SD card...");
 
     if (!SD.begin(SD_CS))
     {
         Serial.println("SD Initialization failed!");
-        Serial.println("Will continue anyway, but SD functions will be skipped");
+        return false;
     }
-    else
-    {
-        Serial.println("initialization complete");
-    }
+    Serial.println("SD initialization complete");
+    return true;
+
 }
 
 void advancedTest()
@@ -353,13 +373,17 @@ void advancedTest()
             serializeJson(doc, buffer);
             Serial.print("Config Received:    ");
             Serial.println(buffer);
+            pmController.enableGNSS();
             delay(500);
             break;
+
+
         case 'p':      
             Serial.println("Turning BASE station OFF");
             char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
             deserializeJson(doc, test);
             comController->upload(doc);
+            pmController.disableGNSS();
             delay(500);
             break;
         }
@@ -370,10 +394,7 @@ void advancedTest()
         Serial.print(Serial1.read());
     }
 
-    if (Serial2.available())
-    {
-        Serial.print(Serial2.read());
-    }
+    readGNSS();
 
 }
 
@@ -412,6 +433,8 @@ void setup()
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
 
+
+    //CONSIDER a pointer to the file to be written to currently in the state machine
     setup_sd();
 }
 
@@ -422,3 +445,5 @@ void loop()
         advancedTest();
     }
 }
+
+
