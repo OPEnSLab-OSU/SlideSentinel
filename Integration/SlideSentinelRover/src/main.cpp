@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
+#include "sbp.h"
+#include "navigation.h"
 #include "Adafruit_MMA8451.h"
 #include "RTClibExtended.h"
 #include "wiring_private.h" // Pin peripheral
@@ -12,6 +14,8 @@
 #include "PMController.h"
 #include "ComController.h"
 #include "Battery.h"
+#include "Tutorial.h"
+
 
 // Test Toggle
 #define ADVANCED true
@@ -26,10 +30,87 @@
 #define SPDT_SEL 14
 #define FORCEOFF_N A5
 
+/*
+ * State of the SBP message parser.
+ * Must be statically allocated.
+ */
+sbp_state_t sbp_state;
+
+/* SBP structs that messages from Piksi will feed. */
+msg_pos_llh_t pos_llh;
+msg_baseline_ned_t baseline_ned;
+msg_vel_ned_t vel_ned;
+msg_dops_t dops;
+msg_gps_time_t gps_time;
+
+/*
+ * SBP callback nodes must be statically allocated. Each message ID / callback
+ * pair must have a unique sbp_msg_callbacks_node_t associated with it.
+ */
+sbp_msg_callbacks_node_t pos_llh_node;
+sbp_msg_callbacks_node_t baseline_ned_node;
+sbp_msg_callbacks_node_t vel_ned_node;
+sbp_msg_callbacks_node_t dops_node;
+sbp_msg_callbacks_node_t gps_time_node;
+
+/*
+ * Callback functions to interpret SBP messages.
+ * Every message ID has a callback associated with it to
+ * receive and interpret the message payload.
+ */
+void sbp_pos_llh_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+{
+  pos_llh = *(msg_pos_llh_t *)msg;
+}
+void sbp_baseline_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+{
+  baseline_ned = *(msg_baseline_ned_t *)msg;
+}
+void sbp_vel_ned_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+{
+  vel_ned = *(msg_vel_ned_t *)msg;
+}
+void sbp_dops_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+{
+  dops = *(msg_dops_t *)msg;
+}
+void sbp_gps_time_callback(u16 sender_id, u8 len, u8 msg[], void *context)
+{
+  gps_time = *(msg_gps_time_t *)msg;
+}
+
+/*
+ * Set up SwiftNav Binary Protocol (SBP) nodes; the sbp_process function will
+ * search through these to find the callback for a particular message ID.
+ *
+ * Example: sbp_pos_llh_callback is registered with sbp_state, and is associated
+ * with both a unique sbp_msg_callbacks_node_t and the message ID SBP_POS_LLH.
+ * When a valid SBP message with the ID SBP_POS_LLH comes through the UART, written
+ * to the FIFO, and then parsed by sbp_process, sbp_pos_llh_callback is called
+ * with the data carried by that message.
+ */
+void sbp_setup(void)
+{
+  /* SBP parser state must be initialized before sbp_process is called. */
+  sbp_state_init(&sbp_state);
+
+  /* Register a node and callback, and associate them with a specific message ID. */
+  sbp_register_callback(&sbp_state, SBP_MSG_GPS_TIME, &sbp_gps_time_callback,
+                        NULL, &gps_time_node);
+  sbp_register_callback(&sbp_state, SBP_MSG_POS_LLH, &sbp_pos_llh_callback,
+                        NULL, &pos_llh_node);
+  sbp_register_callback(&sbp_state, SBP_MSG_BASELINE_NED, &sbp_baseline_ned_callback,
+                        NULL, &baseline_ned_node);
+  sbp_register_callback(&sbp_state, SBP_MSG_VEL_NED, &sbp_vel_ned_callback,
+                        NULL, &vel_ned_node);
+  sbp_register_callback(&sbp_state, SBP_MSG_DOPS, &sbp_dops_callback,
+                        NULL, &dops_node);
+}
+
 Freewave radio(RST, CD, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 MAX3243 max3243(FORCEOFF_N);
-ComController* comController;
+ComController *comController;
 
 // Make sure you change the com level to TTL on the receiver!!!
 // POWER MANAGEMENT CONTROLLER
@@ -63,11 +144,13 @@ volatile int awakeFor = 20;
 #define SERIAL2_RX 12
 #define GNSS_BAUD 115200
 Uart Serial2(&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
+
 void SERCOM1_Handler()
 {
     Serial2.IrqHandler();
 }
-void Serial2Setup(uint16_t baudrate)
+
+void Serial2Setup(int baudrate)
 {
     Serial2.begin(baudrate);
     // Assign pins 11,12 SERCOM functionality, internal function
@@ -190,11 +273,39 @@ void clearRTCAlarm()
     RTC_DS.alarmInterrupt(2, false);
 }
 
-
+uint8_t getFixMode(msg_pos_llh_t pos_llh, char rj[])
+{
+    uint8_t mode = pos_llh.flags & 0b0000111;
+    switch(mode)
+    {
+        case 0:
+            sprintf(rj, "Invalid");
+            break;
+        case 1:
+            sprintf(rj, "SPP");
+            break;
+        case 2:
+            sprintf(rj, "DGNSS");
+            break;
+        case 3:
+            sprintf(rj, "Float RTK");
+            break;
+        case 4:
+            sprintf(rj, "Fixed RTK");
+            break;
+        case 5:
+            sprintf(rj, "Dead Reckoning");
+            break;
+        case 6:
+            sprintf(rj, "SBAS");
+            break;
+    }
+    return mode;
+}
 
 void readGNSS()
 {
-    if(Serial2.available())
+    if (Serial2.available())
     {
         Serial.print((char)Serial2.read());
     }
@@ -202,13 +313,13 @@ void readGNSS()
 
 bool writeData(char *file, char *data)
 {
-	auto sdFile = SD.open(file, FILE_WRITE);
-	if(!sdFile)
+    auto sdFile = SD.open(file, FILE_WRITE);
+    if (!sdFile)
         return false;
 
     sdFile.print(data);
-	sdFile.close();
-	return true;
+    sdFile.close();
+    return true;
 }
 
 void initializeRTC()
@@ -266,7 +377,6 @@ bool setup_sd()
     }
     Serial.println("SD initialization complete");
     return true;
-
 }
 
 void advancedTest()
@@ -316,7 +426,7 @@ void advancedTest()
             break;
         case 't':
             Serial.print("STATE of CD pin: ");
-            if(comController->channelBusy())
+            if (comController->channelBusy())
                 Serial.println("BUSY");
             else
                 Serial.println("NOT BUSY");
@@ -338,8 +448,6 @@ void advancedTest()
             pmController.disableRadio();
             pmController.sleep();
 
-           
-
             Serial.begin(115200);
             pmController.enableGNSS();
             delay(2000);
@@ -353,7 +461,7 @@ void advancedTest()
         case 'f':
             Serial.print("reading battery voltage string: ");
             char volt[20];
-            memset(volt, '\0', sizeof(char)*20);
+            memset(volt, '\0', sizeof(char) * 20);
             pmController.readBatStr(volt);
             Serial.println(volt);
             break;
@@ -367,7 +475,7 @@ void advancedTest()
             break;
         case 'o':
             char buffer[RH_SERIAL_MAX_MESSAGE_LEN];
-            memset(buffer, '\0', sizeof(char)*RH_SERIAL_MAX_MESSAGE_LEN);
+            memset(buffer, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
             Serial.println("Turning BASE station ON");
             comController->request(doc);
             serializeJson(doc, buffer);
@@ -377,8 +485,7 @@ void advancedTest()
             delay(500);
             break;
 
-
-        case 'p':      
+        case 'p':
             Serial.println("Turning BASE station OFF");
             char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
             deserializeJson(doc, test);
@@ -393,9 +500,6 @@ void advancedTest()
     {
         Serial.print(Serial1.read());
     }
-
-    readGNSS();
-
 }
 
 void setup()
@@ -403,7 +507,7 @@ void setup()
     Serial.begin(115200);
     while (!Serial)
         ;
-    
+
     // Place instatiation here, Serial1 is not in the same compilation unit as ComController
     static ComController _comController(&radio, &max3243, &mux, &Serial1, RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
     comController = &_comController;
@@ -428,11 +532,10 @@ void setup()
     pmController.init();
 
     // GNSS INIT
-    Serial2Setup(GNSS_BAUD);
-    
+    Serial2Setup(115200);
+
     // SD Card Initialization
     pinMode(SD_CS, OUTPUT);
-
 
     //CONSIDER a pointer to the file to be written to currently in the state machine
     setup_sd();
@@ -440,10 +543,119 @@ void setup()
 
 void loop()
 {
-    if (ADVANCED)
+
+    /* Use sprintf to right justify floating point prints. */
+    char rj[30];
+    /* Only want 1 call to SH_SendString as semihosting is quite slow.
+     * sprintf everything to this array and then print using array. */
+    char str[1000];
+    int str_i;
+    sbp_setup();
+
+    while (1)
     {
-        advancedTest();
+
+        if (ADVANCED)
+        {
+            advancedTest();
+        }
+
+    /*
+     * sbp_process must be called periodically in your
+     * main program loop to consume the received bytes
+     * from Piksi and parse the SBP messages from them.
+     *
+     * In this tutorial we use a FIFO structure to hold the data
+     * before it is consumed by sbp_process; this helps ensure that no
+     * data is lost or overwritten between calls to sbp_process. See
+     * tutorial_implementation.c for the interaction between the USART
+     * and the FIFO.
+     *
+     * sbp_process must be passed a function that conforms to the definition
+     *     u32 get_bytes(u8 *buff, u32 n, void *context);
+     * that provides access to the bytes received from Piksi. See fifo_read and
+     * related code in tutorial_implementation.c for a reference.
+     */
+    
+        if (Serial2.available())
+            fifo_write(Serial2.read());
+
+        s8 ret = sbp_process(&sbp_state, &fifo_read);
+
+        /* Semihosting is slow - each loop the FIFO fills up and packets get
+         * dropped, so we don't check the return value from sbp_process. It's a good
+         * idea to incorporate this check into your host's code, though. 
+         */
+        if (ret < 0)
+            printf("sbp_process error: %d\n", (int)ret);
+
+        /* Print data from messages received from Piksi. */
+        
+        DO_EVERY(10000,
+                 str_i = 0;
+                 memset(str, 0, sizeof(str));
+
+                 str_i += sprintf(str + str_i, "\n\n\n\n");
+
+                 str_i += sprintf(str + str_i, "GPS Time:\n");
+                 str_i += sprintf(str + str_i, "\tWeek\t\t: %6d\n", (int)gps_time.wn);
+                 sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3);
+                 str_i += sprintf(str + str_i, "\tSeconds\t: %9s\n", rj);
+                 str_i += sprintf(str + str_i, "\n");
+
+
+                /* -------------- RTK --------------
+                 * The msg_pos_llh_t struct contains an 8-bit, six digit flag member variable.
+                 * This variable, the 3 least significant bits
+                 * ---------------------------------
+                 * | 0 | Invalid     |
+                 * | 1 | SPP         |
+                 * | 2 | DGNSS       |
+                 * | 3 | Float RTK   |
+                 * | 4 | Fixed RTK   |
+                 * | 5 | Dead Reckon |
+                 * | 6 | SBAS        |
+                 * ---------------------------------
+                 */
+
+                 str_i += sprintf(str + str_i, "Absolute Position:\n");
+                 sprintf(rj, "%4.10lf", pos_llh.lat);
+                 str_i += sprintf(str + str_i, "\tLatitude\t: %17s\n", rj);
+                 sprintf(rj, "%4.10lf", pos_llh.lon);
+                 str_i += sprintf(str + str_i, "\tLongitude\t: %17s\n", rj);
+                 sprintf(rj, "%4.10lf", pos_llh.height);
+                 str_i += sprintf(str + str_i, "\tHeight\t: %17s\n", rj);
+                 str_i += sprintf(str + str_i, "\tSatellites\t:     %02d\n", pos_llh.n_sats);
+                 getFixMode(pos_llh, rj);
+                 str_i += sprintf(str + str_i, "\tFix Mode\t: %17s\n", rj);
+                 str_i += sprintf(str + str_i, "\n");
+
+                 str_i += sprintf(str + str_i, "Baseline (mm):\n");
+                 str_i += sprintf(str + str_i, "\tNorth\t\t: %6d\n", (int)baseline_ned.n);
+                 str_i += sprintf(str + str_i, "\tEast\t\t: %6d\n", (int)baseline_ned.e);
+                 str_i += sprintf(str + str_i, "\tDown\t\t: %6d\n", (int)baseline_ned.d);
+                 str_i += sprintf(str + str_i, "\n");
+
+                 str_i += sprintf(str + str_i, "Velocity (mm/s):\n");
+                 str_i += sprintf(str + str_i, "\tNorth\t\t: %6d\n", (int)vel_ned.n);
+                 str_i += sprintf(str + str_i, "\tEast\t\t: %6d\n", (int)vel_ned.e);
+                 str_i += sprintf(str + str_i, "\tDown\t\t: %6d\n", (int)vel_ned.d);
+                 str_i += sprintf(str + str_i, "\n");
+
+                 str_i += sprintf(str + str_i, "Dilution of Precision:\n");
+                 sprintf(rj, "%4.2f", ((float)dops.gdop / 100));
+                 str_i += sprintf(str + str_i, "\tGDOP\t\t: %7s\n", rj);
+                 sprintf(rj, "%4.2f", ((float)dops.hdop / 100));
+                 str_i += sprintf(str + str_i, "\tHDOP\t\t: %7s\n", rj);
+                 sprintf(rj, "%4.2f", ((float)dops.pdop / 100));
+                 str_i += sprintf(str + str_i, "\tPDOP\t\t: %7s\n", rj);
+                 sprintf(rj, "%4.2f", ((float)dops.tdop / 100));
+                 str_i += sprintf(str + str_i, "\tTDOP\t\t: %7s\n", rj);
+                 sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
+                 str_i += sprintf(str + str_i, "\tVDOP\t\t: %7s\n", rj);
+                 str_i += sprintf(str + str_i, "\n");
+                 Serial.print("Data: ");
+                 Serial.println(str);
+        );
     }
 }
-
-
