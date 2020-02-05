@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "edc.h": "c"
+        "edc.h": "c",
+        "sstream": "cpp"
     }
 }

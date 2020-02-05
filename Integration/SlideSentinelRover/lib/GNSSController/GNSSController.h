@@ -4,9 +4,6 @@
 #include <Arduino.h>
 #include "HardwareSerial.h"
 #include "ArduinoJson.h"
-#include "sbp.h"
-#include "navigation.h"
-#include "Tutorial.h"
 
 class GNSSController
 {

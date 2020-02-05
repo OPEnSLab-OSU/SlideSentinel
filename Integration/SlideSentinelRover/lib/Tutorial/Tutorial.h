@@ -1,3 +1,6 @@
+#ifndef TUTORIAL_H
+#define TUTORIAL_H
+
 #include "common.h"
 
 #define DO_EVERY(n, cmd) do { \
@@ -14,3 +17,5 @@ u8 fifo_full(void);
 u8 fifo_write(char c);
 u8 fifo_read_char(char *c);
 u32 fifo_read(u8 *buff, u32 n, void *context);
+
+#endif
