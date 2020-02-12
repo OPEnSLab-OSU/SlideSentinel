@@ -4,10 +4,10 @@
 ComController::ComController(Freewave *radio, MAX3243 *max3243,
                              SN74LVC2G53 *mux, HardwareSerial *serial,
                              uint32_t baud, uint8_t clientId, uint8_t serverId)
-    : m_radio(radio), m_max3243(max3243), m_mux(mux), m_serial(serial),
-      m_baud(baud), m_clientId(clientId), m_serverId(serverId), m_timeout(2000),
-      m_RTS("{\"type\":\"RTS\"}"), m_ACK_ERR("{\"type\":\"ACK_ERR\"}"),
-      m_REP_ERR("{\"type\":\"REP_ERR\"}") {
+    : Controller("COM"), m_radio(radio), m_max3243(max3243), m_mux(mux),
+      m_serial(serial), m_baud(baud), m_clientId(clientId),
+      m_serverId(serverId), m_timeout(2000), m_RTS("{\"type\":\"RTS\"}"),
+      m_ACK_ERR("{\"type\":\"ACK_ERR\"}"), m_REP_ERR("{\"type\":\"REP_ERR\"}") {
   m_serial->begin(m_baud);
   m_mux->comY1();
   m_max3243->disable();
@@ -90,3 +90,7 @@ bool ComController::upload(JsonDocument &doc) {
 void ComController::resetRadio() { m_radio->reset(); }
 
 bool ComController::channelBusy() { return m_radio->channel_busy(); }
+
+void ComController::update(JsonDocument &doc) {}
+
+void ComController::status(uint8_t verbosity, JsonDocument &doc) {}

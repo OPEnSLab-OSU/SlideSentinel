@@ -1,3 +1,7 @@
+#include <Arduino.h>
+#include <SD.h>
+#include <SPI.h>
+#include "Controller.h"
 #include "Adafruit_MMA8451.h"
 #include "Battery.h"
 #include "ComController.h"
@@ -7,15 +11,8 @@
 #include "PMController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
-
-#include "SwiftPiksi.h"
-//#include "GNSSController.h"
-
+#include "GNSSController.h"
 #include "VoltageReg.h"
-#include "wiring_private.h" // Pin peripheral
-#include <Arduino.h>
-#include <SD.h>
-#include <SPI.h>
 
 // Test Toggle
 #define ADVANCED true
@@ -48,7 +45,8 @@ Battery batReader(BAT);
 PMController pmController(&max4280, &vcc2, &batReader, false, true);
 
 // GLOBAL DOCUMENT
-StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
+// StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
+StaticJsonDocument<1000> doc;
 
 // Instatiate ACCELEROMETER Object
 #define ACCEL_INT A3
@@ -64,21 +62,15 @@ volatile int awakeFor = 20;
   1 // Interval to wake and take sample in Min, reset alarm based on this period
     // (Bo - 5 min), 15 min
 
-// GNSS Serial Init
-#define SERIAL2_TX 11
-#define SERIAL2_RX 12
+// GNSS Init
+#define GNSS_TX 11
+#define GNSS_RX 12
 #define GNSS_BAUD 115200
-Uart Serial2(&sercom1, SERIAL2_RX, SERIAL2_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
+GNSSController *gnssController;
 
+
+Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
-
-void Serial2Setup(int baudrate) {
-  Serial2.begin(baudrate);
-  // Assign pins 11,12 SERCOM functionality, internal function
-  pinPeripheral(SERIAL2_TX,
-                PIO_SERCOM); // Private functions for serial communication
-  pinPeripheral(SERIAL2_RX, PIO_SERCOM);
-}
 
 void mmaSetupSlideSentinel() {
   if (!mma.begin()) {
@@ -401,12 +393,12 @@ void setup() {
     ;
 
   // Place instatiation here, Serial1 is not in the same compilation unit as
-  // ComController
   static ComController _comController(&radio, &max3243, &mux, &Serial1,
                                       RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
   comController = &_comController;
 
-  // static GNSSController = _gnssController()
+  static GNSSController _gnssController(&Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX);
+  gnssController = &_gnssController;
 
   // SPI INIT
   SPI.begin();
@@ -428,7 +420,7 @@ void setup() {
   pmController.init();
 
   // GNSS
-  Serial2Setup(115200);
+  // Serial2Setup(115200);
 
   // SD Card Initialization
   pinMode(SD_CS, OUTPUT);
@@ -438,17 +430,19 @@ void setup() {
 }
 
 void loop() {
-  sbp_setup();
+  //sbp_setup();
 
   while (1) {
 
     if (ADVANCED)
       advancedTest();
 
-    //      GNSS
+    gnssController->poll(Serial, doc);
+    /*      GNSS
     if (Serial2.available())
       fifo_write(Serial2.read());
 
     poll(Serial);
+    */
   }
 }

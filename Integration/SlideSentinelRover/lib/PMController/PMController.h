@@ -1,12 +1,13 @@
 #ifndef _PMCONTROLLER_H_
 #define _PMCONTROLLER_H_
 
+#include <Arduino.h>
 #include "Battery.h"
+#include "Controller.h"
 #include "MAX4280.h"
 #include "VoltageReg.h"
-#include <Arduino.h>
 
-class PMController {
+class PMController : public Controller {
 private:
   MAX4280 *m_max4280;
   PoluluVoltageReg *m_vcc2;
@@ -25,6 +26,8 @@ public:
   void disableRadio();
   void enableRadio();
   void sleep();
+  void update(JsonDocument &doc);
+  void status(uint8_t verbosity, JsonDocument &doc);
 };
 
 #endif // _PMCONTROLLER_H_
