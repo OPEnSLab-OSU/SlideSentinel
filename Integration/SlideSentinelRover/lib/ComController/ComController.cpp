@@ -74,6 +74,7 @@ bool ComController::upload(JsonDocument &doc) {
   serializeJson(doc, m_buf);
   console.debug("RADIO ----> FEATHER");
   m_mux->comY1();
+  
   if (!_send(m_buf)) {
     console.debug("Failed to upload");
     deserializeJson(doc, m_ACK_ERR);

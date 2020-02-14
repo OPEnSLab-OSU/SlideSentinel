@@ -1,18 +1,18 @@
-#include <Arduino.h>
-#include <SD.h>
-#include <SPI.h>
-#include "Controller.h"
 #include "Adafruit_MMA8451.h"
 #include "Battery.h"
 #include "ComController.h"
+#include "Controller.h"
 #include "FreewaveRadio.h"
+#include "GNSSController.h"
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
-#include "GNSSController.h"
 #include "VoltageReg.h"
+#include <Arduino.h>
+#include <SD.h>
+#include <SPI.h>
 
 // Test Toggle
 #define ADVANCED true
@@ -46,6 +46,7 @@ PMController pmController(&max4280, &vcc2, &batReader, false, true);
 
 // GLOBAL DOCUMENT
 // StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
+// can only transmit 64 bytes packets at a time
 StaticJsonDocument<1000> doc;
 
 // Instatiate ACCELEROMETER Object
@@ -67,7 +68,6 @@ volatile int awakeFor = 20;
 #define GNSS_RX 12
 #define GNSS_BAUD 115200
 GNSSController *gnssController;
-
 
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
@@ -419,9 +419,6 @@ void setup() {
   // must be done after first call to attac1hInterrupt()
   pmController.init();
 
-  // GNSS
-  // Serial2Setup(115200);
-
   // SD Card Initialization
   pinMode(SD_CS, OUTPUT);
 
@@ -430,19 +427,15 @@ void setup() {
 }
 
 void loop() {
-  //sbp_setup();
-
   while (1) {
 
     if (ADVANCED)
       advancedTest();
 
-    gnssController->poll(Serial, doc);
-    /*      GNSS
-    if (Serial2.available())
-      fifo_write(Serial2.read());
-
-    poll(Serial);
-    */
+    if(gnssController->poll(doc)){
+      serializeJsonPretty(doc, Serial);
+      doc.clear();
+    }
+    
   }
 }

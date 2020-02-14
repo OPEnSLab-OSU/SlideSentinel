@@ -143,7 +143,8 @@ u8 fifo_full(void) {
 // GNSSController method definitions
 GNSSController::GNSSController(HardwareSerial *serial, uint32_t baud,
                                uint8_t rx, uint8_t tx)
-    : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(100000) {
+    : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx),
+      m_logFreq(100000) {
   init();
   sbp_setup();
 }
@@ -191,6 +192,38 @@ void GNSSController::GNSSread() {
     fifo_write(m_serial->read());
 }
 
+// FIXME terminates polling process if a reliable RTK fix occurs prior to the
+void GNSSController::isFixed(uint8_t &flag) { flag = 1; }
+
+bool GNSSController::compare() {
+  // first check if the fix mode is better
+  if(m_mode > getMode())
+    return false;
+  
+  // check the gdop 
+  if(m_dops.gdop > dops.gdop)
+    return false; 
+
+  // check the hdop
+  if(m_dops.hdop > dops.hdop)
+    return false; 
+
+  // check the number of satellites used to produce the fix
+  if(m_pos_llh.n_sats > pos_llh.n_sats)
+    return false;
+
+  return true;
+}
+
+void GNSSController::setBest() {
+  m_pos_llh = pos_llh;
+  m_baseline_ned = baseline_ned;
+  m_vel_ned = vel_ned;
+  m_dops = dops;
+  m_gps_time = gps_time;
+  m_mode = getMode();
+}
+
 /*
  * -------------- RTK --------------
  * The msg_pos_llh_t struct contains an 8-bit, six digit flag member
@@ -204,52 +237,54 @@ void GNSSController::GNSSread() {
  * | 5 | Dead Reckon |
  * | 6 | SBAS        |
  * ---------------------------------
+ *
+ * -------------- ACCURACY ---------
+ * The lower these values the better,
+ * gdop is the most holistic measurement
+ * for accuracy
+ *
+ * GDOP (latitude, longitude, height, clock)
+ * PDOP (latitude, longitude, height)
+ * HDOP (latitude, longitude, height)
+ *
+ * -------------- RETURN ----------
+ * 0 - no data collected
+ * 1 - data collected
+ * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
-bool GNSSController::poll(Serial_ &terminal, JsonDocument &doc) {
+uint8_t GNSSController::poll(JsonDocument &doc) {
   GNSSread();
-  bool datFlag = false;
+  uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
 
   if (ret < 0)
     printf("sbp_process error: %d\n", (int)ret);
 
-  DO_EVERY(
-      m_logFreq, 
-      memset(str, 0, sizeof(str));
-      doc["type"] = m_HEADER;
-      JsonArray data = doc.createNestedArray("data");
-      data.add((int)gps_time.wn);
-      sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3);
-      data.add(rj);
-      data.add(getMode());
-      sprintf(rj, "%4.10lf", pos_llh.lat);
-      data.add(rj);
-      sprintf(rj, "%4.10lf", pos_llh.lon);
-      data.add(rj);
-      sprintf(rj, "%4.10lf", pos_llh.height);
-      data.add(rj);
-      data.add(pos_llh.n_sats);
-      data.add((int)baseline_ned.n);
-      data.add((int)baseline_ned.e);
-      data.add((int)baseline_ned.d);
-      data.add((int)vel_ned.n);
-      data.add((int)vel_ned.e);
-      data.add((int)vel_ned.d);
-      sprintf(rj, "%4.2f", ((float)dops.gdop / 100));
-      data.add(rj);
-      sprintf(rj, "%4.2f", ((float)dops.hdop / 100));
-      data.add(rj);
-      sprintf(rj, "%4.2f", ((float)dops.pdop / 100));
-      data.add(rj);
-      sprintf(rj, "%4.2f", ((float)dops.tdop / 100));
-      data.add(rj);
-      sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
-      data.add(rj);
-      serializeJsonPretty(doc, terminal); 
-      terminal.println();
-      doc.clear();
-      datFlag = true; 
-      );
+  DO_EVERY(m_logFreq,
+           // check if the current reading is better than the running best
+           if (compare()) 
+             setBest();
+
+           // create data packet for writing to SD
+           memset(str, 0, sizeof(str)); doc["type"] = m_HEADER;
+           JsonArray data = doc.createNestedArray("data");
+           data.add((int)gps_time.wn);
+           sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3); data.add(rj);
+           data.add(getMode()); sprintf(rj, "%4.10lf", pos_llh.lat);
+           data.add(rj); sprintf(rj, "%4.10lf", pos_llh.lon); data.add(rj);
+           sprintf(rj, "%4.10lf", pos_llh.height); data.add(rj);
+           data.add(pos_llh.n_sats); data.add((int)baseline_ned.n);
+           data.add((int)baseline_ned.e); data.add((int)baseline_ned.d);
+           data.add((int)vel_ned.n); data.add((int)vel_ned.e);
+           data.add((int)vel_ned.d);
+           sprintf(rj, "%4.2f", ((float)dops.gdop / 100)); data.add(rj);
+           sprintf(rj, "%4.2f", ((float)dops.hdop / 100)); data.add(rj);
+           sprintf(rj, "%4.2f", ((float)dops.pdop / 100)); data.add(rj);
+           sprintf(rj, "%4.2f", ((float)dops.tdop / 100)); data.add(rj);
+           sprintf(rj, "%4.2f", ((float)dops.vdop / 100)); data.add(rj);
+
+           // determine if we can preemptively quit polling
+           isFixed(datFlag););
 
   return datFlag;
 }
