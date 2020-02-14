@@ -1,9 +1,9 @@
-#include "Adafruit_MMA8451.h"
 #include "Battery.h"
 #include "ComController.h"
 #include "Controller.h"
 #include "FreewaveRadio.h"
 #include "GNSSController.h"
+#include "IMUController.h"
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
@@ -51,7 +51,7 @@ StaticJsonDocument<1000> doc;
 
 // Instatiate ACCELEROMETER Object
 #define ACCEL_INT A3
-Adafruit_MMA8451 mma;
+IMUController *imuController;
 
 // Instatiate RTC Object
 #define RTC_INT 5
@@ -72,116 +72,116 @@ GNSSController *gnssController;
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
 
-void mmaSetupSlideSentinel() {
-  if (!mma.begin()) {
-    Serial.println("Unable to find MMA8451");
-    while (1)
-      ;
-  }
+// void mmaSetupSlideSentinel() {
+//   if (!mma.begin()) {
+//     Serial.println("Unable to find MMA8451");
+//     while (1)
+//       ;
+//   }
 
-  mma.setRange(MMA8451_RANGE_2_G);
-  mma.setDataRate(MMA8451_DATARATE_6_25HZ);
-}
+//   mma.setRange(MMA8451_RANGE_2_G);
+//   mma.setDataRate(MMA8451_DATARATE_6_25HZ);
+// }
 
-void configInterrupts(Adafruit_MMA8451 device) {
-  uint8_t dataToWrite = 0;
-  // MMA8451_REG_CTRL_REG2
-  // sysatem control register 2
+// void configInterrupts(Adafruit_MMA8451 device) {
+//   uint8_t dataToWrite = 0;
+//   // MMA8451_REG_CTRL_REG2
+//   // sysatem control register 2
 
-  // dataToWrite |= 0x80;    // Auto sleep/wake interrupt
-  // dataToWrite |= 0x40;    // FIFO interrupt
-  // dataToWrite |= 0x20;    // Transient interrupt - enabled
-  // dataToWrite |= 0x10;    // orientation
-  // dataToWrite |= 0x08;    // Pulse interrupt
-  // dataToWrite |= 0x04;    // Freefall interrupt
-  // dataToWrite |= 0x01;    // data ready interrupt, MUST BE ENABLED FOR USE
-  // WITH ARDUINO
+//   // dataToWrite |= 0x80;    // Auto sleep/wake interrupt
+//   // dataToWrite |= 0x40;    // FIFO interrupt
+//   // dataToWrite |= 0x20;    // Transient interrupt - enabled
+//   // dataToWrite |= 0x10;    // orientation
+//   // dataToWrite |= 0x08;    // Pulse interrupt
+//   // dataToWrite |= 0x04;    // Freefall interrupt
+//   // dataToWrite |= 0x01;    // data ready interrupt, MUST BE ENABLED FOR USE
+//   // WITH ARDUINO
 
-  // MMA8451_REG_CTRL_REG3
-  // Interrupt control register
-  dataToWrite |=
-      0x80; // FIFO gate option for wake/sleep transition, default 0, Asserting
-            // this allows the accelerometer to collect data the moment an
-            // impluse happens and preserve that data because the FIFO buffer is
-            // blocked. Thus at the end of a wake cycle the data from the
-            // initial transient wake up is still in the buffer
-  dataToWrite |= 0x40; // Wake from transient interrupt enable
-  // dataToWrite |= 0x20;    // Wake from orientation interrupt enable
-  // dataToWrite |= 0x10;    // Wake from Pulse function enable
-  // dataToWrite |= 0x08;    // Wake from freefall/motion decect interrupt
-  // dataToWrite |= 0x02;    // Interrupt polarity, 1 = active high
-  dataToWrite |= 0x00; // (0) Push/pull or (1) open drain interrupt, determines
-                       // whether bus is driven by device, or left to hang
+//   // MMA8451_REG_CTRL_REG3
+//   // Interrupt control register
+//   dataToWrite |=
+//       0x80; // FIFO gate option for wake/sleep transition, default 0, Asserting
+//             // this allows the accelerometer to collect data the moment an
+//             // impluse happens and preserve that data because the FIFO buffer is
+//             // blocked. Thus at the end of a wake cycle the data from the
+//             // initial transient wake up is still in the buffer
+//   dataToWrite |= 0x40; // Wake from transient interrupt enable
+//   // dataToWrite |= 0x20;    // Wake from orientation interrupt enable
+//   // dataToWrite |= 0x10;    // Wake from Pulse function enable
+//   // dataToWrite |= 0x08;    // Wake from freefall/motion decect interrupt
+//   // dataToWrite |= 0x02;    // Interrupt polarity, 1 = active high
+//   dataToWrite |= 0x00; // (0) Push/pull or (1) open drain interrupt, determines
+//                        // whether bus is driven by device, or left to hang
 
-  device.writeRegister8_public(MMA8451_REG_CTRL_REG3, dataToWrite);
+//   device.writeRegister8_public(MMA8451_REG_CTRL_REG3, dataToWrite);
 
-  dataToWrite = 0;
+//   dataToWrite = 0;
 
-  // MMA8451_REG_CTRL_REG4
-  // Interrupt enable register, enables interrupts that are not commented
+//   // MMA8451_REG_CTRL_REG4
+//   // Interrupt enable register, enables interrupts that are not commented
 
-  // dataToWrite |= 0x80;    // Auto sleep/wake interrupt
-  // dataToWrite |= 0x40;    // FIFO interrupt
-  dataToWrite |= 0x20; // Transient interrupt - enabled
-  // dataToWrite |= 0x10;    // orientation
-  // dataToWrite |= 0x08;    // Pulse interrupt
-  // dataToWrite |= 0x04;    // Freefall interrupt
-  dataToWrite |=
-      0x01; // data ready interrupt, MUST BE ENABLED FOR USE WITH ARDUINO
-  device.writeRegister8_public(MMA8451_REG_CTRL_REG4, dataToWrite | 0x01);
+//   // dataToWrite |= 0x80;    // Auto sleep/wake interrupt
+//   // dataToWrite |= 0x40;    // FIFO interrupt
+//   dataToWrite |= 0x20; // Transient interrupt - enabled
+//   // dataToWrite |= 0x10;    // orientation
+//   // dataToWrite |= 0x08;    // Pulse interrupt
+//   // dataToWrite |= 0x04;    // Freefall interrupt
+//   dataToWrite |=
+//       0x01; // data ready interrupt, MUST BE ENABLED FOR USE WITH ARDUINO
+//   device.writeRegister8_public(MMA8451_REG_CTRL_REG4, dataToWrite | 0x01);
 
-  dataToWrite = 0;
+//   dataToWrite = 0;
 
-  // MMA8451_REG_CTRL_REG5
-  // Interrupt pin 1/2 configuration register, bit == 1 => interrupt to pin 1
-  // see datasheet for interrupt's description, threshold int routed to pin 1
-  // comment = int2, uncoment = int1
+//   // MMA8451_REG_CTRL_REG5
+//   // Interrupt pin 1/2 configuration register, bit == 1 => interrupt to pin 1
+//   // see datasheet for interrupt's description, threshold int routed to pin 1
+//   // comment = int2, uncoment = int1
 
-  // dataToWrite |= 0x80;    // Auto sleep/wake
-  // dataToWrite |= 0x40;    // FIFO
-  dataToWrite |= 0x20; // Transient, asserting this routes transients interrupts
-                       // to INT1 pin
-  // dataToWrite |= 0x10;    // orientation
-  // dataToWrite |= 0x08;    // Pulse
-  // dataToWrite |= 0x04;    // Freefall
-  // dataToWrite |= 0x01;    // data ready
+//   // dataToWrite |= 0x80;    // Auto sleep/wake
+//   // dataToWrite |= 0x40;    // FIFO
+//   dataToWrite |= 0x20; // Transient, asserting this routes transients interrupts
+//                        // to INT1 pin
+//   // dataToWrite |= 0x10;    // orientation
+//   // dataToWrite |= 0x08;    // Pulse
+//   // dataToWrite |= 0x04;    // Freefall
+//   // dataToWrite |= 0x01;    // data ready
 
-  device.writeRegister8_public(MMA8451_REG_CTRL_REG5, dataToWrite);
+//   device.writeRegister8_public(MMA8451_REG_CTRL_REG5, dataToWrite);
 
-  dataToWrite = 0;
+//   dataToWrite = 0;
 
-  // MMA8451_REG_TRANSIENT_CFG
-  // dataToWrite |= 0x10;  // Latch enable to capture accel values when
-  // interrupt occurs
-  dataToWrite |= 0x08; // Z transient interrupt enable
-  dataToWrite |= 0x04; // Y transient interrupt enable
-  dataToWrite |= 0x02; // X transient interrupt enable
-  // dataToWrite |= 0x01;    // High-pass filter bypass
-  device.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, dataToWrite);
+//   // MMA8451_REG_TRANSIENT_CFG
+//   // dataToWrite |= 0x10;  // Latch enable to capture accel values when
+//   // interrupt occurs
+//   dataToWrite |= 0x08; // Z transient interrupt enable
+//   dataToWrite |= 0x04; // Y transient interrupt enable
+//   dataToWrite |= 0x02; // X transient interrupt enable
+//   // dataToWrite |= 0x01;    // High-pass filter bypass
+//   device.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, dataToWrite);
 
-  dataToWrite = 0;
+//   dataToWrite = 0;
 
-  // MMA8451_REG_TRANSIENT_THS
-  // Transient interrupt threshold in units of .06g
-  // Acceptable range is 1-127
-  dataToWrite = 0x1F;
-  device.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, dataToWrite);
+//   // MMA8451_REG_TRANSIENT_THS
+//   // Transient interrupt threshold in units of .06g
+//   // Acceptable range is 1-127
+//   dataToWrite = 0x1F;
+//   device.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, dataToWrite);
 
-  dataToWrite = 0;
+//   dataToWrite = 0;
 
-  // MMA8451_REG_TRANSIENT_CT  0x20
-  dataToWrite =
-      0; // value is 0-255 for numer of counts to debounce for, depends on ODR
-  device.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, dataToWrite);
+//   // MMA8451_REG_TRANSIENT_CT  0x20
+//   dataToWrite =
+//       0; // value is 0-255 for numer of counts to debounce for, depends on ODR
+//   device.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, dataToWrite);
 
-  dataToWrite = 0;
-}
+//   dataToWrite = 0;
+// }
 
-void accelInt() {
-  detachInterrupt(digitalPinToInterrupt(ACCEL_INT));
-  Serial.println("Accelerometer Wake");
-  attachInterrupt(digitalPinToInterrupt(ACCEL_INT), accelInt, CHANGE);
-}
+// void accelInt() {
+//   detachInterrupt(digitalPinToInterrupt(ACCEL_INT));
+//   Serial.println("Accelerometer Wake");
+//   attachInterrupt(digitalPinToInterrupt(ACCEL_INT), accelInt, CHANGE);
+// }
 
 void clearRTCAlarm() {
   // clear any pending alarms
@@ -400,17 +400,15 @@ void setup() {
   static GNSSController _gnssController(&Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX);
   gnssController = &_gnssController;
 
+
+
   // SPI INIT
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
-  // ACCELEROMETER INIT
-  Serial.println("Setting up MMA");
-  digitalWrite(ACCEL_INT, INPUT_PULLUP);
-  mmaSetupSlideSentinel();
-  configInterrupts(mma);
-  attachInterrupt(digitalPinToInterrupt(ACCEL_INT), accelInt, FALLING);
-  mma.readRegister8(MMA8451_REG_TRANSIENT_SRC);
+  //Init IMUController
+  static IMUController _imuController(ACCEL_INT, 0x1F);
+  imuController = &_imuController;
 
   // RTC INIT
   pinMode(RTC_INT, INPUT_PULLUP); // active low interrupts
@@ -433,9 +431,12 @@ void loop() {
       advancedTest();
 
     if(gnssController->poll(doc)){
-      serializeJsonPretty(doc, Serial);
+      // serializeJsonPretty(doc, Serial);
       doc.clear();
     }
+
+    if(imuController->getFlag())
+      Serial.println("accel int");
     
   }
 }
