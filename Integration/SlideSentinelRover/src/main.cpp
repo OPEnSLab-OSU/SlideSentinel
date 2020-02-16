@@ -43,15 +43,15 @@ PoluluVoltageReg vcc2(VCC2_EN);
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
 PMController pmController(&max4280, &vcc2, &batReader, false, true);
-
+ttt
 // GLOBAL DOCUMENT
 // StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
 // can only transmit 64 bytes packets at a time
 StaticJsonDocument<1000> doc;
 
 // Instatiate ACCELEROMETER Object
-// #define ACCEL_INT A3
-IMUController imuController(0x1F);
+#define ACCEL_INT A3
+IMUController imuController((uint8_t*) &ACCEL_INT, 0x1F);
 
 // Instatiate RTC Object
 #define RTC_INT 5
