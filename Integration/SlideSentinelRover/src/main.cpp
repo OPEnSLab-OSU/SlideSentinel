@@ -50,8 +50,8 @@ PMController pmController(&max4280, &vcc2, &batReader, false, true);
 StaticJsonDocument<1000> doc;
 
 // Instatiate ACCELEROMETER Object
-#define ACCEL_INT A3
-IMUController *imuController;
+// #define ACCEL_INT A3
+IMUController imuController(0x1F);
 
 // Instatiate RTC Object
 #define RTC_INT 5
@@ -407,8 +407,9 @@ void setup() {
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
   //Init IMUController
-  static IMUController _imuController(ACCEL_INT, 0x1F);
-  imuController = &_imuController;
+  // static IMUController _imuController(ACCEL_INT, 0x1F);
+  // imuController = &_imuController;
+  imuController.init();
 
   // RTC INIT
   pinMode(RTC_INT, INPUT_PULLUP); // active low interrupts
@@ -435,8 +436,10 @@ void loop() {
       doc.clear();
     }
 
-    if(imuController->getFlag())
+    if(imuController.getFlag()){
       Serial.println("accel int");
+      imuController.setFlag();
+    }
     
   }
 }

@@ -6,16 +6,22 @@
 #define REG_TRANS_CFG 0b00001110
 #define REG_TRANS_CT 0b00000000
 
-IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
-    : Controller("IMU"), m_pin(pin), m_sensitivity(sensitivity) {
+// NOTE This is a strange way to encapsulate the ISR
+uint8_t IMUController::m_pin = ACCEL_INT;
+bool IMUController::m_flag = false;
+
+void IMUController::IMU_ISR() {
+  detachInterrupt(digitalPinToInterrupt(m_pin));
+  m_flag = true;
+  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
+}
+
+IMUController::IMUController(uint8_t sensitivity)
+    : Controller("IMU"), m_sensitivity(sensitivity) {
   digitalWrite(m_pin, INPUT_PULLUP);
-  m_flag = false;
 }
 
 bool IMUController::init() {
-  // interesting way of wrapping the ISR in the class
-  instance = this;
-
   if (!m_accelerometer.begin())
     return false;
 
@@ -29,19 +35,13 @@ bool IMUController::init() {
   m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_THS,
                                         m_sensitivity);
   m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
-  attachInterrupt(digitalPinToInterrupt(m_pin), imu_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;
 }
 
-void IMUController::imu_ISR() { instance->m_ISR(); }
-
-void IMUController::m_ISR() {
-  detachInterrupt(digitalPinToInterrupt(m_pin));
-  m_flag = true;
-  attachInterrupt(digitalPinToInterrupt(m_pin), imu_ISR, CHANGE);
-}
-
 bool IMUController::getFlag() { return m_flag; }
+
+void IMUController::setFlag() { m_flag = false; }
 
 void IMUController::update(JsonDocument &doc) {}
 
