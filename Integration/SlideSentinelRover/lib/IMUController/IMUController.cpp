@@ -22,7 +22,7 @@ IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
 }
 
 bool IMUController::init() {
-  if (!m_accelerometer.begin())
+  if (!m_accelerometer.begin())   // calls Wire.begin()
     return false;
 
   m_accelerometer.setRange(MMA8451_RANGE_2_G);
@@ -30,10 +30,8 @@ bool IMUController::init() {
   m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG3, CTRL_REG3);
   m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
   m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG,
-                                        REG_TRANS_CFG);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_THS,
-                                        m_sensitivity);
+  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
+  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
   m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;

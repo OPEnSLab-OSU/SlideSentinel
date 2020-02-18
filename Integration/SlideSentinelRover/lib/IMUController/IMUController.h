@@ -10,8 +10,6 @@ class IMUController : public Controller {
 private:
   Adafruit_MMA8451 m_accelerometer;
   uint8_t m_sensitivity;
-  // static uint8_t* m_pin;
-
   static uint8_t m_pin;
   static bool m_flag;
 
@@ -20,8 +18,8 @@ public:
   bool init();
   bool getFlag();
   void setFlag();
-  static void IMU_ISR();   // global friend function
-  void update(JsonDocument &doc); 
+  static void IMU_ISR(); // global friend function
+  void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
 };
 
