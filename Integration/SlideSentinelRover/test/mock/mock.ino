@@ -4,6 +4,7 @@
 #include <RHReliableDatagram.h>
 #include <RH_Serial.h>
 #include <SD.h>
+#include "ArduinoJson.h"
 
 // RADIO INTERFACE
 #define RST 5
@@ -38,6 +39,9 @@ RH_Serial driver(Serial1);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 uint8_t buf[RH_SERIAL_MAX_MESSAGE_LEN];
 uint8_t data[] = "{\"type\":\"ACK\"}";
+StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
+const char* type;
+
 
 #define IRIDIUM_BAUD 115200
 Uart Serial2(&sercom1, ROCK_RX, ROCK_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -109,28 +113,29 @@ void loop()
             Serial.print(from, HEX);
             Serial.print(": ");
             Serial.println((char *)buf);
+            deserializeJson(doc, buf);
+            type = doc["type"];
 
             // Send a reply back to the originator client
             if (!manager.sendtoWait(data, sizeof(data), from)) //SEND CONFIG DATA TIED TO THIS
                 Serial.println("sendtoWait failed");
         }
         // Start RTK
-        /*
-        if (buf[0] == 'a')
+        if (strcmp(type, "RTS") == 0)
         {
-
+            Serial.println("RTS received");
             Serial.println("(A0 HIGH) GNSS -----> RADIO");
             digitalWrite(SPDT_SEL, LOW);
             useRelay(GNSS_ON_PIN);
         }
         // End RTK
-        else if (buf[0] == 'b')
+        else
         {
             Serial.println("(A0 HIGH) FEATHER_M0 -----> RADIO");
             digitalWrite(SPDT_SEL, HIGH);
             useRelay(GNSS_OFF_PIN);
+            Serial.println("not RTS");
         }
-        */
     }
 }
 
