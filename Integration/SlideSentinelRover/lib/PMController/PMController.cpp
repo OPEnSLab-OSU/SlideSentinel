@@ -6,6 +6,7 @@ PMController::PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2,
                            Battery *bat, bool GNSSrail2, bool radioRail2)
     : Controller("PM"), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat), m_GNSSRail2(GNSSrail2),
       m_RadioRail2(radioRail2) {
+        
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
 }

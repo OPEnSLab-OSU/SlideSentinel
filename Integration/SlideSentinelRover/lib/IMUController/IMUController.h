@@ -8,10 +8,10 @@
 
 class IMUController : public Controller {
 private:
-  Adafruit_MMA8451 m_accelerometer;
+  Adafruit_MMA8451 m_dev;
   uint8_t m_sensitivity;
   static uint8_t m_pin;
-  static bool m_flag;
+  static volatile bool m_flag;
 
 public:
   IMUController(uint8_t pin, uint8_t sensitivity);

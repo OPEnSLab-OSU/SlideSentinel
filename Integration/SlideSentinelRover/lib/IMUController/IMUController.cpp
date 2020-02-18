@@ -7,13 +7,7 @@
 #define REG_TRANS_CT 0b00000000
 
 uint8_t IMUController::m_pin;
-bool IMUController::m_flag = false;
-
-void IMUController::IMU_ISR() {
-  detachInterrupt(digitalPinToInterrupt(m_pin));
-  m_flag = true;
-  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
-}
+volatile bool IMUController::m_flag = false;
 
 IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
     : Controller("IMU"), m_sensitivity(sensitivity) {
@@ -21,18 +15,24 @@ IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
   digitalWrite(m_pin, INPUT_PULLUP);
 }
 
+void IMUController::IMU_ISR() {
+  detachInterrupt(digitalPinToInterrupt(m_pin));
+  m_flag = true;
+  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
+}
+
 bool IMUController::init() {
-  if (!m_accelerometer.begin())   // calls Wire.begin()
+  if (!m_dev.begin()) // calls Wire.begin()
     return false;
 
-  m_accelerometer.setRange(MMA8451_RANGE_2_G);
-  m_accelerometer.setDataRate(MMA8451_DATARATE_6_25HZ);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG3, CTRL_REG3);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
-  m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
+  m_dev.setRange(MMA8451_RANGE_2_G);
+  m_dev.setDataRate(MMA8451_DATARATE_6_25HZ);
+  m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG3, CTRL_REG3);
+  m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
+  m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;
 }

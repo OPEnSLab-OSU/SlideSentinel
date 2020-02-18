@@ -55,7 +55,7 @@ MAX3243 max3243(FORCEOFF_N);
 ComController *comController;
 
 /****** PMController Init ******/
-PoluluVoltageReg vcc2(VCC2_EN);
+PoluluVoltageReg vcc2(VCC2_EN);   // TODO rename this class to the id of the voltage regulator from the manufacturer
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
 PMController pmController(&max4280, &vcc2, &batReader, false, true);
@@ -84,12 +84,6 @@ void clearRTCAlarm() {
   RTC_DS.armAlarm(2, false);
   RTC_DS.clearAlarm(2);
   RTC_DS.alarmInterrupt(2, false);
-}
-
-void readGNSS() {
-  if (Serial2.available()) {
-    Serial.print((char)Serial2.read());
-  }
 }
 
 bool writeData(char *file, char *data) {

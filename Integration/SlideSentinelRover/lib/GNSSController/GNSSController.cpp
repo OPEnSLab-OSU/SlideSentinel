@@ -186,30 +186,29 @@ void GNSSController::getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
 
 uint8_t GNSSController::getMode() { return pos_llh.flags & 0b0000111; }
 
-// read off the serial from GNSS receiver
 void GNSSController::GNSSread() {
   if (m_serial->available())
     fifo_write(m_serial->read());
 }
 
-// FIXME terminates polling process if a reliable RTK fix occurs prior to the
+// TODO terminates polling process if a reliable RTK fix occurs prior to the
 void GNSSController::isFixed(uint8_t &flag) { flag = 1; }
 
 bool GNSSController::compare() {
   // first check if the fix mode is better
-  if(m_mode > getMode())
+  if (m_mode > getMode())
     return false;
-  
-  // check the gdop 
-  if(m_dops.gdop > dops.gdop)
-    return false; 
+
+  // check the gdop
+  if (m_dops.gdop > dops.gdop)
+    return false;
 
   // check the hdop
-  if(m_dops.hdop > dops.hdop)
-    return false; 
+  if (m_dops.hdop > dops.hdop)
+    return false;
 
   // check the number of satellites used to produce the fix
-  if(m_pos_llh.n_sats > pos_llh.n_sats)
+  if (m_pos_llh.n_sats > pos_llh.n_sats)
     return false;
 
   return true;
@@ -262,8 +261,7 @@ uint8_t GNSSController::poll(JsonDocument &doc) {
 
   DO_EVERY(m_logFreq,
            // check if the current reading is better than the running best
-           if (compare()) 
-             setBest();
+           if (compare()) setBest();
 
            // create data packet for writing to SD
            memset(str, 0, sizeof(str)); doc["type"] = m_HEADER;
