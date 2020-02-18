@@ -18,7 +18,7 @@ public:
   bool init();
   bool getFlag();
   void setFlag();
-  static void IMU_ISR(); // global friend function
+  static void IMU_ISR(); 
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
 };
