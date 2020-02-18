@@ -8,10 +8,12 @@
 #include "Controller.h"
 #include "wiring_private.h" // Pin peripheral
 
+// TODO getBest() function 
+
 class GNSSController : public Controller {
 
 private:
-  HardwareSerial *m_serial; // Postional data
+  HardwareSerial *m_serial; 
   int m_baud;
   uint8_t m_rx;
   uint8_t m_tx;

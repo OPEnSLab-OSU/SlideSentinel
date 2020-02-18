@@ -6,21 +6,19 @@
 #define REG_TRANS_CFG 0b00001110
 #define REG_TRANS_CT 0b00000000
 
-// NOTE This is a strange way to encapsulate the ISR
-uint8_t* IMUController::m_pin = NULL;
+uint8_t IMUController::m_pin;
 bool IMUController::m_flag = false;
 
 void IMUController::IMU_ISR() {
-  detachInterrupt(digitalPinToInterrupt(*m_pin));
+  detachInterrupt(digitalPinToInterrupt(m_pin));
   m_flag = true;
-  attachInterrupt(digitalPinToInterrupt(*m_pin), IMU_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
 }
 
-IMUController::IMUController(uint8_t *pin, uint8_t sensitivity)
+IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
     : Controller("IMU"), m_sensitivity(sensitivity) {
-  
   m_pin = pin;
-  digitalWrite(*m_pin, INPUT_PULLUP);
+  digitalWrite(m_pin, INPUT_PULLUP);
 }
 
 bool IMUController::init() {
@@ -37,7 +35,7 @@ bool IMUController::init() {
   m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_THS,
                                         m_sensitivity);
   m_accelerometer.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
-  attachInterrupt(digitalPinToInterrupt(*m_pin), IMU_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;
 }
 
