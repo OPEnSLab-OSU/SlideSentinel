@@ -11,8 +11,8 @@
 #include "RH_Serial.h"
 #include "SN74LVC2G53.h"
 
+// TODO implement message fragmentation
 // State: m_timeout, retries, dropped packets
-// TODO error const chars need to be of generic type "ERR", specific error messages are nested in the JSON document
 class ComController : public Controller {
 private:
   Freewave *m_radio;
@@ -33,6 +33,7 @@ private:
 
   bool m_send(char msg[]);
   bool m_receive(char buf[]);
+  void m_createRTS(JsonDocument &doc);
   void m_clearBuffer();
 
 public:

@@ -6,9 +6,9 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243,
                              uint32_t baud, uint8_t clientId, uint8_t serverId)
     : Controller("COM"), m_radio(radio), m_max3243(max3243), m_mux(mux),
       m_serial(serial), m_baud(baud), m_clientId(clientId),
-      m_serverId(serverId), m_timeout(2000), m_RTS("{\"ID\":\"RTS\"}"),
-      m_ACK_ERR("{\"ID\":\"ERR\",\"MSG\":\"NO ACK\"}"),
-      m_REP_ERR("{\"ID\":\"ERR\",\"MSG\":\"NO REPLY\"}") {
+      m_serverId(serverId), m_timeout(2000),
+      m_ACK_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no ACK from server\"}"),
+      m_REP_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no reply from server\"}") {
   m_serial->begin(m_baud);
   m_mux->comY1();
   m_max3243->disable();
@@ -44,13 +44,21 @@ void ComController::setTimeout(uint16_t time) { m_timeout = time; }
 
 void ComController::setRetries(uint8_t num) { m_manager->setRetries(num); }
 
-bool ComController::request(JsonDocument &doc) {
+void ComController::m_createRTS(JsonDocument &doc) {
+  m_clearBuffer();
+  doc["ID"] = "RTS";
+  serializeJson(doc, m_buf);
   doc.clear();
+}
+
+bool ComController::request(JsonDocument &doc) {
   m_mux->comY1();
   if (m_radio->getZ9C())
     m_max3243->enable();
 
-  if (!m_send((char *)m_RTS)) {
+  m_createRTS(doc);
+  console.debug(m_buf);
+  if (!m_send(m_buf)) {
     console.debug("No ACK from server");
     m_max3243->disable();
     deserializeJson(doc, m_ACK_ERR);
@@ -82,7 +90,7 @@ bool ComController::upload(JsonDocument &doc) {
 
   if (!m_send(m_buf)) {
     console.debug("Failed to upload");
-    doc.clear();       
+    doc.clear();
     deserializeJson(doc, m_ACK_ERR);
     return false;
   }

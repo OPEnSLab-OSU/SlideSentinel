@@ -19,7 +19,8 @@
 // all controllers for dynamic behavior changes.
 // TODO JSON compression object, we can use the object to compress verbose json
 // identifiers and decompress them
-
+// TODO centrailze "MSG" headers and reference this in all all files for ensured
+// consistency
 /****** Test Routine ******/
 #define ADVANCED true
 
@@ -138,10 +139,11 @@ void setRTCAlarm() {
   attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
 }
 
+bool pollFlag = false;
 void advancedTest() {
   char cmd;
   char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
-  
+
   char fileName[30];
   memset(fileName, '\0', sizeof(char) * 30);
 
@@ -249,12 +251,13 @@ void advancedTest() {
       pmController.enableGNSS();
       delay(500);
       break;
-      
+
     case 's':
       Serial.println("Creating new directory");
-      sprintf(fileName, "%.2d.%.2d.%.2d.%.2d.%.2d", now.month(), now.day(), now.hour(), now.minute(), now.second()); 
+      sprintf(fileName, "%.2d.%.2d.%.2d.%.2d.%.2d", now.month(), now.day(),
+              now.hour(), now.minute(), now.second());
       Serial.println(fileName);
-      fsController.setupWakeCycle(fileName);
+      fsController.setupWakeCycle(fileName, gnssController->getFormat());
       break;
 
     case 'd':
@@ -270,6 +273,15 @@ void advancedTest() {
       comController->upload(doc);
       pmController.disableGNSS();
       delay(500);
+      break;
+    case 'f':
+      if (!pollFlag) {
+        Serial.println("Polling...");
+        pollFlag = true;
+      } else {
+        Serial.println("Done Polling...");
+        pollFlag = false;
+      }
       break;
     }
   }
@@ -307,7 +319,7 @@ void setup() {
 
   // must be done after first call to attac1hInterrupt()
   pmController.init();
-  if(fsController.init())
+  if (fsController.init())
     Serial.println("successfully initialized SD");
 }
 
@@ -318,14 +330,16 @@ void loop() {
     if (ADVANCED)
       advancedTest();
 
-    if (gnssController->poll(doc)) {
-      // serializeJsonPretty(doc, Serial);
-      doc.clear();
+    if (pollFlag && gnssController->poll(doc)) {
+      serializeJsonPretty(doc, Serial);
+      // TODO only log if we have valid data, in case data stays in the buffer
+      // at sleep?
+      fsController.log(doc);
     }
 
-    if (imuController.getFlag()) {
-      Serial.println("accel int");
-      imuController.setFlag();
-    }
+    // if (imuController.getFlag()) {
+    //   Serial.println("accel int");
+    //   imuController.setFlag();
+    // }
   }
 }

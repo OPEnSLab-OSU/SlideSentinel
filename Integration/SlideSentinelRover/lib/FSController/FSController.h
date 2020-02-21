@@ -19,8 +19,7 @@ private:
 
   const char *m_WRITE_ERR;
   const char *m_GNSS;
-  const char *m_STATE;
-  const char *m_ERR;
+  const char *m_LOG;
 
   bool m_dispatch(JsonDocument &doc);
 
@@ -28,14 +27,13 @@ private:
   bool m_write(char* msg);
 
   void m_clearBuffer();
-  void m_writeHeader();
   bool m_mkFile(const char *name);
   bool m_setFile(const char *name);
 
 public:
   FSController(uint8_t cs, uint8_t rst);
   void log(JsonDocument &doc);
-  bool setupWakeCycle(char *timestamp);
+  bool setupWakeCycle(char *timestamp, char* format);
   bool init();
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
