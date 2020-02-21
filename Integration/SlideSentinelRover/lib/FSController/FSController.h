@@ -24,9 +24,8 @@ private:
 
   bool m_dispatch(JsonDocument &doc);
 
-  bool m_logErr(const char *gnss);
-  bool m_logState(const char *gnss);
-  bool m_logGNSS(const char *gnss);
+  bool m_logMsg(const char *msg, const char* file);
+  bool m_write(char* msg);
 
   void m_clearBuffer();
   void m_writeHeader();
@@ -36,7 +35,7 @@ private:
 public:
   FSController(uint8_t cs, uint8_t rst);
   void log(JsonDocument &doc);
-  bool newCycle(char *timestamp);
+  bool setupWakeCycle(char *timestamp);
   bool init();
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);

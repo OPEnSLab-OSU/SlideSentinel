@@ -249,12 +249,19 @@ void advancedTest() {
       pmController.enableGNSS();
       delay(500);
       break;
-
+      
     case 's':
       Serial.println("Creating new directory");
       sprintf(fileName, "%.2d.%.2d.%.2d.%.2d.%.2d", now.month(), now.day(), now.hour(), now.minute(), now.second()); 
       Serial.println(fileName);
-      fsController.newCycle(fileName);
+      fsController.setupWakeCycle(fileName);
+      break;
+
+    case 'd':
+      Serial.println("Attempting to send with no connection");
+      comController->request(doc);
+      serializeJsonPretty(doc, Serial);
+      fsController.log(doc);
       break;
 
     case 'a':

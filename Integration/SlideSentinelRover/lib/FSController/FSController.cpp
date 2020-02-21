@@ -14,65 +14,47 @@ void FSController::m_clearBuffer() {
 // any subdirectory
 bool FSController::init() {
   pinMode(m_cs, OUTPUT);
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(50)))
-    return false;
-  if (!m_root.open("/")) // create root
-    return false;
-  if (!m_sd.mkdir("logs")) // create system wide logs
-    return false;
-  if (!m_sd.mkdir("data")) // create system wide data logs
+  if (!(m_sd.begin(m_cs, SD_SCK_MHZ(50)) && m_root.open("/") &&
+        m_sd.mkdir("logs") && m_sd.mkdir("data")))
     return false;
   return true;
 }
 
 bool FSController::m_dispatch(JsonDocument &doc) {
+  serializeJsonPretty(doc, Serial);
   const char *type = doc["ID"];
   if (strcmp(type, "ERR") == 0)
-    return m_logErr(doc["MSG"]);
+    return m_logMsg(doc["MSG"], m_ERR);
   if (strcmp(type, "GNSS") == 0)
-    return m_logGNSS(doc["MSG"]);
+    return m_logMsg(doc["MSG"], m_GNSS);
   if (strcmp(type, "STATE") == 0)
-    return m_logState(doc["MSG"]);
+    return m_logMsg(doc["MSG"], m_STATE);
   return false;
 }
 
 void FSController::log(JsonDocument &doc) {
   if (!m_dispatch(doc))
-    m_logErr(m_WRITE_ERR);
+    m_logMsg((char *)m_WRITE_ERR, m_ERR);
   doc.clear();
 }
 
 // TODO error check and make sure the directory is not already made
-// TODO clean up error handling in this controller
-// TODO construct global state object
-bool FSController::newCycle(char *timestamp) {
-  if (!m_sd.chdir()) // reset file ptr
-    console.debug("failed to change dir to root");
-  if (!m_sd.chdir("data")) // change to data dirå
-    console.debug("failed to change dir to data");
-  if (!m_sd.mkdir(timestamp)) // create timestamped folder for wake cycle
-    console.debug("failed to make timestampped dir");
-  if (!m_sd.chdir(timestamp)) // change to data dir
-    console.debug("failed to change dir to timestampped dir");
-  if (!m_mkFile(m_GNSS)) // create GNSS file
-    console.debug("failed to GNSS file");
-  if (!m_mkFile(m_STATE)) // create state file
-    console.debug("failed to STATE file");
-  if (!m_mkFile(m_ERR)) // create error logs
-    console.debug("failed to ERROR file");
-  if (!m_setFile(m_GNSS)) // set the file ptr to GNSS
-    console.debug("failed to set file ptr to gnss");
+bool FSController::setupWakeCycle(char *timestamp) {
+  // reset ptr, enter "/data", make timestamped dir, enter /data/[TIMESTAMP],
+  // make GNSS, STATE and ERR files, set file ptr to current dir
+  if (!(m_sd.chdir() && m_sd.chdir("data") && m_sd.mkdir(timestamp) &&
+        m_sd.chdir(timestamp) && m_mkFile(m_GNSS) && m_mkFile(m_STATE) &&
+        m_mkFile(m_ERR) && m_setFile(m_GNSS)))
+    return false;
+
   m_writeHeader();     // write the data header
   if (!m_file.close()) // close the ptr
-    console.debug("failed to close GNSS file");
-  m_sd.ls();
+    return false;
   return true;
 }
 
 bool FSController::m_mkFile(const char *name) {
-  if (!m_file.open(name, O_WRONLY | O_CREAT | O_EXCL))
-    return false;
-  if (!m_file.close())
+  if (!(m_file.open(name, O_WRONLY | O_CREAT | O_EXCL) && m_file.close()))
     return false;
   return true;
 }
@@ -88,10 +70,20 @@ void FSController::m_writeHeader() {
                  "BEast,BDown,VNorth,VEast,VDown,GDOP,HDOP,PDOP,TDOP,VDOP\n"));
 }
 
-// TODO implement these
-bool FSController::m_logErr(const char *err) {}
-bool FSController::m_logState(const char *state) {}
-bool FSController::m_logGNSS(const char *gnss) {}
+bool FSController::m_write(char *msg) {
+  console.debug(msg);
+  return m_file.println(msg);
+}
+
+bool FSController::m_logMsg(const char *msg, const char *file) {
+  console.debug(file);
+  if (!(m_setFile(file) && m_write((char *)msg))) {
+    m_file.close();
+    return false;
+  }
+  m_file.close();
+  return true;
+}
 
 void FSController::update(JsonDocument &doc) {}
 void FSController::status(uint8_t verbosity, JsonDocument &doc) {}
