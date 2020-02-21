@@ -11,7 +11,7 @@ PMController::PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2,
   asm(".global _printf_float");
 }
 
-void PMController::init() {
+bool PMController::init() {
   // Set the XOSC32K to run in standby, external 32 KHz clock must be used for
   // interrupt detection in order to catch falling edges
   SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;

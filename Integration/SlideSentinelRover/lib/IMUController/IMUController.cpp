@@ -12,7 +12,6 @@ volatile bool IMUController::m_flag = false;
 IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
     : Controller("IMU"), m_sensitivity(sensitivity) {
   m_pin = pin;
-  digitalWrite(m_pin, INPUT_PULLUP);
 }
 
 void IMUController::IMU_ISR() {
@@ -22,6 +21,7 @@ void IMUController::IMU_ISR() {
 }
 
 bool IMUController::init() {
+  digitalWrite(m_pin, INPUT_PULLUP);
   if (!m_dev.begin()) // calls Wire.begin()
     return false;
 

@@ -7,6 +7,8 @@
 #include "MAX4280.h"
 #include "VoltageReg.h"
 
+// State: N/A
+
 class PMController : public Controller {
 private:
   MAX4280 *m_max4280;
@@ -18,7 +20,6 @@ private:
 public:
   PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2, Battery *bat,
                bool GNSSrail2, bool radioRail2);
-  void init();
   float readBat();
   void readBatStr(char buf[]);
   void disableGNSS();
@@ -26,6 +27,7 @@ public:
   void disableRadio();
   void enableRadio();
   void sleep();
+  bool init();
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
 };

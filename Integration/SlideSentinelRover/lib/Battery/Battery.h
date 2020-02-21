@@ -4,13 +4,12 @@
 #include <Arduino.h>
 
 class Battery {
+private:
+  uint8_t m_a;
 
 public:
   Battery(uint8_t a);
   float read();
-
-private:
-  uint8_t m_a;
 };
 
 #endif // _BATTERY_H_

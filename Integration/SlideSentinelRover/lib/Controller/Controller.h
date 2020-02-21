@@ -8,6 +8,7 @@ class Controller
 {
     public: 
         Controller(const char* header);
+        virtual bool init() = 0;
         virtual void update(JsonDocument &doc) = 0;
         virtual void status(uint8_t verbosity, JsonDocument &doc) = 0; 
 

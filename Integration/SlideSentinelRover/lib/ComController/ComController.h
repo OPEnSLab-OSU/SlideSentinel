@@ -11,6 +11,8 @@
 #include "RH_Serial.h"
 #include "SN74LVC2G53.h"
 
+// State: m_timeout, retries, dropped packets
+// TODO error const chars need to be of generic type "ERR", specific error messages are nested in the JSON document
 class ComController : public Controller {
 private:
   Freewave *m_radio;
@@ -29,9 +31,9 @@ private:
   const char *m_SER_ERR;
   char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
 
-  bool _send(char msg[]);
-  bool _receive(char buf[]);
-  void _clearBuffer();
+  bool m_send(char msg[]);
+  bool m_receive(char buf[]);
+  void m_clearBuffer();
 
 public:
   ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux,
@@ -41,6 +43,7 @@ public:
   bool upload(JsonDocument &doc);
   void setTimeout(uint16_t time);
   void setRetries(uint8_t num);
+  bool init();
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
   void resetRadio();

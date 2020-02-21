@@ -1,10 +1,7 @@
-#include <Arduino.h>
-#include <SD.h>
-#include <SPI.h>
-#include <Wire.h>
 #include "Battery.h"
 #include "ComController.h"
 #include "Controller.h"
+#include "FSController.h"
 #include "FreewaveRadio.h"
 #include "GNSSController.h"
 #include "IMUController.h"
@@ -14,6 +11,14 @@
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
 #include "VoltageReg.h"
+#include <Arduino.h>
+#include <SPI.h>
+#include <Wire.h>
+
+// TODO move state variables to centralized class State, inject the state into
+// all controllers for dynamic behavior changes.
+// TODO JSON compression object, we can use the object to compress verbose json
+// identifiers and decompress them
 
 /****** Test Routine ******/
 #define ADVANCED true
@@ -34,7 +39,8 @@
 #define BAT 15
 
 /****** FSController ******/
-#define SD_CS 18
+#define SD_CS 18  // A4
+#define SD_RST 16 // A2
 
 /****** IMUController ******/
 #define ACCEL_INT A3
@@ -44,9 +50,11 @@
 #define GNSS_RX 12
 #define GNSS_BAUD 115200
 
-    /****** Mail ******/
-    StaticJsonDocument<1000>
-        doc;
+/****** Mail ******/
+StaticJsonDocument<1000> doc;
+
+/****** FSController Init ******/
+FSController fsController(SD_CS, SD_RST);
 
 /****** ComController Init ******/
 Freewave radio(RST, CD, IS_Z9C);
@@ -55,7 +63,8 @@ MAX3243 max3243(FORCEOFF_N);
 ComController *comController;
 
 /****** PMController Init ******/
-PoluluVoltageReg vcc2(VCC2_EN);   // TODO rename this class to the id of the voltage regulator from the manufacturer
+PoluluVoltageReg vcc2(VCC2_EN); // TODO rename this class to the id of the
+                                // voltage regulator from the manufacturer
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
 PMController pmController(&max4280, &vcc2, &batReader, false, true);
@@ -86,18 +95,8 @@ void clearRTCAlarm() {
   RTC_DS.alarmInterrupt(2, false);
 }
 
-bool writeData(char *file, char *data) {
-  auto sdFile = SD.open(file, FILE_WRITE);
-  if (!sdFile)
-    return false;
-
-  sdFile.print(data);
-  sdFile.close();
-  return true;
-}
-
 void initializeRTC() {
-  Wire.begin();     // called in Adafruit_MMA8451::begin()
+  Wire.begin(); // called in Adafruit_MMA8451::begin()
   RTC_DS.begin();
   RTC_DS.adjust(DateTime(__DATE__, __TIME__));
 
@@ -139,19 +138,13 @@ void setRTCAlarm() {
   attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
 }
 
-bool setup_sd() {
-  Serial.println("Initializing SD card...");
-
-  if (!SD.begin(SD_CS)) {
-    Serial.println("SD Initialization failed!");
-    return false;
-  }
-  Serial.println("SD initialization complete");
-  return true;
-}
-
 void advancedTest() {
   char cmd;
+  char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
+  
+  char fileName[30];
+  memset(fileName, '\0', sizeof(char) * 30);
+
   if (Serial.available()) {
     DateTime now = RTC_DS.now();
     cmd = Serial.read();
@@ -192,21 +185,21 @@ void advancedTest() {
       Serial.println("RS232 ---> ON (Driving it HIGH)");
       max3243.enable();
       break;
-    case 'r':
+    case 'q':
       Serial.println("Resetting the radio, DRIVING RST LOW");
       comController->resetRadio();
       break;
-    case 't':
+    case 'w':
       Serial.print("STATE of CD pin: ");
       if (comController->channelBusy())
         Serial.println("BUSY");
       else
         Serial.println("NOT BUSY");
       break;
-    case 'w':
+    case 'e':
       setRTCAlarm();
       break;
-    case 'j':
+    case 'r':
       Serial.print("RTC Time is: ");
       Serial.print(now.hour(), DEC);
       Serial.print(':');
@@ -214,7 +207,7 @@ void advancedTest() {
       Serial.print(':');
       Serial.println(now.second(), DEC);
       break;
-    case 's':
+    case 't':
       Serial.println("Sleeping");
       pmController.disableGNSS();
       pmController.disableRadio();
@@ -226,26 +219,26 @@ void advancedTest() {
       pmController.disableGNSS();
       Serial.println("Awake");
       break;
-    case 'd':
+    case 'y':
       Serial.print("reading battery voltage: ");
       Serial.println(pmController.readBat());
       break;
-    case 'f':
+    case 'u':
       Serial.print("reading battery voltage string: ");
       char volt[20];
       memset(volt, '\0', sizeof(char) * 20);
       pmController.readBatStr(volt);
       Serial.println(volt);
       break;
-    case 'x':
+    case 'i':
       Serial.println("Turning off VCC2");
       vcc2.disable();
       break;
-    case 'y':
+    case 'o':
       Serial.println("Turning on VCC2");
       vcc2.enable();
       break;
-    case 'o':
+    case 'p':
       char buffer[RH_SERIAL_MAX_MESSAGE_LEN];
       memset(buffer, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
       Serial.println("Turning BASE station ON");
@@ -257,9 +250,15 @@ void advancedTest() {
       delay(500);
       break;
 
-    case 'p':
+    case 's':
+      Serial.println("Creating new directory");
+      sprintf(fileName, "%.2d.%.2d.%.2d.%.2d.%.2d", now.month(), now.day(), now.hour(), now.minute(), now.second()); 
+      Serial.println(fileName);
+      fsController.newCycle(fileName);
+      break;
+
+    case 'a':
       Serial.println("Turning BASE station OFF");
-      char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
       deserializeJson(doc, test);
       comController->upload(doc);
       pmController.disableGNSS();
@@ -301,15 +300,12 @@ void setup() {
 
   // must be done after first call to attac1hInterrupt()
   pmController.init();
-
-  // SD Card Initialization
-  pinMode(SD_CS, OUTPUT);
-
-  // CONSIDER a pointer to the file to be written to currently in the state
-  setup_sd();
+  if(fsController.init())
+    Serial.println("successfully initialized SD");
 }
 
 void loop() {
+
   while (1) {
 
     if (ADVANCED)

@@ -6,6 +6,8 @@
 #include "ArduinoJson.h"
 #include "Controller.h"
 
+// State: m_sensitivity
+
 class IMUController : public Controller {
 private:
   Adafruit_MMA8451 m_dev;

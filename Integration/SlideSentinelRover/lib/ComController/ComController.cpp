@@ -6,8 +6,8 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243,
                              uint32_t baud, uint8_t clientId, uint8_t serverId)
     : Controller("COM"), m_radio(radio), m_max3243(max3243), m_mux(mux),
       m_serial(serial), m_baud(baud), m_clientId(clientId),
-      m_serverId(serverId), m_timeout(2000), m_RTS("{\"type\":\"RTS\"}"),
-      m_ACK_ERR("{\"type\":\"ACK_ERR\"}"), m_REP_ERR("{\"type\":\"REP_ERR\"}") {
+      m_serverId(serverId), m_timeout(2000), m_RTS("{\"ID\":\"RTS\"}"),
+      m_ACK_ERR("{\"ID\":\"ERR\",\"MSG\":\"NO ACK\"}"), m_REP_ERR("{\"ID\":\"ERR\",\"MSG\":\"NO REPLY\"}") {
   m_serial->begin(m_baud);
   m_mux->comY1();
   m_max3243->disable();
@@ -16,11 +16,13 @@ ComController::ComController(Freewave *radio, MAX3243 *max3243,
   m_manager->init();
 }
 
-void ComController::_clearBuffer() {
+bool ComController::init() {}
+
+void ComController::m_clearBuffer() {
   memset(m_buf, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
 }
 
-bool ComController::_send(char msg[]) {
+bool ComController::m_send(char msg[]) {
   uint8_t size = strlen(msg);
   if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
     return true;
@@ -28,7 +30,7 @@ bool ComController::_send(char msg[]) {
     return false;
 }
 
-bool ComController::_receive(char buf[]) {
+bool ComController::m_receive(char buf[]) {
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
   uint8_t from;
   if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
@@ -46,15 +48,15 @@ bool ComController::request(JsonDocument &doc) {
   if (m_radio->getZ9C())
     m_max3243->enable();
 
-  if (!_send((char *)m_RTS)) {
+  if (!m_send((char *)m_RTS)) {
     console.debug("No ACK from server");
     m_max3243->disable();
     deserializeJson(doc, m_ACK_ERR);
     return false;
   }
 
-  _clearBuffer();
-  if (!_receive(m_buf)) {
+  m_clearBuffer();
+  if (!m_receive(m_buf)) {
     console.debug("Server ACK but no reply");
     m_max3243->disable();
     deserializeJson(doc, m_REP_ERR);
@@ -70,12 +72,12 @@ bool ComController::request(JsonDocument &doc) {
 }
 
 bool ComController::upload(JsonDocument &doc) {
-  _clearBuffer();
+  m_clearBuffer();
   serializeJson(doc, m_buf);
   console.debug("RADIO ----> FEATHER");
   m_mux->comY1();
-  
-  if (!_send(m_buf)) {
+
+  if (!m_send(m_buf)) {
     console.debug("Failed to upload");
     deserializeJson(doc, m_ACK_ERR);
     return false;
