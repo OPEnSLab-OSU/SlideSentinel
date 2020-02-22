@@ -1,7 +1,7 @@
 #include "GNSSController.h"
 
-char rj[30];
-char str[100];
+char rj[MAX_POS_FIELD];
+char str[MAX_POS_STR];
 int str_i;
 
 /*
@@ -144,7 +144,12 @@ u8 fifo_full(void) {
 GNSSController::GNSSController(HardwareSerial *serial, uint32_t baud,
                                uint8_t rx, uint8_t tx)
     : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx),
-      m_logFreq(100000) {
+      m_logFreq(100000),
+      m_FORMAT("<Week>,<Seconds>,<RTK "
+               "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
+               "North>,<Baselie East>,"
+               "<Baseline Down>,<Velocity North>,<Velocity East>,<Velocity "
+               "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {
   init();
   sbp_setup();
 }
@@ -158,8 +163,8 @@ bool GNSSController::init() {
 }
 
 // determine the fix mode
-void GNSSController::getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
-  switch (getMode()) {
+void GNSSController::m_getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
+  switch (m_getMode()) {
   case 0:
     sprintf(rj, "Invalid");
     break;
@@ -184,19 +189,19 @@ void GNSSController::getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
   }
 }
 
-uint8_t GNSSController::getMode() { return pos_llh.flags & 0b0000111; }
+uint8_t GNSSController::m_getMode() { return pos_llh.flags & FIX_MODE_MASK; }
 
-void GNSSController::GNSSread() {
+void GNSSController::m_GNSSread() {
   if (m_serial->available())
     fifo_write(m_serial->read());
 }
 
 // TODO terminates polling process if a reliable RTK fix occurs prior to the
-void GNSSController::isFixed(uint8_t &flag) { flag = 1; }
+void GNSSController::m_isFixed(uint8_t &flag) { flag = 1; }
 
-bool GNSSController::compare() {
+bool GNSSController::m_compare() {
   // first check if the fix mode is better
-  if (m_mode > getMode())
+  if (m_mode > m_getMode())
     return false;
 
   // check the gdop
@@ -214,13 +219,13 @@ bool GNSSController::compare() {
   return true;
 }
 
-void GNSSController::setBest() {
+void GNSSController::m_setBest() {
   m_pos_llh = pos_llh;
   m_baseline_ned = baseline_ned;
   m_vel_ned = vel_ned;
   m_dops = dops;
   m_gps_time = gps_time;
-  m_mode = getMode();
+  m_mode = m_getMode();
 }
 
 /*
@@ -252,7 +257,7 @@ void GNSSController::setBest() {
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
 uint8_t GNSSController::poll(JsonDocument &doc) {
-  GNSSread();
+  m_GNSSread();
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
 
@@ -261,41 +266,80 @@ uint8_t GNSSController::poll(JsonDocument &doc) {
 
   DO_EVERY(m_logFreq,
            // check if the current reading is better than the running best
-           if (compare()) setBest();
+           if (m_compare()) m_setBest();
 
            // create data packet for writing to SD
-           memset(str, 0, sizeof(str)); doc["type"] = m_HEADER;
-           JsonArray data = doc.createNestedArray("data");
-           data.add((int)gps_time.wn);
-           sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3); data.add(rj);
-           data.add(getMode()); sprintf(rj, "%4.10lf", pos_llh.lat);
-           data.add(rj); sprintf(rj, "%4.10lf", pos_llh.lon); data.add(rj);
-           sprintf(rj, "%4.10lf", pos_llh.height); data.add(rj);
-           data.add(pos_llh.n_sats); data.add((int)baseline_ned.n);
-           data.add((int)baseline_ned.e); data.add((int)baseline_ned.d);
-           data.add((int)vel_ned.n); data.add((int)vel_ned.e);
-           data.add((int)vel_ned.d);
-           sprintf(rj, "%4.2f", ((float)dops.gdop / 100)); data.add(rj);
-           sprintf(rj, "%4.2f", ((float)dops.hdop / 100)); data.add(rj);
-           sprintf(rj, "%4.2f", ((float)dops.pdop / 100)); data.add(rj);
-           sprintf(rj, "%4.2f", ((float)dops.tdop / 100)); data.add(rj);
-           sprintf(rj, "%4.2f", ((float)dops.vdop / 100)); data.add(rj);
+           memset(str, '\0', sizeof(char) * MAX_POS_STR);
+           memset(rj, '\0', sizeof(char) * MAX_POS_FIELD); str_i = 0;
+           doc["ID"] = m_HEADER;
+           str_i += sprintf(str + str_i, "%6d,", (int)gps_time.wn);
+           sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3);
+           str_i += sprintf(str + str_i, "%9s,", rj); m_getModeStr(pos_llh, rj);
+           str_i += sprintf(str + str_i, "%17s,", rj);
+           sprintf(rj, "%4.10lf", pos_llh.lat);
+           str_i += sprintf(str + str_i, "%17s,", rj);
+           sprintf(rj, "%4.10lf", pos_llh.lon);
+           str_i += sprintf(str + str_i, "%17s,", rj);
+           sprintf(rj, "%4.10lf", pos_llh.height);
+           str_i += sprintf(str + str_i, "%17s,", rj);
 
-           // determine if we can preemptively quit polling
-           isFixed(datFlag););
+           str_i += sprintf(str + str_i, "%04d,", pos_llh.n_sats);
+           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.n);
+           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.e);
+           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.d);
+           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.n);
+           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.e);
+           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.d);
+           sprintf(rj, "%4.2f", ((float)dops.gdop / 100));
+           str_i += sprintf(str + str_i, "%7s,", rj);
+           sprintf(rj, "%4.2f", ((float)dops.hdop / 100));
+           str_i += sprintf(str + str_i, "%7s,", rj);
+           sprintf(rj, "%4.2f", ((float)dops.pdop / 100));
+           str_i += sprintf(str + str_i, "%7s,", rj);
+           sprintf(rj, "%4.2f", ((float)dops.tdop / 100));
+           str_i += sprintf(str + str_i, "%7s,", rj);
+           sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
+           str_i += sprintf(str + str_i, "%7s", rj); doc["MSG"] = str;
+
+           // check if we acheived an RTK fix, reset internal variables
+           m_isFixed(datFlag); m_reset(););
 
   return datFlag;
 }
 
+void GNSSController::m_reset() {
+  gps_time.wn = 0;
+  gps_time.tow = 0;
+  pos_llh.flags &= FIX_MODE_CLR;
+  pos_llh.lat = 0;
+  pos_llh.lon = 0;
+  pos_llh.height = 0;
+  pos_llh.n_sats = 0;
+  baseline_ned.n = 0;
+  baseline_ned.e = 0;
+  baseline_ned.d = 0;
+  vel_ned.n = 0;
+  vel_ned.e = 0;
+  vel_ned.d = 0;
+  dops.gdop = 0;
+  dops.hdop = 0;
+  dops.pdop = 0;
+  dops.tdop = 0;
+  dops.vdop = 0;
+}
+
+char *GNSSController::getFormat() { return (char *)m_FORMAT; }
+
 void GNSSController::update(JsonDocument &doc) {}
 
+// TODO This will be where we log the best reading for the wake cycle
 void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}
 
 // doc["type"] = m_HEADER;
 // JsonArray data = doc.createNestedArray("data");
 // data.add((int)gps_time.wn);
 // data.add(((float)gps_time.tow) / 1e3);
-// data.add(getMode());
+// data.add(m_getMode());
 // data.add(pos_llh.lat);
 // data.add(pos_llh.lon);
 // data.add(pos_llh.height);
@@ -315,7 +359,7 @@ void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}
 // doc["type"] = m_HEADER;
 // doc["GPS.wn"] = (int)gps_time.wn;
 // doc["GPS.tow"] = (int)gps_time.tow / 1e3;
-// doc["Mode"] = getMode();
+// doc["Mode"] = m_getMode();
 // doc["lat"] = pos_llh.lat;
 // doc["lon"] = pos_llh.lon;
 // doc["height"] = pos_llh.height;
@@ -350,7 +394,7 @@ void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}
 // str_i += sprintf(str + str_i, "\tHeight\t: %17s\n", rj);
 // str_i +=
 // sprintf(str + str_i, "\tSatellites\t:     %02d\n", pos_llh.n_sats);
-// getModeStr(pos_llh, rj);
+// m_getModeStr(pos_llh, rj);
 // str_i += sprintf(str + str_i, "\tFix Mode\t: %17s\n", rj);
 // str_i += sprintf(str + str_i, "\n");
 // str_i += sprintf(str + str_i, "Baseline (mm):\n");

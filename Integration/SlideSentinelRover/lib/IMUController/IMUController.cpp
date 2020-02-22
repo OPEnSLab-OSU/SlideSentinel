@@ -10,9 +10,8 @@ uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
 IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
-    : Controller("IMU"), m_sensitivity(sensitivity) {
+    : Controller("IMU"), m_sensitivity(sensitivity), IMU_WAKE("IMU_WAKE") {
   m_pin = pin;
-  digitalWrite(m_pin, INPUT_PULLUP);
 }
 
 void IMUController::IMU_ISR() {
@@ -22,6 +21,7 @@ void IMUController::IMU_ISR() {
 }
 
 bool IMUController::init() {
+  digitalWrite(m_pin, INPUT_PULLUP);
   if (!m_dev.begin()) // calls Wire.begin()
     return false;
 
@@ -37,9 +37,16 @@ bool IMUController::init() {
   return true;
 }
 
-bool IMUController::getFlag() { return m_flag; }
+void IMUController::getWakeStatus(JsonDocument &doc) {
+  if (!m_getFlag()) {
+    doc["MSG"] = IMU_WAKE;
+    m_setFlag();
+  }
+}
 
-void IMUController::setFlag() { m_flag = false; }
+bool IMUController::m_getFlag() { return m_flag; }
+
+void IMUController::m_setFlag() { m_flag = false; }
 
 void IMUController::update(JsonDocument &doc) {}
 

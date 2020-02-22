@@ -4,6 +4,7 @@
         "sstream": "cpp",
         "array": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "*.tcc": "cpp"
     }
 }
