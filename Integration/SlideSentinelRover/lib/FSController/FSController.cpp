@@ -6,10 +6,6 @@ FSController::FSController(uint8_t cs, uint8_t rst)
       m_WRITE_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: failed to write to SD\"}"),
       m_GNSS("gnss.csv"), m_LOG("log.txt") {}
 
-void FSController::m_clearBuffer() {
-  memset(m_buf, '\0', sizeof(char) * MAX_PATH_SIZE);
-}
-
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
 bool FSController::init() {
@@ -36,9 +32,8 @@ void FSController::log(JsonDocument &doc) {
   doc.clear();
 }
 
-// TODO error check and make sure the directory is not already made
-// TODO state logs need to be properly named and identified, log state at
-// beginning and end
+// TODO error check and make sure the directory is not already made, maybe the
+// accelerometer triggers
 // TODO maintian a way to determine if SD failed and reactivley reattempt to
 // reinit()
 bool FSController::setupWakeCycle(char *timestamp, char *format) {
