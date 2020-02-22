@@ -21,7 +21,7 @@ private:
 public:
   IMUController(uint8_t pin, uint8_t sensitivity);
   bool init();
-  void getWakeStatus(JsonDocument &doc);
+  bool getWakeStatus(JsonDocument &doc);
   static void IMU_ISR(); 
   void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);

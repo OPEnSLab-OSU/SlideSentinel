@@ -10,7 +10,13 @@ void Console::setDebug(bool debug)
 void Console::debug(const char* message)
 {
     if(m_debug)
-        Serial.println(message);
+        Serial.print(message);
+}
+
+void Console::log(int val)
+{
+    if(m_debug)
+        Serial.print(val);
 }
 
 Console console; 

@@ -37,11 +37,12 @@ bool IMUController::init() {
   return true;
 }
 
-void IMUController::getWakeStatus(JsonDocument &doc) {
-  if (!m_getFlag()) {
-    doc["MSG"] = IMU_WAKE;
-    m_setFlag();
-  }
+bool IMUController::getWakeStatus(JsonDocument &doc) {
+  if (!m_getFlag())
+    return false;
+  doc["MSG"] = IMU_WAKE;
+  m_setFlag();
+  return true;
 }
 
 bool IMUController::m_getFlag() { return m_flag; }
