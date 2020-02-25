@@ -25,7 +25,7 @@
 
 /****** GNSSController ******/
 #define GNSS_BAUD 115200
-#define INIT_LOG_FREQ 2000          // seconds
+#define INIT_LOG_FREQ 20000          // milliseconds
 #define GNSS_TX 11
 #define GNSS_RX 12
 

@@ -18,8 +18,9 @@
 #include <SPI.h>
 #include <Wire.h>
 
-// TODO centrailze "MSG" headers in a namespace and reference this in all all
-// files for ensured consistency, create ERROR
+// TODO centralizes all error message in a namespace
+// TODO use a supported RTC library for DS3231
+
 /****** Test Routine ******/
 #define ADVANCED true
 
@@ -270,6 +271,6 @@ void loop() {
 }
 
 
-// test this current code, are docs clearing?
-// then wire up Controller Manager, get status working with verbosity metric
-// use built in PIO lib manager
+// test this current code, are docs clearing? 
+// Wire up Controller Manager, get status working with verbosity metric
+// create namespace for all error handling

@@ -17,7 +17,9 @@ bool FSController::init() {
 }
 
 bool FSController::m_dispatch(JsonDocument &doc) {
-  serializeJsonPretty(doc, Serial);
+  // clears memory pool
+  //JsonObject root = doc.to<JsonObject>();
+  //const char *type = root["ID"];
   const char *type = doc["ID"];
   if (strcmp(type, "LOG") == 0)
     return m_logMsg(doc["MSG"], m_LOG);
@@ -29,7 +31,7 @@ bool FSController::m_dispatch(JsonDocument &doc) {
 void FSController::log(JsonDocument &doc) {
   if (!m_dispatch(doc))
     m_logMsg((char *)m_WRITE_ERR, m_LOG);
-  doc.clear(); // TODO https://arduinojson.org/v6/api/jsondocument/to/ automatically clears the mem buffer 
+  doc.clear();
 }
 
 // TODO error check and make sure the directory is not already made, maybe the
