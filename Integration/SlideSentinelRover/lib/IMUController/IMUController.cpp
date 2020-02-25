@@ -9,8 +9,8 @@
 uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
-IMUController::IMUController(State *state, uint8_t pin)
-    : Controller("IMU", state), IMU_WAKE("IMU_WAKE") {
+IMUController::IMUController(Prop &prop, uint8_t pin)
+    : Controller("IMU", prop), IMU_WAKE("IMU_WAKE") {
   m_pin = pin;
 }
 
@@ -33,7 +33,7 @@ bool IMUController::init() {
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
-  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_state->sensitivity);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_prop.sensitivity);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;

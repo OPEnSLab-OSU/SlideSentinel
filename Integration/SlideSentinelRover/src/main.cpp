@@ -8,29 +8,30 @@
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
+#include "Prop.h"
 #include "RTCController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
-#include "State.h"
 #include "VoltageReg.h"
 #include "config_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
 
-// TODO centrailze "MSG" headers and reference this in all all files for ensured
-// consistency
+// TODO centrailze "MSG" headers in a namespace and reference this in all all
+// files for ensured consistency, create ERROR
 /****** Test Routine ******/
 #define ADVANCED true
 
-State state(INIT_TIMEOUT, INIT_RETRIES, INIT_WAKETIME,
-            INIT_SLEEPTIME, INIT_SENSITIVITY, INIT_LOG_FREQ);
+// TODO leaving this for Noah to figure out how to best handle
+Prop prop(INIT_TIMEOUT, INIT_RETRIES, INIT_WAKETIME, INIT_SLEEPTIME,
+          INIT_SENSITIVITY, INIT_LOG_FREQ);
 
 /****** Mail ******/
 StaticJsonDocument<1000> doc;
 
 /****** FSController Init ******/
-FSController fsController(&state, SD_CS, SD_RST);
+FSController fsController(prop, SD_CS, SD_RST);
 
 /****** ComController Init ******/
 Freewave radio(RST, CD, IS_Z9C);
@@ -39,14 +40,15 @@ MAX3243 max3243(FORCEOFF_N);
 COMController *comController;
 
 /****** PMController Init ******/
-PoluluVoltageReg vcc2(VCC2_EN); // TODO rename this class to the id of the
-                                // voltage regulator from the manufacturer
+// TODO rename this class to the id of the voltage regulator from the
+// manufacture
+PoluluVoltageReg vcc2(VCC2_EN);
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
-PMController pmController(&state, &max4280, &vcc2, &batReader, false, true);
+PMController pmController(prop, max4280, vcc2, batReader, false, true);
 
 /****** IMUController Init ******/
-IMUController imuController(&state, ACCEL_INT);
+IMUController imuController(prop, ACCEL_INT);
 
 /****** GNSSController Init ******/
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -55,7 +57,7 @@ GNSSController *gnssController;
 
 /****** RTCController Init ******/
 RTC_DS3231 RTC_DS;
-RTCController rtcController(&state, &RTC_DS, RTC_INT);
+RTCController rtcController(prop, RTC_DS, RTC_INT);
 
 bool pollFlag = false;
 void advancedTest() {
@@ -215,10 +217,10 @@ void setup() {
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
   // Place instatiation here, Serial1 is not in the same compilation unit as
-  static COMController _comController(&state, &radio, &max3243, &mux, &Serial1,
+  static COMController _comController(prop, radio, max3243, mux, Serial1,
                                       RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
   comController = &_comController;
-  static GNSSController _gnssController(&state, &Serial2, GNSS_BAUD, GNSS_RX,
+  static GNSSController _gnssController(prop, Serial2, GNSS_BAUD, GNSS_RX,
                                         GNSS_TX);
   gnssController = &_gnssController;
 
@@ -232,7 +234,7 @@ void setup() {
   if (imuController.init())
     Serial.println("initialized IMUCONTROLLER");
 
-  if (rtcController.init())d
+  if (rtcController.init())
     Serial.println("initialized RTCCONTROLLER");
 
   if (fsController.init())
@@ -266,3 +268,8 @@ void loop() {
       Serial.println("RTC ALARM");
   }
 }
+
+
+// test this current code, are docs clearing?
+// then wire up Controller Manager, get status working with verbosity metric
+// use built in PIO lib manager

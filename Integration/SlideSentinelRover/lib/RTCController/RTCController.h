@@ -11,7 +11,7 @@
 // State waketime, sleeptime
 class RTCController : public Controller {
 private:
-  RTC_DS3231 *m_RTC;
+  RTC_DS3231 &m_RTC;
   static uint8_t m_pin;
   static volatile bool m_flag;
   DateTime m_date;
@@ -24,7 +24,7 @@ private:
   void m_setAlarm(int time);
 
 public:
-  RTCController(State *state, RTC_DS3231 *RTC_DS, uint8_t pin);
+  RTCController(Prop &prop, RTC_DS3231 &RTC_DS, uint8_t pin);
   void setPollAlarm();
   void setWakeAlarm();
   bool alarmDone();

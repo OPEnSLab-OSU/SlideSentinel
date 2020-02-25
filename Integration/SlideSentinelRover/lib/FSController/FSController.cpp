@@ -1,8 +1,8 @@
 #include "FSController.h"
 #include "Console.h"
 
-FSController::FSController(State *state, uint8_t cs, uint8_t rst)
-    : Controller("FS", state), m_cs(cs), m_rst(rst),
+FSController::FSController(Prop &prop, uint8_t cs, uint8_t rst)
+    : Controller("FS", prop), m_cs(cs), m_rst(rst),
       m_WRITE_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: failed to write to SD\"}"),
       m_GNSS("gnss.csv"), m_LOG("log.txt") {}
 
@@ -29,7 +29,7 @@ bool FSController::m_dispatch(JsonDocument &doc) {
 void FSController::log(JsonDocument &doc) {
   if (!m_dispatch(doc))
     m_logMsg((char *)m_WRITE_ERR, m_LOG);
-  doc.clear();
+  doc.clear(); // TODO https://arduinojson.org/v6/api/jsondocument/to/ automatically clears the mem buffer 
 }
 
 // TODO error check and make sure the directory is not already made, maybe the

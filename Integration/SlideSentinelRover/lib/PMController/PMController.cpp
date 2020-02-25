@@ -2,9 +2,9 @@
 #include "Console.h"
 #define DEBUG true
 
-PMController::PMController(State *state, MAX4280 *max4280, PoluluVoltageReg *vcc2,
-                           Battery *bat, bool GNSSrail2, bool radioRail2)
-    : Controller("PM", state), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
+PMController::PMController(Prop &prop, MAX4280 &max4280, PoluluVoltageReg &vcc2,
+                           Battery &bat, bool GNSSrail2, bool radioRail2)
+    : Controller("PM", prop), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
       m_GNSSRail2(GNSSrail2), m_RadioRail2(radioRail2) {
 
   // Enable sprintf function on SAMD21
@@ -26,33 +26,33 @@ bool PMController::init() {
 
 void PMController::enableGNSS() {
   if (m_GNSSRail2)
-    m_vcc2->enable();
-  m_max4280->assertRail(2);
+    m_vcc2.enable();
+  m_max4280.assertRail(2);
   console.debug("GNSS on");
 }
 
 void PMController::disableGNSS() {
   if (m_GNSSRail2 && !m_RadioRail2)
-    m_vcc2->disable();
-  m_max4280->assertRail(3);
+    m_vcc2.disable();
+  m_max4280.assertRail(3);
   console.debug("GNSS off");
 }
 
 void PMController::enableRadio() {
   if (m_RadioRail2)
-    m_vcc2->enable();
-  m_max4280->assertRail(0);
+    m_vcc2.enable();
+  m_max4280.assertRail(0);
   console.debug("Radio on");
 }
 
 void PMController::disableRadio() {
   if (m_RadioRail2)
-    m_vcc2->disable();
-  m_max4280->assertRail(1);
+    m_vcc2.disable();
+  m_max4280.assertRail(1);
   console.debug("radio off");
 }
 
-float PMController::readBat() { return m_bat->read(); }
+float PMController::readBat() { return m_bat.read(); }
 
 char *PMController::readBatStr() {
   memset(m_volt, '\0', sizeof(char) * MAX_VOLT_LEN);

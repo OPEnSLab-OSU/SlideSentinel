@@ -11,15 +11,15 @@
 
 class PMController : public Controller {
 private:
-  MAX4280 *m_max4280;
-  PoluluVoltageReg *m_vcc2;
-  Battery *m_bat;
+  MAX4280 &m_max4280;
+  PoluluVoltageReg &m_vcc2;
+  Battery &m_bat;
   char m_volt[MAX_VOLT_LEN];
   bool m_GNSSRail2;
   bool m_RadioRail2;
 
 public:
-  PMController(State *state, MAX4280 *max4280, PoluluVoltageReg *vcc2, Battery *bat,
+  PMController(Prop &prop, MAX4280 &max4280, PoluluVoltageReg &vcc2, Battery &bat,
                bool GNSSrail2, bool radioRail2);
   float readBat();
   char* readBatStr();

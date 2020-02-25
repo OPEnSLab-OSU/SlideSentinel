@@ -2,10 +2,10 @@
 #define _FSCONTROLLER_H_
 
 #include <Arduino.h>
+#include <string.h>
 #include "ArduinoJson.h"
 #include "Controller.h"
 #include "SdFat.h"
-#include <string.h>
 
 class FSController : public Controller {
 private:
@@ -15,7 +15,6 @@ private:
   uint8_t m_cs;
   uint8_t m_rst;
 
-  // TODO make a class for error messages
   const char *m_WRITE_ERR;
   const char *m_GNSS;
   const char *m_LOG;
@@ -27,7 +26,7 @@ private:
   bool m_setFile(const char *name);
 
 public:
-  FSController(State *state, uint8_t cs, uint8_t rst);
+  FSController(Prop &prop, uint8_t cs, uint8_t rst);
   void log(JsonDocument &doc);
   bool setupWakeCycle(char *timestamp, char *format);
   bool init();

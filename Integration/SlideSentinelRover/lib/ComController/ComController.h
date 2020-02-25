@@ -17,10 +17,10 @@
 
 class COMController : public Controller {
 private:
-  Freewave *m_radio;
-  MAX3243 *m_max3243;
-  SN74LVC2G53 *m_mux;
-  HardwareSerial *m_serial;
+  Freewave &m_radio;
+  MAX3243 &m_max3243;
+  SN74LVC2G53 &m_mux;
+  HardwareSerial &m_serial;
   RH_Serial *m_driver;
   RHReliableDatagram *m_manager;
   uint32_t m_baud;
@@ -38,8 +38,8 @@ private:
   void m_clearBuffer();
 
 public:
-  COMController(State *state, Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux,
-                HardwareSerial *serial, uint32_t baud, uint8_t clientId,
+  COMController(Prop &prop, Freewave &radio, MAX3243 &max3243, SN74LVC2G53 &mux,
+                HardwareSerial &serial, uint32_t baud, uint8_t clientId,
                 uint8_t serverId);
   bool request(JsonDocument &doc);
   bool upload(JsonDocument &doc);

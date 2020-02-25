@@ -141,9 +141,9 @@ u8 fifo_full(void) {
 }
 
 // GNSSController method definitions
-GNSSController::GNSSController(State *state, HardwareSerial *serial,
+GNSSController::GNSSController(Prop &prop, HardwareSerial &serial,
                                uint32_t baud, uint8_t rx, uint8_t tx)
-    : Controller("GNSS", state), m_serial(serial), m_baud(baud), m_rx(rx),
+    : Controller("GNSS", prop), m_serial(serial), m_baud(baud), m_rx(rx),
       m_tx(tx),
       m_FORMAT("<Week>,<Seconds>,<RTK "
                "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
@@ -154,7 +154,7 @@ GNSSController::GNSSController(State *state, HardwareSerial *serial,
 
 // initialize the serial port
 bool GNSSController::init() {
-  m_serial->begin(m_baud);
+  m_serial.begin(m_baud);
   pinPeripheral(m_tx, PIO_SERCOM);
   pinPeripheral(m_rx, PIO_SERCOM);
   sbp_setup();
@@ -191,8 +191,8 @@ void GNSSController::m_getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
 uint8_t GNSSController::m_getMode() { return pos_llh.flags & FIX_MODE_MASK; }
 
 void GNSSController::m_GNSSread() {
-  if (m_serial->available())
-    fifo_write(m_serial->read());
+  if (m_serial.available())
+    fifo_write(m_serial.read());
 }
 
 // TODO terminates polling process if a reliable RTK fix occurs prior to the
@@ -263,7 +263,7 @@ uint8_t GNSSController::poll(JsonDocument &doc) {
   if (ret < 0)
     printf("sbp_process error: %d\n", (int)ret);
 
-  DO_EVERY(m_state->logFreq,
+  DO_EVERY(m_prop.logFreq,
            // check if the current reading is better than the running best
            if (m_compare()) m_setBest();
 

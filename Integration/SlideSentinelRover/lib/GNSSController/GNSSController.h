@@ -16,7 +16,7 @@
 class GNSSController : public Controller {
 
 private:
-  HardwareSerial *m_serial;
+  HardwareSerial &m_serial;
   int m_baud;
   uint8_t m_rx;
   uint8_t m_tx;
@@ -37,7 +37,8 @@ private:
   uint8_t m_mode;
 
 public:
-  GNSSController(State* state, HardwareSerial *serial, uint32_t baud, uint8_t rx, uint8_t tx);
+  GNSSController(Prop &prop, HardwareSerial &serial, uint32_t baud, uint8_t rx,
+                 uint8_t tx);
   bool init();
   uint8_t poll(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
