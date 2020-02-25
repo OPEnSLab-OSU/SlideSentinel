@@ -9,11 +9,13 @@
 uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
-IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
-    : Controller("IMU"), m_sensitivity(sensitivity), IMU_WAKE("IMU_WAKE") {
+IMUController::IMUController(State *state, uint8_t pin)
+    : Controller("IMU", state), IMU_WAKE("IMU_WAKE") {
   m_pin = pin;
 }
 
+// TODO continuous interrupts occuring interrupts, timestamping interrupts and
+// increase logging interval reactively
 void IMUController::IMU_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
   m_flag = true;
@@ -31,7 +33,7 @@ bool IMUController::init() {
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
-  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_state->sensitivity);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
   return true;
@@ -48,7 +50,5 @@ bool IMUController::getWakeStatus(JsonDocument &doc) {
 bool IMUController::m_getFlag() { return m_flag; }
 
 void IMUController::m_setFlag() { m_flag = false; }
-
-void IMUController::update(JsonDocument &doc) {}
 
 void IMUController::status(uint8_t verbosity, JsonDocument &doc) {}

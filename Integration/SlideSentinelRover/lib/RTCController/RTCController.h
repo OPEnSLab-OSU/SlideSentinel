@@ -8,13 +8,12 @@
 #include "Controller.h"
 #include "RTClibExtended.h"
 
+// State waketime, sleeptime
 class RTCController : public Controller {
 private:
   RTC_DS3231 *m_RTC;
   static uint8_t m_pin;
   static volatile bool m_flag;
-  int m_wakeTime;  // in minutes
-  int m_sleepTime; // in minutes
   DateTime m_date;
   char m_timestamp[MAX_TIMESTAMP_LEN];
 
@@ -25,15 +24,13 @@ private:
   void m_setAlarm(int time);
 
 public:
-  RTCController(RTC_DS3231 *RTC_DS, uint8_t pin, uint8_t wakeTime,
-                uint8_t sleepTime);
+  RTCController(State *state, RTC_DS3231 *RTC_DS, uint8_t pin);
   void setPollAlarm();
   void setWakeAlarm();
   bool alarmDone();
   static void RTC_ISR();
   char *getTimestamp();
   bool init();
-  void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
 };
 

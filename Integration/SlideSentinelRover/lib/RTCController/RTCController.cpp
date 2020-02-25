@@ -4,10 +4,8 @@
 uint8_t RTCController::m_pin;
 volatile bool RTCController::m_flag = false;
 
-RTCController::RTCController(RTC_DS3231 *RTC_DS, uint8_t pin, uint8_t wakeTime,
-                             uint8_t sleepTime)
-    : Controller("RTC"), m_RTC(RTC_DS), m_wakeTime(wakeTime),
-      m_sleepTime(sleepTime) {
+RTCController::RTCController(State *state, RTC_DS3231 *RTC_DS, uint8_t pin)
+    : Controller("RTC", state), m_RTC(RTC_DS) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -71,9 +69,9 @@ char *RTCController::getTimestamp() {
   return m_timestamp;
 }
 
-void RTCController::setPollAlarm() { m_setAlarm(m_wakeTime); }
+void RTCController::setPollAlarm() { m_setAlarm(m_state->wakeTime); }
 
-void RTCController::setWakeAlarm() { m_setAlarm(m_sleepTime); }
+void RTCController::setWakeAlarm() { m_setAlarm(m_state->sleepTime); }
 
 bool RTCController::alarmDone() {
   if (!m_getFlag())
@@ -84,7 +82,5 @@ bool RTCController::alarmDone() {
 }
 
 void RTCController::m_setDate() { m_date = m_RTC->now(); }
-
-void RTCController::update(JsonDocument &doc) {}
 
 void RTCController::status(uint8_t verbosity, JsonDocument &doc) {}

@@ -19,7 +19,7 @@ private:
   bool m_RadioRail2;
 
 public:
-  PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2, Battery *bat,
+  PMController(State *state, MAX4280 *max4280, PoluluVoltageReg *vcc2, Battery *bat,
                bool GNSSrail2, bool radioRail2);
   float readBat();
   char* readBatStr();
@@ -29,7 +29,6 @@ public:
   void enableRadio();
   void sleep();
   bool init();
-  void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
 };
 

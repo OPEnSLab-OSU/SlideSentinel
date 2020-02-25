@@ -141,17 +141,15 @@ u8 fifo_full(void) {
 }
 
 // GNSSController method definitions
-GNSSController::GNSSController(HardwareSerial *serial, uint32_t baud,
-                               uint8_t rx, uint8_t tx)
-    : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx),
-      m_logFreq(100000),
+GNSSController::GNSSController(State *state, HardwareSerial *serial,
+                               uint32_t baud, uint8_t rx, uint8_t tx)
+    : Controller("GNSS", state), m_serial(serial), m_baud(baud), m_rx(rx),
+      m_tx(tx),
       m_FORMAT("<Week>,<Seconds>,<RTK "
                "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
                "North>,<Baselie East>,"
                "<Baseline Down>,<Velocity North>,<Velocity East>,<Velocity "
                "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {
-  init();
-  sbp_setup();
 }
 
 // initialize the serial port
@@ -159,6 +157,7 @@ bool GNSSController::init() {
   m_serial->begin(m_baud);
   pinPeripheral(m_tx, PIO_SERCOM);
   pinPeripheral(m_rx, PIO_SERCOM);
+  sbp_setup();
   return true;
 }
 
@@ -264,7 +263,7 @@ uint8_t GNSSController::poll(JsonDocument &doc) {
   if (ret < 0)
     printf("sbp_process error: %d\n", (int)ret);
 
-  DO_EVERY(m_logFreq,
+  DO_EVERY(m_state->logFreq,
            // check if the current reading is better than the running best
            if (m_compare()) m_setBest();
 
@@ -329,8 +328,6 @@ void GNSSController::m_reset() {
 }
 
 char *GNSSController::getFormat() { return (char *)m_FORMAT; }
-
-void GNSSController::update(JsonDocument &doc) {}
 
 // TODO This will be where we log the best reading for the wake cycle
 void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}

@@ -1,5 +1,5 @@
 #include "Battery.h"
-#include "ComController.h"
+#include "COMController.h"
 #include "Controller.h"
 #include "FSController.h"
 #include "FreewaveRadio.h"
@@ -11,43 +11,42 @@
 #include "RTCController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
+#include "State.h"
 #include "VoltageReg.h"
+#include "config_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include "config_2.0.0.h"
 
-// TODO move state variables to centralized class State, inject the state into
-// all controllers for dynamic behavior changes.
-// TODO JSON compression object, we can use the object to compress verbose json
-// identifiers and decompress them
 // TODO centrailze "MSG" headers and reference this in all all files for ensured
 // consistency
 /****** Test Routine ******/
 #define ADVANCED true
 
+State state(INIT_TIMEOUT, INIT_RETRIES, INIT_WAKETIME,
+            INIT_SLEEPTIME, INIT_SENSITIVITY, INIT_LOG_FREQ);
 
 /****** Mail ******/
 StaticJsonDocument<1000> doc;
 
 /****** FSController Init ******/
-FSController fsController(SD_CS, SD_RST);
+FSController fsController(&state, SD_CS, SD_RST);
 
 /****** ComController Init ******/
 Freewave radio(RST, CD, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 MAX3243 max3243(FORCEOFF_N);
-ComController *comController;
+COMController *comController;
 
 /****** PMController Init ******/
 PoluluVoltageReg vcc2(VCC2_EN); // TODO rename this class to the id of the
                                 // voltage regulator from the manufacturer
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
-PMController pmController(&max4280, &vcc2, &batReader, false, true);
+PMController pmController(&state, &max4280, &vcc2, &batReader, false, true);
 
 /****** IMUController Init ******/
-IMUController imuController(ACCEL_INT, 0x1F);
+IMUController imuController(&state, ACCEL_INT);
 
 /****** GNSSController Init ******/
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -56,8 +55,7 @@ GNSSController *gnssController;
 
 /****** RTCController Init ******/
 RTC_DS3231 RTC_DS;
-RTCController rtcController(&RTC_DS, RTC_INT, INITIAL_WAKETIME,
-                            INITIAL_SLEEPTIME);
+RTCController rtcController(&state, &RTC_DS, RTC_INT);
 
 bool pollFlag = false;
 void advancedTest() {
@@ -164,7 +162,8 @@ void advancedTest() {
     case 's':
       Serial.println("Creating new directory");
       Serial.println(rtcController.getTimestamp());
-      fsController.setupWakeCycle(rtcController.getTimestamp(), gnssController->getFormat());
+      fsController.setupWakeCycle(rtcController.getTimestamp(),
+                                  gnssController->getFormat());
       break;
 
     case 'd':
@@ -187,7 +186,7 @@ void advancedTest() {
         pollFlag = true;
       } else {
         Serial.println("Done Polling...");
-        pollFlag = false; 
+        pollFlag = false;
       }
       break;
     case 'g':
@@ -216,26 +215,29 @@ void setup() {
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
   // Place instatiation here, Serial1 is not in the same compilation unit as
-  static ComController _comController(&radio, &max3243, &mux, &Serial1,
+  static COMController _comController(&state, &radio, &max3243, &mux, &Serial1,
                                       RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
   comController = &_comController;
-
-  // TODO Serial2 initialization occurs after instantiation, we do not need to
-  // make this static like the ComController
-  static GNSSController _gnssController(&Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX);
+  static GNSSController _gnssController(&state, &Serial2, GNSS_BAUD, GNSS_RX,
+                                        GNSS_TX);
   gnssController = &_gnssController;
 
-  // Init IMUController
+  // TODO make a vector CONManager
+  if (comController->init())
+    Serial.println("initialized COMCONTROLLER");
+
+  if (gnssController->init())
+    Serial.println("initialized GNSSCONTROLLER");
+
   if (imuController.init())
     Serial.println("initialized IMUCONTROLLER");
-  // // RTC INIT
-  if (rtcController.init())
+
+  if (rtcController.init())d
     Serial.println("initialized RTCCONTROLLER");
 
   if (fsController.init())
     Serial.println("initialized FSCONTROLLER");
 
-  // must be done after first call to attac1hInterrupt()
   if (pmController.init())
     Serial.println("initialized PMCONTROLLER");
 }
@@ -260,7 +262,7 @@ void loop() {
       doc.clear();
     }
 
-    if(rtcController.alarmDone())
+    if (rtcController.alarmDone())
       Serial.println("RTC ALARM");
   }
 }

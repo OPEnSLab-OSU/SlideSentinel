@@ -2,9 +2,9 @@
 #include "Console.h"
 #define DEBUG true
 
-PMController::PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2,
+PMController::PMController(State *state, MAX4280 *max4280, PoluluVoltageReg *vcc2,
                            Battery *bat, bool GNSSrail2, bool radioRail2)
-    : Controller("PM"), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
+    : Controller("PM", state), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
       m_GNSSRail2(GNSSrail2), m_RadioRail2(radioRail2) {
 
   // Enable sprintf function on SAMD21
@@ -73,7 +73,5 @@ void PMController::sleep() {
   // Enable USB
   USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
 }
-
-void PMController::update(JsonDocument &doc) {}
 
 void PMController::status(uint8_t verbosity, JsonDocument &doc) {}

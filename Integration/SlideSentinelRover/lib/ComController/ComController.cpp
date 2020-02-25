@@ -1,29 +1,31 @@
-#include "ComController.h"
+#include "COMController.h"
 #include "Console.h"
 
-ComController::ComController(Freewave *radio, MAX3243 *max3243,
+COMController::COMController(State *state, Freewave *radio, MAX3243 *max3243,
                              SN74LVC2G53 *mux, HardwareSerial *serial,
                              uint32_t baud, uint8_t clientId, uint8_t serverId)
-    : Controller("COM"), m_radio(radio), m_max3243(max3243), m_mux(mux),
+    : Controller("COM", state), m_radio(radio), m_max3243(max3243), m_mux(mux),
       m_serial(serial), m_baud(baud), m_clientId(clientId),
-      m_serverId(serverId), m_timeout(2000),
+      m_serverId(serverId),
       m_ACK_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no ACK from server\"}"),
       m_REP_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no reply from server\"}") {
-  m_serial->begin(m_baud);
-  m_mux->comY1();
-  m_max3243->disable();
   m_driver = new RH_Serial(*m_serial);
   m_manager = new RHReliableDatagram(*m_driver, m_clientId);
+}
+
+bool COMController::init() {
+  m_serial->begin(m_baud);
+  m_max3243->disable();
+  m_mux->comY1();
   m_manager->init();
 }
 
-bool ComController::init() {}
-
-void ComController::m_clearBuffer() {
+void COMController::m_clearBuffer() {
   memset(m_buf, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
 }
 
-bool ComController::m_send(char msg[]) {
+bool COMController::m_send(char msg[]) {
+  m_manager->setRetries(m_state->retries);
   uint8_t size = strlen(msg);
   if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
     return true;
@@ -31,27 +33,24 @@ bool ComController::m_send(char msg[]) {
     return false;
 }
 
-bool ComController::m_receive(char buf[]) {
+bool COMController::m_receive(char buf[]) {
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
   uint8_t from;
-  if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
+  if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_state->timeout,
+                                    &from))
     return true;
   else
     return false;
 }
 
-void ComController::setTimeout(uint16_t time) { m_timeout = time; }
-
-void ComController::setRetries(uint8_t num) { m_manager->setRetries(num); }
-
-void ComController::m_createRTS(JsonDocument &doc) {
+void COMController::m_createRTS(JsonDocument &doc) {
   m_clearBuffer();
   doc["ID"] = "RTS";
   serializeJson(doc, m_buf);
   doc.clear();
 }
 
-bool ComController::request(JsonDocument &doc) {
+bool COMController::request(JsonDocument &doc) {
   m_mux->comY1();
   if (m_radio->getZ9C())
     m_max3243->enable();
@@ -82,7 +81,7 @@ bool ComController::request(JsonDocument &doc) {
 }
 
 // TODO clear the document
-bool ComController::upload(JsonDocument &doc) {
+bool COMController::upload(JsonDocument &doc) {
   m_clearBuffer();
   serializeJson(doc, m_buf);
   console.debug("RADIO ----> FEATHER");
@@ -102,10 +101,8 @@ bool ComController::upload(JsonDocument &doc) {
   return true;
 }
 
-void ComController::resetRadio() { m_radio->reset(); }
+void COMController::resetRadio() { m_radio->reset(); }
 
-bool ComController::channelBusy() { return m_radio->channel_busy(); }
+bool COMController::channelBusy() { return m_radio->channel_busy(); }
 
-void ComController::update(JsonDocument &doc) {}
-
-void ComController::status(uint8_t verbosity, JsonDocument &doc) {}
+void COMController::status(uint8_t verbosity, JsonDocument &doc) {}

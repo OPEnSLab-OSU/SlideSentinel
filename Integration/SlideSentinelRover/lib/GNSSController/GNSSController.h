@@ -20,7 +20,6 @@ private:
   int m_baud;
   uint8_t m_rx;
   uint8_t m_tx;
-  uint32_t m_logFreq;
   const char *m_FORMAT; // csv format string
   void m_GNSSread();
   uint8_t m_getMode();
@@ -38,10 +37,9 @@ private:
   uint8_t m_mode;
 
 public:
-  GNSSController(HardwareSerial *serial, uint32_t baud, uint8_t rx, uint8_t tx);
+  GNSSController(State* state, HardwareSerial *serial, uint32_t baud, uint8_t rx, uint8_t tx);
   bool init();
   uint8_t poll(JsonDocument &doc);
-  void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
   char *getFormat();
 };

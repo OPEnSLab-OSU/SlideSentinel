@@ -1,8 +1,8 @@
 #include "FSController.h"
 #include "Console.h"
 
-FSController::FSController(uint8_t cs, uint8_t rst)
-    : Controller("FS"), m_cs(cs), m_rst(rst),
+FSController::FSController(State *state, uint8_t cs, uint8_t rst)
+    : Controller("FS", state), m_cs(cs), m_rst(rst),
       m_WRITE_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: failed to write to SD\"}"),
       m_GNSS("gnss.csv"), m_LOG("log.txt") {}
 
@@ -75,5 +75,4 @@ bool FSController::m_logMsg(const char *msg, const char *file) {
   return true;
 }
 
-void FSController::update(JsonDocument &doc) {}
 void FSController::status(uint8_t verbosity, JsonDocument &doc) {}

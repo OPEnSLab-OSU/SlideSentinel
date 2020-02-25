@@ -12,8 +12,10 @@
 #include "SN74LVC2G53.h"
 
 // TODO implement message fragmentation
-// State: m_timeout, retries, dropped packets
-class ComController : public Controller {
+// TODO Node ID's
+// State: m_timeout, retries
+
+class COMController : public Controller {
 private:
   Freewave *m_radio;
   MAX3243 *m_max3243;
@@ -24,7 +26,6 @@ private:
   uint32_t m_baud;
   uint8_t m_clientId;
   uint8_t m_serverId;
-  uint16_t m_timeout;
   const char *m_RTS;
   const char *m_ACK_ERR;
   const char *m_REP_ERR;
@@ -37,15 +38,12 @@ private:
   void m_clearBuffer();
 
 public:
-  ComController(Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux,
+  COMController(State *state, Freewave *radio, MAX3243 *max3243, SN74LVC2G53 *mux,
                 HardwareSerial *serial, uint32_t baud, uint8_t clientId,
                 uint8_t serverId);
   bool request(JsonDocument &doc);
   bool upload(JsonDocument &doc);
-  void setTimeout(uint16_t time);
-  void setRetries(uint8_t num);
   bool init();
-  void update(JsonDocument &doc);
   void status(uint8_t verbosity, JsonDocument &doc);
   void resetRadio();
   bool channelBusy();
