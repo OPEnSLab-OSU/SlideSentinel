@@ -8,12 +8,14 @@
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
+#include "RTCController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
 #include "VoltageReg.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
+#include "config_2.0.0.h"
 
 // TODO move state variables to centralized class State, inject the state into
 // all controllers for dynamic behavior changes.
@@ -24,32 +26,6 @@
 /****** Test Routine ******/
 #define ADVANCED true
 
-/****** ComController ******/
-#define RADIO_BAUD 115200
-#define CLIENT_ADDR 1
-#define SERVER_ADDR 2
-#define RST 6
-#define CD 10
-#define IS_Z9C true
-#define SPDT_SEL 14
-#define FORCEOFF_N A5
-
-/****** PMController ******/
-#define VCC2_EN 13
-#define MAX_CS 9
-#define BAT 15
-
-/****** FSController ******/
-#define SD_CS 18  // A4
-#define SD_RST 16 // A2
-
-/****** IMUController ******/
-#define ACCEL_INT A3
-
-/****** GNSSController ******/
-#define GNSS_TX 11
-#define GNSS_RX 12
-#define GNSS_BAUD 115200
 
 /****** Mail ******/
 StaticJsonDocument<1000> doc;
@@ -78,66 +54,10 @@ Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
 GNSSController *gnssController;
 
-// Instatiate RTC Object
-#define RTC_INT 5
-#define RTC_WAKE_PERIOD 1
+/****** RTCController Init ******/
 RTC_DS3231 RTC_DS;
-volatile int HR = 8;
-volatile int MIN = 0;
-volatile int awakeFor = 20;
-
-void clearRTCAlarm() {
-  // clear any pending alarms
-  RTC_DS.armAlarm(1, false);
-  RTC_DS.clearAlarm(1);
-  RTC_DS.alarmInterrupt(1, false);
-  RTC_DS.armAlarm(2, false);
-  RTC_DS.clearAlarm(2);
-  RTC_DS.alarmInterrupt(2, false);
-}
-
-void initializeRTC() {
-  Wire.begin(); // called in Adafruit_MMA8451::begin()
-  RTC_DS.begin();
-  RTC_DS.adjust(DateTime(__DATE__, __TIME__));
-
-  // clear any pending alarms
-  clearRTCAlarm();
-
-  // Set SQW pin to OFF (in my case it was set by default to 1Hz)
-  // The output of the DS3231 INT pin is connected to this pin
-  // It must be connected to arduino Interrupt pin for wake-up
-  RTC_DS.writeSqwPinMode(DS3231_OFF);
-
-  // Set alarm1
-  clearRTCAlarm();
-}
-
-void rtcInt() {
-  detachInterrupt(digitalPinToInterrupt(RTC_INT));
-  Serial.println("RTC Wake");
-  attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
-}
-
-void setRTCAlarm() {
-  DateTime now = RTC_DS.now(); // Check the current time
-  MIN = (now.minute() + RTC_WAKE_PERIOD) %
-        60; // wrap-around using modulo every 60 sec
-  HR = (now.hour() + ((now.minute() + RTC_WAKE_PERIOD) / 60)) %
-       24; // quotient of now.min+periodMin added to now.hr, wraparound every
-           // 24hrs
-
-  Serial.print("Setting Alarm 1 for: ");
-  Serial.print(HR);
-  Serial.print(":");
-  Serial.println(MIN);
-
-  // Set alarm1
-  RTC_DS.setAlarm(ALM1_MATCH_HOURS, MIN, HR, 0); // set your wake-up time here
-  RTC_DS.alarmInterrupt(1, true); // code to pull microprocessor out of sleep is
-                                  // tied to the time -> here
-  attachInterrupt(digitalPinToInterrupt(RTC_INT), rtcInt, FALLING);
-}
+RTCController rtcController(&RTC_DS, RTC_INT, INITIAL_WAKETIME,
+                            INITIAL_SLEEPTIME);
 
 bool pollFlag = false;
 void advancedTest() {
@@ -148,7 +68,6 @@ void advancedTest() {
   memset(fileName, '\0', sizeof(char) * 30);
 
   if (Serial.available()) {
-    DateTime now = RTC_DS.now();
     cmd = Serial.read();
     switch (cmd) {
     case '1':
@@ -199,15 +118,8 @@ void advancedTest() {
         Serial.println("NOT BUSY");
       break;
     case 'e':
-      setRTCAlarm();
-      break;
-    case 'r':
-      Serial.print("RTC Time is: ");
-      Serial.print(now.hour(), DEC);
-      Serial.print(':');
-      Serial.print(now.minute(), DEC);
-      Serial.print(':');
-      Serial.println(now.second(), DEC);
+      Serial.print("Printing timestamp: ");
+      Serial.println(rtcController.getTimestamp());
       break;
     case 't':
       Serial.println("Sleeping");
@@ -227,10 +139,7 @@ void advancedTest() {
       break;
     case 'u':
       Serial.print("reading battery voltage string: ");
-      char volt[20];
-      memset(volt, '\0', sizeof(char) * 20);
-      pmController.readBatStr(volt);
-      Serial.println(volt);
+      Serial.println(pmController.readBatStr());
       break;
     case 'i':
       Serial.println("Turning off VCC2");
@@ -254,10 +163,8 @@ void advancedTest() {
 
     case 's':
       Serial.println("Creating new directory");
-      sprintf(fileName, "%.2d.%.2d.%.2d.%.2d.%.2d", now.month(), now.day(),
-              now.hour(), now.minute(), now.second());
-      Serial.println(fileName);
-      fsController.setupWakeCycle(fileName, gnssController->getFormat());
+      Serial.println(rtcController.getTimestamp());
+      fsController.setupWakeCycle(rtcController.getTimestamp(), gnssController->getFormat());
       break;
 
     case 'd':
@@ -280,8 +187,16 @@ void advancedTest() {
         pollFlag = true;
       } else {
         Serial.println("Done Polling...");
-        pollFlag = false;
+        pollFlag = false; 
       }
+      break;
+    case 'g':
+      Serial.println("Setting poll alarm for: ");
+      rtcController.setPollAlarm();
+      break;
+    case 'h':
+      Serial.println("Setting wake alarm for: ");
+      rtcController.setWakeAlarm();
       break;
     }
   }
@@ -296,6 +211,10 @@ void setup() {
   while (!Serial)
     ;
 
+  // SPI INIT
+  SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV8);
+
   // Place instatiation here, Serial1 is not in the same compilation unit as
   static ComController _comController(&radio, &max3243, &mux, &Serial1,
                                       RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
@@ -306,21 +225,19 @@ void setup() {
   static GNSSController _gnssController(&Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX);
   gnssController = &_gnssController;
 
-  // SPI INIT
-  SPI.begin();
-  SPI.setClockDivider(SPI_CLOCK_DIV8);
-
   // Init IMUController
-  imuController.init();
+  if (imuController.init())
+    Serial.println("initialized IMUCONTROLLER");
+  // // RTC INIT
+  if (rtcController.init())
+    Serial.println("initialized RTCCONTROLLER");
 
-  // RTC INIT
-  pinMode(RTC_INT, INPUT_PULLUP); // active low interrupts
-  initializeRTC();
+  if (fsController.init())
+    Serial.println("initialized FSCONTROLLER");
 
   // must be done after first call to attac1hInterrupt()
-  pmController.init();
-  if (fsController.init())
-    Serial.println("successfully initialized SD");
+  if (pmController.init())
+    Serial.println("initialized PMCONTROLLER");
 }
 
 void loop() {
@@ -337,9 +254,13 @@ void loop() {
       fsController.log(doc);
     }
 
-    // if (imuController.getFlag()) {
-    //   Serial.println("accel int");
-    //   imuController.setFlag();
-    // }
+    if (imuController.getWakeStatus(doc)) {
+      serializeJsonPretty(doc, Serial);
+      Serial.println("IMU ALARM");
+      doc.clear();
+    }
+
+    if(rtcController.alarmDone())
+      Serial.println("RTC ALARM");
   }
 }

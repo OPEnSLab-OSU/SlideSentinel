@@ -12,6 +12,7 @@ class Console
         Console();
         void setDebug(bool debug);
         void debug(const char* message);
+        void log(int val);
 };
 
 extern Console console;

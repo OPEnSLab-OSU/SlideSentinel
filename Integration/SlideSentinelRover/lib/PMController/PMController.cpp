@@ -4,9 +4,9 @@
 
 PMController::PMController(MAX4280 *max4280, PoluluVoltageReg *vcc2,
                            Battery *bat, bool GNSSrail2, bool radioRail2)
-    : Controller("PM"), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat), m_GNSSRail2(GNSSrail2),
-      m_RadioRail2(radioRail2) {
-        
+    : Controller("PM"), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
+      m_GNSSRail2(GNSSrail2), m_RadioRail2(radioRail2) {
+
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
 }
@@ -21,6 +21,7 @@ bool PMController::init() {
   // call to attachInterrupt()
   GCLK->CLKCTRL.reg =
       GCLK_CLKCTRL_ID(GCM_EIC) | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_CLKEN;
+  return true;
 }
 
 void PMController::enableGNSS() {
@@ -53,7 +54,11 @@ void PMController::disableRadio() {
 
 float PMController::readBat() { return m_bat->read(); }
 
-void PMController::readBatStr(char buf[]) { sprintf(buf, "%.2f", readBat()); }
+char *PMController::readBatStr() {
+  memset(m_volt, '\0', sizeof(char) * MAX_VOLT_LEN);
+  sprintf(m_volt, "%.2f", readBat());
+  return m_volt;
+}
 
 void PMController::sleep() {
   // Disable USB
@@ -72,4 +77,3 @@ void PMController::sleep() {
 void PMController::update(JsonDocument &doc) {}
 
 void PMController::status(uint8_t verbosity, JsonDocument &doc) {}
-
