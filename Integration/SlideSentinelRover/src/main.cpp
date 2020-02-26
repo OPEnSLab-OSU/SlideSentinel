@@ -20,11 +20,12 @@
 
 // TODO centralizes all error message in a namespace
 // TODO use a supported RTC library for DS3231
+// TODO make mail object, instead of using ArduinoJSON, only use ArduinoJSON between rover and base station
+// TODO Handle state in a better fashion
 
 /****** Test Routine ******/
 #define ADVANCED true
 
-// TODO leaving this for Noah to figure out how to best handle
 Prop prop(INIT_TIMEOUT, INIT_RETRIES, INIT_WAKETIME, INIT_SLEEPTIME,
           INIT_SENSITIVITY, INIT_LOG_FREQ);
 
@@ -41,8 +42,6 @@ MAX3243 max3243(FORCEOFF_N);
 COMController *comController;
 
 /****** PMController Init ******/
-// TODO rename this class to the id of the voltage regulator from the
-// manufacture
 PoluluVoltageReg vcc2(VCC2_EN);
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
@@ -200,7 +199,13 @@ void advancedTest() {
       Serial.println("Setting wake alarm for: ");
       rtcController.setWakeAlarm();
       break;
+    case 'j':
+      Serial.println("reinit: ");
+      if(!fsController.init())
+        Serial.println("failed");
+      break;
     }
+
   }
 
   if (Serial1.available()) {
@@ -253,7 +258,6 @@ void loop() {
       advancedTest();
 
     if (pollFlag && gnssController->poll(doc)) {
-      serializeJsonPretty(doc, Serial);
       // TODO only log if we have valid data, in case data stays in the buffer
       // at sleep?
       fsController.log(doc);
@@ -270,7 +274,3 @@ void loop() {
   }
 }
 
-
-// test this current code, are docs clearing? 
-// Wire up Controller Manager, get status working with verbosity metric
-// create namespace for all error handling

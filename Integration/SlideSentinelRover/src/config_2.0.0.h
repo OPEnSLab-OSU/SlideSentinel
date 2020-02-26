@@ -1,3 +1,5 @@
+#pragma once
+
 /****** ComController ******/
 #define CLIENT_ADDR 1               // Node_ID
 #define SERVER_ADDR 2
@@ -25,7 +27,7 @@
 
 /****** GNSSController ******/
 #define GNSS_BAUD 115200
-#define INIT_LOG_FREQ 20000          // milliseconds
+#define INIT_LOG_FREQ 20000     // milliseconds
 #define GNSS_TX 11
 #define GNSS_RX 12
 
@@ -33,3 +35,13 @@
 #define RTC_INT 5
 #define INIT_WAKETIME 1          // minutes
 #define INIT_SLEEPTIME 1         // minutes
+
+#define consts constexpr const char *
+#define consti constexpr int
+
+namespace ErrorMsg {
+	consts WRITE_ERR    =   "Failed to write to SD card";
+	consts REPLY_ERR    =   "No reply from server";
+    consts ACK_ERR      =   "No ack from server";
+
+}  // namespace ErrorMsg

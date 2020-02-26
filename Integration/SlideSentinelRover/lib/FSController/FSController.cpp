@@ -16,10 +16,8 @@ bool FSController::init() {
   return true;
 }
 
+// TODO migrate away from JSON
 bool FSController::m_dispatch(JsonDocument &doc) {
-  // clears memory pool
-  //JsonObject root = doc.to<JsonObject>();
-  //const char *type = root["ID"];
   const char *type = doc["ID"];
   if (strcmp(type, "LOG") == 0)
     return m_logMsg(doc["MSG"], m_LOG);
@@ -67,8 +65,11 @@ bool FSController::m_setFile(const char *file) {
 bool FSController::m_write(char *msg) { return m_file.println(msg); }
 
 bool FSController::m_logMsg(const char *msg, const char *file) {
+  console.debug("\n\n");
   console.debug(file);
+  console.debug("\n\n");
   console.debug(msg);
+  console.debug("\n\n");
   if (!(m_setFile(file) && m_write((char *)msg))) {
     m_file.close();
     return false;
