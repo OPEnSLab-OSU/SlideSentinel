@@ -13,7 +13,19 @@ void Console::debug(const char* message)
         Serial.print(message);
 }
 
-void Console::log(int val)
+void Console::debug(int val)
+{
+    if(m_debug)
+        Serial.print(val);
+}
+
+void Console::debug(float val)
+{
+    if(m_debug)
+        Serial.print(val);
+}
+
+void Console::debug(double val)
 {
     if(m_debug)
         Serial.print(val);

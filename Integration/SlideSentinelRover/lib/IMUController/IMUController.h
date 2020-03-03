@@ -3,26 +3,25 @@
 
 #include <Arduino.h>
 #include "Adafruit_MMA8451.h"
-#include "ArduinoJson.h"
 #include "Controller.h"
-
-// State: m_sensitivity
 
 class IMUController : public Controller {
 private:
   Adafruit_MMA8451 m_dev;
   static uint8_t m_pin;
   static volatile bool m_flag;
-  const char *IMU_WAKE;
+  uint8_t m_sensitivity; // state
   bool m_getFlag();
   void m_setFlag();
+  void m_setSensitivity(uint8_t sensitivity);
 
 public:
-  IMUController(Prop &prop, uint8_t pin);
+  IMUController(uint8_t pin, uint8_t sensitivity);
   bool init();
-  bool getWakeStatus(JsonDocument &doc);
+  bool getWakeStatus();
   static void IMU_ISR();
-  void status(uint8_t verbosity, JsonDocument &doc);
+  void status(SSModel &model);
+  void update(SSModel &model);
 };
 
 #endif // _IMUCONTROLLER_H_

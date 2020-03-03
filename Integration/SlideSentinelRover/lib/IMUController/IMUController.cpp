@@ -1,4 +1,5 @@
 #include "IMUController.h"
+#include "Console.h"
 
 #define CTRL_REG3 0b11000000
 #define CTRL_REG4 0b00100001
@@ -9,10 +10,7 @@
 uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
-IMUController::IMUController(Prop &prop, uint8_t pin)
-    : Controller("IMU", prop), IMU_WAKE("IMU_WAKE") {
-  m_pin = pin;
-}
+IMUController::IMUController(uint8_t pin, uint8_t sensitivity) : Controller("IMU"), m_sensitivity(sensitivity) { m_pin = pin; }
 
 // TODO continuous interrupts occuring interrupts, timestamping interrupts and
 // increase logging interval reactively
@@ -33,16 +31,17 @@ bool IMUController::init() {
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG4, CTRL_REG4);
   m_dev.writeRegister8_public(MMA8451_REG_CTRL_REG5, CTRL_REG5);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CFG, REG_TRANS_CFG);
-  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_prop.sensitivity);
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
+  console.debug("IMUController initialized.\n");
   return true;
 }
 
-bool IMUController::getWakeStatus(JsonDocument &doc) {
+// NOTE testing function
+bool IMUController::getWakeStatus() {
   if (!m_getFlag())
     return false;
-  doc["MSG"] = IMU_WAKE;
   m_setFlag();
   return true;
 }
@@ -51,4 +50,16 @@ bool IMUController::m_getFlag() { return m_flag; }
 
 void IMUController::m_setFlag() { m_flag = false; }
 
-void IMUController::status(uint8_t verbosity, JsonDocument &doc) {}
+void IMUController::m_setSensitivity(uint8_t sensitivity) {
+  m_sensitivity = sensitivity;
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
+}
+
+void IMUController::status(SSModel &model) {
+  model.statusIMU(m_sensitivity, getWakeStatus());
+}
+  
+void IMUController::update(SSModel &model) {
+  if (model.valid(model.sensitivity()))
+    m_setSensitivity(model.sensitivity());
+}

@@ -2,17 +2,17 @@
 #define _RTCCONTROLLER_H_
 #define MAX_TIMESTAMP_LEN 15
 
-#include <Arduino.h>
-#include <Wire.h>
-#include "ArduinoJson.h"
 #include "Controller.h"
 #include "RTClibExtended.h"
+#include <Arduino.h>
+#include <Wire.h>
 
-// State waketime, sleeptime
 class RTCController : public Controller {
 private:
   RTC_DS3231 &m_RTC;
   static uint8_t m_pin;
+  uint16_t m_wakeTime;  // state
+  uint16_t m_sleepTime; // state
   static volatile bool m_flag;
   DateTime m_date;
   char m_timestamp[MAX_TIMESTAMP_LEN];
@@ -24,14 +24,19 @@ private:
   void m_setAlarm(int time);
 
 public:
-  RTCController(Prop &prop, RTC_DS3231 &RTC_DS, uint8_t pin);
+  RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime, uint16_t sleepTime);
   void setPollAlarm();
   void setWakeAlarm();
   bool alarmDone();
   static void RTC_ISR();
   char *getTimestamp();
   bool init();
-  void status(uint8_t verbosity, JsonDocument &doc);
+  void status(SSModel &model);
+  void update(SSModel &model);
+  void m_setWakeTime(uint16_t wakeTime);
+  void m_setSleepTime(uint16_t sleepTime);
 };
 
 #endif // _RTCCONTROLLER_H_
+
+// 20th lathe turning wood turing

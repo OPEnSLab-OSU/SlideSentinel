@@ -1,23 +1,22 @@
 #include "COMController.h"
 #include "Console.h"
 
-COMController::COMController(Prop &prop, Freewave &radio, MAX3243 &max3243,
+COMController::COMController(Freewave &radio, MAX3243 &max3243,
                              SN74LVC2G53 &mux, HardwareSerial &serial,
-                             uint32_t baud, uint8_t clientId, uint8_t serverId)
-    : Controller("COM", prop), m_radio(radio), m_max3243(max3243), m_mux(mux),
+                             uint32_t baud, uint8_t clientId, uint8_t serverId,
+                             uint16_t timeout, uint8_t retries)
+    : Controller("COM"), m_radio(radio), m_max3243(max3243), m_mux(mux),
       m_serial(serial), m_baud(baud), m_clientId(clientId),
-      m_serverId(serverId),
-      m_ACK_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no ACK from server\"}"),
-      m_REP_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: no reply from server\"}") {
-  m_driver = new RH_Serial(m_serial);
-  m_manager = new RHReliableDatagram(*m_driver, m_clientId);
-}
+      m_serverId(serverId), m_driver(m_serial), m_manager(m_driver, m_clientId),
+      m_timeout(timeout), m_retries(retries), m_dropped_pkts(0) {}
 
 bool COMController::init() {
   m_serial.begin(m_baud);
   m_max3243.disable();
   m_mux.comY1();
-  m_manager->init();
+  m_manager.init();
+  console.debug("COMController initialized.\n");
+  return true;
 }
 
 void COMController::m_clearBuffer() {
@@ -25,9 +24,8 @@ void COMController::m_clearBuffer() {
 }
 
 bool COMController::m_send(char msg[]) {
-  m_manager->setRetries(m_prop.retries);
   uint8_t size = strlen(msg);
-  if (m_manager->sendtoWait((uint8_t *)msg, size, m_serverId))
+  if (m_manager.sendtoWait((uint8_t *)msg, size, m_serverId))
     return true;
   else
     return false;
@@ -36,61 +34,46 @@ bool COMController::m_send(char msg[]) {
 bool COMController::m_receive(char buf[]) {
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
   uint8_t from;
-  if (m_manager->recvfromAckTimeout((uint8_t *)buf, &len, m_prop.timeout,
-                                    &from))
+  if (m_manager.recvfromAckTimeout((uint8_t *)buf, &len, m_timeout, &from))
     return true;
   else
     return false;
 }
 
-void COMController::m_createRTS(JsonDocument &doc) {
-  m_clearBuffer();
-  doc["ID"] = "RTS";
-  serializeJson(doc, m_buf);
-  doc.clear();
-}
-
-bool COMController::request(JsonDocument &doc) {
+bool COMController::request(SSModel &model) {
   m_mux.comY1();
   if (m_radio.getZ9C())
     m_max3243.enable();
 
-  m_createRTS(doc);
-  console.debug(m_buf);
-  if (!m_send(m_buf)) {
-    console.debug("No ACK from server");
+  if (!m_send(model.toReq())) {
+    m_droppedPkt();
     m_max3243.disable();
-    deserializeJson(doc, m_ACK_ERR);
+    model.statusERR(ACK_ERR);
     return false;
   }
 
   m_clearBuffer();
   if (!m_receive(m_buf)) {
-    console.debug("Server ACK but no reply");
+    m_droppedPkt();
     m_max3243.disable();
-    deserializeJson(doc, m_REP_ERR);
+    model.statusERR(REPLY_ERR);
     return false;
   }
 
   console.debug("successfully received config, RADIO ----> GNSS");
   m_mux.comY2();
-  DeserializationError error = deserializeJson(doc, m_buf);
-  if (error)
-    console.debug("Failed to deserialize response from base"); // ERROR STATE
+  model.handleRes(m_buf);
   return true;
 }
 
-// TODO clear the document
-bool COMController::upload(JsonDocument &doc) {
+bool COMController::upload(SSModel &model) {
   m_clearBuffer();
-  serializeJson(doc, m_buf);
   console.debug("RADIO ----> FEATHER");
   m_mux.comY1();
 
-  if (!m_send(m_buf)) {
-    console.debug("Failed to upload");
-    doc.clear();
-    deserializeJson(doc, m_ACK_ERR);
+  if (!m_send(model.toUpl())) {
+    m_droppedPkt();
+    model.statusERR(ACK_ERR);
     return false;
   }
 
@@ -105,4 +88,19 @@ void COMController::resetRadio() { m_radio.reset(); }
 
 bool COMController::channelBusy() { return m_radio.channel_busy(); }
 
-void COMController::status(uint8_t verbosity, JsonDocument &doc) {}
+void COMController::m_setTimeout(uint16_t timeout) { m_timeout = timeout; }
+
+void COMController::m_setRetries(uint16_t retries) { m_retries = retries; }
+
+void COMController::m_droppedPkt() { m_dropped_pkts++; }
+
+void COMController::status(SSModel &model) {
+  model.statusCOM(m_timeout, m_retries, m_dropped_pkts);
+}
+
+void COMController::update(SSModel &model) {
+  if (model.valid(model.timeout()))
+    m_setTimeout(model.timeout());
+  if (model.valid(model.retries()))
+    m_setTimeout(model.retries());
+}

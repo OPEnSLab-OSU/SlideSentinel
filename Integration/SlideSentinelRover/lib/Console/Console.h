@@ -12,7 +12,9 @@ class Console
         Console();
         void setDebug(bool debug);
         void debug(const char* message);
-        void log(int val);
+        void debug(int val);
+        void debug(float val);
+        void debug(double val);
 };
 
 extern Console console;

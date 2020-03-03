@@ -3,18 +3,17 @@
 
 #include <Arduino.h>
 #include "ArduinoJson.h"
-#include "Prop.h"
+#include "SSModel.h"
 
-class Controller
-{
-    public: 
-        Controller(const char* header, Prop& prop);
-        virtual bool init() = 0;
-        virtual void status(uint8_t verbosity, JsonDocument &doc) = 0; 
+class Controller {
+public:
+  Controller(const char *header);
+  virtual bool init() = 0;
+  virtual void status(SSModel &model) = 0;
+  virtual void update(SSModel &model) = 0;
 
-    protected:
-        const char* m_HEADER;  
-        Prop& m_prop;
+protected:
+  const char *m_HEADER;
 };
 
 #endif // _CONTROLLER_H_

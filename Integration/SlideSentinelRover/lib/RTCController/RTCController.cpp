@@ -4,8 +4,8 @@
 uint8_t RTCController::m_pin;
 volatile bool RTCController::m_flag = false;
 
-RTCController::RTCController(Prop &prop, RTC_DS3231 &RTC_DS, uint8_t pin)
-    : Controller("RTC", prop), m_RTC(RTC_DS) {
+RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime, uint16_t sleepTime)
+    : Controller("RTC"), m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -43,6 +43,7 @@ bool RTCController::init() {
   // The output of the DS3231 INT pin is connected to this pin
   // It must be connected to arduino Interrupt pin for wake-up
   m_RTC.writeSqwPinMode(DS3231_OFF);
+  console.debug("RTCController initialized.\n");
   return true;
 }
 
@@ -55,9 +56,9 @@ void RTCController::m_setAlarm(int time) {
   m_RTC.alarmInterrupt(1, true);
   attachInterrupt(digitalPinToInterrupt(m_pin), RTC_ISR, FALLING);
 
-  console.log(hr);
+  console.debug(hr);
   console.debug(":");
-  console.log(min);
+  console.debug(min);
   console.debug("\n");
 }
 
@@ -69,9 +70,9 @@ char *RTCController::getTimestamp() {
   return m_timestamp;
 }
 
-void RTCController::setPollAlarm() { m_setAlarm(m_prop.wakeTime); }
+void RTCController::setPollAlarm() { m_setAlarm(m_wakeTime); }
 
-void RTCController::setWakeAlarm() { m_setAlarm(m_prop.sleepTime); }
+void RTCController::setWakeAlarm() { m_setAlarm(m_sleepTime); }
 
 bool RTCController::alarmDone() {
   if (!m_getFlag())
@@ -83,4 +84,19 @@ bool RTCController::alarmDone() {
 
 void RTCController::m_setDate() { m_date = m_RTC.now(); }
 
-void RTCController::status(uint8_t verbosity, JsonDocument &doc) {}
+void RTCController::m_setWakeTime(uint16_t wakeTime) { m_wakeTime = wakeTime; }
+
+void RTCController::m_setSleepTime(uint16_t sleepTime) {
+  m_sleepTime = sleepTime;
+}
+
+void RTCController::status(SSModel &model) {
+  model.statusRTC(m_wakeTime, m_sleepTime);
+}
+
+void RTCController::update(SSModel &model) {
+  if (model.valid(model.wakeTime()))
+    m_setWakeTime(model.wakeTime());
+  if (model.valid(model.sleepTime()))
+    m_setSleepTime(model.sleepTime());
+}

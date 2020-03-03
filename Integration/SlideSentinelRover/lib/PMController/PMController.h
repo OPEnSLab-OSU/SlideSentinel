@@ -1,13 +1,12 @@
 #ifndef _PMCONTROLLER_H_
 #define _PMCONTROLLER_H_
+#define MAX_VOLT_LEN 5
 
 #include <Arduino.h>
 #include "Battery.h"
 #include "Controller.h"
 #include "MAX4280.h"
 #include "VoltageReg.h"
-#define MAX_VOLT_LEN 5
-// State: N/A
 
 class PMController : public Controller {
 private:
@@ -19,7 +18,7 @@ private:
   bool m_RadioRail2;
 
 public:
-  PMController(Prop &prop, MAX4280 &max4280, PoluluVoltageReg &vcc2, Battery &bat,
+  PMController(MAX4280 &max4280, PoluluVoltageReg &vcc2, Battery &bat,
                bool GNSSrail2, bool radioRail2);
   float readBat();
   char* readBatStr();
@@ -29,7 +28,8 @@ public:
   void enableRadio();
   void sleep();
   bool init();
-  void status(uint8_t verbosity, JsonDocument &doc);
+  void status(SSModel &model);
+  void update(SSModel &model);
 };
 
 #endif // _PMCONTROLLER_H_

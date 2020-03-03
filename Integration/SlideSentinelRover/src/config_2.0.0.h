@@ -1,11 +1,11 @@
 #pragma once
 
 /****** ComController ******/
-#define CLIENT_ADDR 1               // Node_ID
+#define CLIENT_ADDR 1         	// Node_ID
 #define SERVER_ADDR 2
 #define RADIO_BAUD 115200
-#define INIT_TIMEOUT 2000        // seconds
-#define INIT_RETRIES 3           // Default
+#define INIT_TIMEOUT 2000      	// seconds
+#define INIT_RETRIES 3        	// Default
 #define RST 6
 #define CD 10
 #define IS_Z9C true
@@ -18,30 +18,20 @@
 #define BAT 15
 
 /****** FSController ******/
-#define SD_CS 18  // A4
-#define SD_RST 16 // A2
+#define SD_CS 18  				// A4
+#define SD_RST 16 				// A2
 
 /****** IMUController ******/
-#define INIT_SENSITIVITY 0x1F    // uint8_t
+#define INIT_SENSITIVITY 0x1F  	// uint8_t
 #define ACCEL_INT A3
 
 /****** GNSSController ******/
 #define GNSS_BAUD 115200
-#define INIT_LOG_FREQ 20000     // milliseconds
+#define INIT_LOG_FREQ 50000     // useconds
 #define GNSS_TX 11
 #define GNSS_RX 12
 
 /****** RTCController ******/
 #define RTC_INT 5
-#define INIT_WAKETIME 1          // minutes
-#define INIT_SLEEPTIME 1         // minutes
-
-#define consts constexpr const char *
-#define consti constexpr int
-
-namespace ErrorMsg {
-	consts WRITE_ERR    =   "Failed to write to SD card";
-	consts REPLY_ERR    =   "No reply from server";
-    consts ACK_ERR      =   "No ack from server";
-
-}  // namespace ErrorMsg
+#define INIT_WAKETIME 2         // minutes
+#define INIT_SLEEPTIME 2       	// minutes

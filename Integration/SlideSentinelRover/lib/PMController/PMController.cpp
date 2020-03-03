@@ -2,9 +2,9 @@
 #include "Console.h"
 #define DEBUG true
 
-PMController::PMController(Prop &prop, MAX4280 &max4280, PoluluVoltageReg &vcc2,
+PMController::PMController(MAX4280 &max4280, PoluluVoltageReg &vcc2,
                            Battery &bat, bool GNSSrail2, bool radioRail2)
-    : Controller("PM", prop), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
+    : Controller("PM"), m_max4280(max4280), m_vcc2(vcc2), m_bat(bat),
       m_GNSSRail2(GNSSrail2), m_RadioRail2(radioRail2) {
 
   // Enable sprintf function on SAMD21
@@ -21,6 +21,9 @@ bool PMController::init() {
   // call to attachInterrupt()
   GCLK->CLKCTRL.reg =
       GCLK_CLKCTRL_ID(GCM_EIC) | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_CLKEN;
+  disableGNSS();
+  disableRadio();
+  console.debug("PMController initialized.\n");
   return true;
 }
 
@@ -28,28 +31,28 @@ void PMController::enableGNSS() {
   if (m_GNSSRail2)
     m_vcc2.enable();
   m_max4280.assertRail(2);
-  console.debug("GNSS on");
+  console.debug("GNSS on\n");
 }
 
 void PMController::disableGNSS() {
   if (m_GNSSRail2 && !m_RadioRail2)
     m_vcc2.disable();
   m_max4280.assertRail(3);
-  console.debug("GNSS off");
+  console.debug("GNSS off\n");
 }
 
 void PMController::enableRadio() {
   if (m_RadioRail2)
     m_vcc2.enable();
   m_max4280.assertRail(0);
-  console.debug("Radio on");
+  console.debug("Radio on\n");
 }
 
 void PMController::disableRadio() {
   if (m_RadioRail2)
     m_vcc2.disable();
   m_max4280.assertRail(1);
-  console.debug("radio off");
+  console.debug("radio off\n");
 }
 
 float PMController::readBat() { return m_bat.read(); }
@@ -74,4 +77,6 @@ void PMController::sleep() {
   USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
 }
 
-void PMController::status(uint8_t verbosity, JsonDocument &doc) {}
+void PMController::status(SSModel &model) { model.statusPM(readBat()); }
+
+void PMController::update(SSModel &model) {}

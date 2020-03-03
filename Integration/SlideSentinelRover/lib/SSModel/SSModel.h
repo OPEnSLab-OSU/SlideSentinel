@@ -1,0 +1,138 @@
+#ifndef _SSMODEL_H_
+#define _SSMODEL_H_
+
+#define MAX_DATA_LEN 1000
+
+// JSON constants
+#define ROVER_ID "ID"        // rover ID
+#define TYPE "TYPE"          // message type (REQ, UPL, LOG, DAT)
+#define SS_STATE "STATE"     // State
+#define SS_DIAGNOSTIC "DIAG" // Diagnostics
+#define SS_DATA "DATA"       // Data
+
+// Header types
+#define REQ "REQ"
+#define UPL "UPL"
+
+// /******** Diagnostics ********/
+// #define IMU_FLAG 0
+// #define BAT 1
+// #define SPACE 2
+// #define CYCLES 3
+// #define DROPPED_PKTS 4
+// #define ERR_COUNT 5
+
+/******** State ********/
+#define NUM_STATE 6
+#define INVALID_STATE -1
+#define TIMEOUT 0
+#define RETRIES 1
+#define WAKE_TIME 2
+#define SLEEP_TIME 3
+#define SENSITIVITY 4
+#define LOG_FREQ 5
+
+// /******** Data ********/
+// #define FIX_MODE 0
+// #define GPS_TIME_WN 1
+// #define GPS_TIME_TOW 2
+// #define POS_LLH_LAT 3
+// #define POS_LLH_LON 4
+// #define POS_LLH_HEIGHT 5
+// #define POS_LLH_N_SATS 6
+// #define BASELINE_N 7
+// #define BASELINE_E 8
+// #define BASELINE_D 9
+// #define VEL_N 10
+// #define VEL_E 11
+// #define VEL_D 12
+// #define DOPS_GDOP 13
+// #define DOPS_HDOP 14
+// #define DOPS_PDOP 15
+// #define DOPS_TDOP 16
+// #define DOPS_VDOP 17
+
+#include <Arduino.h>
+#include "ArduinoJson.h"
+#include "SwiftPiksi.h"
+#include "constants.hpp"
+
+// NOTE Have an enum type, which changes
+
+using namespace ErrorMsg;
+
+class SSModel {
+private:
+  uint8_t m_id; // globals
+
+  int m_stateData[NUM_STATE]; // state
+
+  bool m_imu_flag;         // diagnostics
+  float m_bat;             // diagnostic
+  float m_space;           // diagnostic
+  uint16_t m_cycles;       // diagnostic
+  uint16_t m_dropped_pkts; // diagnostic
+  uint16_t m_err_count;    // diagnostic
+  char *m_err;       // diagnostic
+
+  // GNSSController
+  msg_pos_llh_t m_pos_llh;           // data
+  msg_baseline_ned_t m_baseline_ned; // data
+  msg_vel_ned_t m_vel_ned;           // data
+  msg_dops_t m_dops;                 // data
+  msg_gps_time_t m_gps_time;         // data
+  uint8_t m_mode;                    // data
+
+  // container for all constructed data
+  char m_buffer[MAX_DATA_LEN];
+
+  void m_addDiag(JsonDocument &doc);
+  void m_addState(JsonDocument &doc);
+  void m_addData(JsonDocument &doc);
+  void m_addHeader(JsonDocument &doc, const char *type);
+  void m_addId(JsonDocument &doc);
+  void m_clear();
+  bool m_serializePkt(JsonDocument &doc);
+
+public:
+  SSModel(int rover_id);
+
+  // checks if STATE data is valid
+  bool valid(int val);
+
+  // getters for STATE
+  int timeout();
+  int retries();
+  int wakeTime();
+  int sleepTime();
+  int logFreq();
+  int sensitivity();
+
+  // logs the data available in the controller
+  void statusGNSS(msg_pos_llh_t pos_llh, msg_baseline_ned_t baseline_ned,
+                  msg_vel_ned_t m_vel_ned, msg_dops_t m_dops,
+                  msg_gps_time_t m_gps_time, uint8_t m_mode,
+                  uint32_t m_logFreq);
+  void statusRTC(uint16_t wakeTime, uint16_t sleepTime);
+  void statusCOM(uint16_t timeout, uint8_t retries, uint16_t dropped_pkts);
+  void statusIMU(uint8_t sensitivity, bool imu_flag);
+  void statusPM(float bat);
+  void statusFS(uint32_t space, uint16_t cycles);
+  void statusERR(const char *err);
+
+  // handles response data from the base station COMController::request()
+  void handleRes(char *buf);
+
+  // creates a char[] of data relevant to the sorted packet type
+  char *toReq();
+  char *toUpl();
+  char *toDiag();
+  char *toState();
+  char *toData();
+  char *toError();
+
+  void print();
+  void clear();
+};
+
+#endif // _SSMODEL_H_

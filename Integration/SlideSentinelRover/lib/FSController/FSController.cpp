@@ -1,47 +1,47 @@
 #include "FSController.h"
 #include "Console.h"
 
-FSController::FSController(Prop &prop, uint8_t cs, uint8_t rst)
-    : Controller("FS", prop), m_cs(cs), m_rst(rst),
-      m_WRITE_ERR("{\"ID\":\"LOG\",\"MSG\":\"ERR: failed to write to SD\"}"),
-      m_GNSS("gnss.csv"), m_LOG("log.txt") {}
+FSController::FSController(uint8_t cs, uint8_t rst)
+    : Controller("FS"), m_cs(cs), m_rst(rst), m_DATA("data.json"),
+      m_DIAG("diag.json"), m_cycle(0) {}
 
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
 bool FSController::init() {
   pinMode(m_cs, OUTPUT);
-  if (!(m_sd.begin(m_cs, SD_SCK_MHZ(50)) && m_root.open("/") &&
-        m_sd.mkdir("logs") && m_sd.mkdir("data")))
+  // set clock rate, open root directory, check if MAIN exists, if not create it
+  if (!m_sd.begin(m_cs, SD_SCK_MHZ(50)) || !m_root.open("/") ||
+      (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
     return false;
+  console.debug("FSController initialized.\n");
   return true;
 }
 
-// TODO migrate away from JSON
-bool FSController::m_dispatch(JsonDocument &doc) {
-  const char *type = doc["ID"];
-  if (strcmp(type, "LOG") == 0)
-    return m_logMsg(doc["MSG"], m_LOG);
-  if (strcmp(type, "GNSS") == 0)
-    return m_logMsg(doc["MSG"], m_GNSS);
-  return false;
+void FSController::logData(char *data) {
+  if (!m_logMsg(data, m_DATA))
+    m_logMsg((char *)WRITE_ERR, m_DIAG);
 }
 
-void FSController::log(JsonDocument &doc) {
-  if (!m_dispatch(doc))
-    m_logMsg((char *)m_WRITE_ERR, m_LOG);
-  doc.clear();
+void FSController::logDiag(char *data) {
+  if (!m_logMsg(data, m_DIAG))
+    m_logMsg((char *)WRITE_ERR, m_DIAG);
 }
 
-// TODO error check and make sure the directory is not already made, maybe the
-// accelerometer triggers
 // TODO maintian a way to determine if SD failed and reactivley reattempt to
 // reinit()
 bool FSController::setupWakeCycle(char *timestamp, char *format) {
-  // reset ptr, enter "/data", make timestamped dir, enter
-  // /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt, set file ptr gnss.csv
-  if (!(m_sd.chdir() && m_sd.chdir("data") && m_sd.mkdir(timestamp) &&
-        m_sd.chdir(timestamp) && m_mkFile(m_GNSS) && m_mkFile(m_LOG) &&
-        m_setFile(m_GNSS)))
+  m_cycles();
+
+  // check if we wok up instantaneously, might occur due to accelerometer
+  if (m_sd.exists(timestamp) && m_sd.chdir(timestamp) && m_setFile(m_DATA))
+    return true;
+
+  // reset ptr, enter "/data", cerify timestampped dir does not exists, make
+  // timestamped dir, enter /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt,
+  // set file ptr gnss.csv
+  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(timestamp) &&
+        m_sd.chdir(timestamp) && m_mkFile(m_DATA) && m_mkFile(m_DIAG) &&
+        m_setFile(m_DATA)))
     return false;
 
   m_write(format);     // write the data header
@@ -78,4 +78,22 @@ bool FSController::m_logMsg(const char *msg, const char *file) {
   return true;
 }
 
-void FSController::status(uint8_t verbosity, JsonDocument &doc) {}
+void FSController::m_SDspace() {
+  float cardSize = m_sd.card()->cardSize() * 0.000512;
+  m_spaceMB = cardSize - m_sd.vol()->freeClusterCount() *
+                             m_sd.vol()->blocksPerCluster() * 0.000512;
+
+  // Serial.printf(F(" Size: %d.%02d MB"), (unsigned int)cardSize,
+  //               (unsigned int)(cardSize * 100.0) % 100);
+
+  // Serial.printfn(F(" (Used: %d.%02d MB)."), (unsigned int)used,
+  //                (unsigned int)(used * 100.0) % 100);
+}
+
+void FSController::m_cycles() { m_cycle++; }
+
+void FSController::status(SSModel &model) {
+  model.statusFS(m_spaceMB, m_cycle);
+}
+
+void FSController::update(SSModel &model) {}

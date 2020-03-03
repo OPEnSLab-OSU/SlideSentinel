@@ -8,11 +8,24 @@
 - remove 3.3v to reset on radio (let it float)
 - single jumper block for Z9-C/Z9-T toggle
 - expose TX2 on header block
+- Add current sensor:
+http://ww1.microchip.com/downloads/en/DeviceDoc/20005386B.pdf
 */
 
+Msg msg;
 
-StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> mail; // global messaging variable
+struct MSG2 {
+  IMU_FLAG
+  NODE_ID
+  TIMEOUT
+  RETIRES
+  SENSTIVITY
+  SLEEPTIME
+  WAKETIME
+}
 
+// FIXME log the state we are in
+// update state and get state function, for logging state
 enum State {
   WAKE,
   HANDSHAKE,
@@ -22,55 +35,32 @@ enum State {
   SLEEP
 }
 
-enum Verbosity {
-  QUIET,
-  NORMAL,
-  VERBOSE,
-  VERY_VERBOSE,
-  DEBUG
-}
-
-Verbosity verbosity = NORMAL;
-
 State state = WAKE; // global state variable
 
 while (1) {
   switch (state) {
   case WAKE:
-    FSController.setupWakeCycle(
-        TimingController
-            .getTimeStamp());   // create a new directory for this wake cycle
+    FSController.setupWakeCycle(TimingController.getTimeStamp());
+    // create a new directory for this wake cycle
     PMCOntroller.enableRadio(); // turn on the radio
     state = HANDSHAKE;
   case HANDSHAKE:
-    IMUController.getFlag(mail); // check if the Accelerometer woke the device
-    if (!ComController.request(mail)) {
-      FSController.log(mail); // if the request fails log the failure ERR
+    ConManager.status(msg);            // get the status of the system
+    FSController.logDiag(msg);         // log the status
+    if (!ComController.request(msg)) { // produce a request
+      FSController.logDiag(msg.error());
       state = SLEEP;
     }
     state = UPDATE;
-    // TODO Immediate response when the rover wakes
+
   case UPDATE:
-    // TODO central state object at global scope
-    // NOTE how do we handle the fact that state variables such as m_timeout,
-    // need to be configured in nested objects of the controllers? NOTE do we
-    // have reinit() method? Store global state in an object?
-    ConManager.update(mail);
-    /* "Controller Manager"
-     * Iterates over every controller, passing the config data collected from
-     * the base during the request. Each Controller gets this data passed to its
-     * .update() method which dynamically checks if there is data for the
-     * particualr controller in the packet. If there is data for the controller,
-     * the controller updates its internal variables thus changing the behavior
-     * of the device.
-     */
+    ConController.update(msg.toReq);
     PMController.enableGNSS(); // Turn on the GNSS receiver
     TimingController.start();  // start the millis() timer
-    state = POLL;
 
   case POLL:
-    if (GNSSController.poll(mail))
-      FSController.log(mail); // if so log the data, DAT
+    if (GNSSController.poll(msg))
+      FSController.logData(msg.data());
 
     if (TimingController.done()) // check if the millis timer is done
       state = UPLOAD;
@@ -78,21 +68,27 @@ while (1) {
   case UPLOAD:
     PMController.disableGNSS();
     // clear mail
-    ConManager.status(mail, verbosity);
+    ConManager.status(msg);
+
+    // log system state before sleeping
+    FSController.logDiag(msg);
     /*
-     * Collect the message to send to the base. Iterates over every controller,
-     * and checks for data calling the base class Controller.status() method.
-     * For example the GNSSController.status() will append any RTK positional
-     * info to the packet for the wake cycle. If the verbosity flag is in debug
-     * though the GNSSController may include hdop and satellites view values to
-     * the packet for greater information about the rover. The PMController may
-     * append the battery voltage to the packet as another example.
+     * Collect the message to send to the base. Iterates over every
+     * controller, and checks for data calling the base class
+     * Controller.status() method. For example the GNSSController.status()
+     * will append any RTK positional info to the packet for the wake cycle.
+     * If the verbosity flag is in debug though the GNSSController may
+     * include hdop and satellites view values to the packet for greater
+     * information about the rover. The PMController may append the battery
+     * voltage to the packet as another example.
      */
 
-    FSController.log(mail);          // log the packet collected
-    if (!ComController.upload(mail)) // attempt to upload the packet to the base
-      FSController.log(mail); // if a failure occurs mail is populated with
-                              // error message, log this to SD
+    if (!ComController.upload(
+            msg)) // attempt to upload the packet to the base, convert to
+                  // stack JSON, serialize, send in fragments
+      FSController.logDiag(
+          msg.error()); // if a failure occurs mail is populated with
+                        // error message, log this to SD
 
     state = SLEEP;
   case SLEEP:
@@ -102,20 +98,6 @@ while (1) {
     state = WAKE;
   }
 }
-
-/* POSSIBLE MESSAGE ID's
-RTS,            // request for service
-  - ROV: [rover ID]
-  - MSG: [Wake type]
-RES,           // conifguration data
-  - MSG: []     
-GNSS,           // data collected by the receiver
-  - MSG: [position data]
-LOG,          // state data collected, error messages in the system
-  - MSG: state or err string
-PKT,          // condensed data packet 
-  - MSG: all data aggregated into the packet
-*/
 
 /*
  * ------- CONFIG MESSAGES, WHAT DO THEY CONTAIN -------
@@ -137,12 +119,13 @@ ConManager, instead of making it global
 */
 
 // Ther verbosity of the rover dictates how much of this data is appended to the
-// packet prior to sending
+// packet prior to sending REVIEW How do we structure the data, maybe the state
+// is sent during the RTS, then
 /* STATUS
 FSController        [available SD card space, number of wake cycles to date]
-IMUController       [accelerometer sensitivity]
+IMUController       [sensitivity]
 TimingController    [wake duration, sleep duration]
-ComController       [retries, timeout, number of dropped packets]
+ComController       [retries, timeout]
 PMController        [battery voltage]
 GNSSController      [hdop, pdop, satellites view during the wake cycle, report
 resolution (maybe the user is fine with RTK float data)] ConManager [verboisy]
