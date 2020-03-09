@@ -12,13 +12,9 @@ SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
 bool SSInterface::sendPacket(const char *type, char *packet) {
-  // determine the number of fragments
   _setOutFrag(packet);
-
-  // create the header in the buffer
   _header(type);
 
-  // send the header
   if (!_send())
     return false;
 
@@ -35,11 +31,7 @@ bool SSInterface::sendPacket(const char *type, char *packet) {
 bool SSInterface::receivePacket(char *buffer) {
   if (!_receive())
     return false;
-  // Serial.print("buf: ");
-  // Serial.println(m_buf);
   _readHeader(m_buf);
-  // Serial.print("m_inFrag: ");
-  // Serial.println(m_inFrag);
   for (int i = 0; i < m_inFrag; i++) {
     if (!_receive())
       return false;
@@ -75,7 +67,7 @@ char *SSInterface::_getBuf() { return m_buf; }
 
 bool SSInterface::_send() {
   uint8_t size = strlen(m_buf);
-  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_serverId))
+  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_clientId))
     return true;
   return false;
 }

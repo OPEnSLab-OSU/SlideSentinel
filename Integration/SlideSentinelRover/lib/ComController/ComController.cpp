@@ -37,7 +37,7 @@ bool COMController::init() {
 }
 
 void COMController::m_clearBuffer() {
-  memset(m_buf, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
+  memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN);
 }
 
 // bool COMController::m_send(char msg[]) {
@@ -77,14 +77,15 @@ bool COMController::request(SSModel &model) {
   //   return false;
   // }
 
-  // m_clearBuffer();
-  // if (!m_receive(m_buf)) {
-  //   m_droppedPkt();
-  //   m_max3243.disable();
-  //   model.setError(REPLY_ERR);
-  //   return false;
-  // }
+  m_clearBuffer();
+  if (!m_interface.receivePacket(m_buf)) {
+    m_droppedPkt();
+    m_max3243.disable();
+    model.setError(REPLY_ERR);
+    return false;
+  }
 
+  console.debug(m_buf);
   console.debug("successfully received config, RADIO ----> GNSS");
   m_mux.comY2();
   model.handleRes(m_buf);

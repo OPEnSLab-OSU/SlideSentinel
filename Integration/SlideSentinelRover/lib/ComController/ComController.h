@@ -1,6 +1,7 @@
 #ifndef _COMCONTROLLER_H_
 #define _COMCONTROLLER_H_
 
+#define MAX_DATA_LEN 1000
 #define REQ "REQ"
 #define UPL "UPL"
 #define RES "RES"
@@ -32,7 +33,7 @@ private:
   // uint16_t m_timeout;      // state
   // uint8_t m_retries;       // state
   uint16_t m_dropped_pkts; // diagnostic
-  char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
+  char m_buf[MAX_DATA_LEN];
 
   bool m_send(char msg[]);
   bool m_receive(char buf[]);

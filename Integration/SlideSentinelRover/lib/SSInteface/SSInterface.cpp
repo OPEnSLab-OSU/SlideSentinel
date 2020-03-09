@@ -1,10 +1,6 @@
 #include "SSInterface.h"
 #include "Console.h"
 
-// Note, both base and rover need to use timeout receiving
-// Note, base needs to pass serverID to manager, rover needs to pass clientID Figure out the ID stuff!
-
-// FIXME  FLush serial buffer on failure!
 SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
                          uint8_t clientId, uint8_t serverId, uint16_t timeout,
                          uint8_t retries, bool isBase)
@@ -14,43 +10,25 @@ SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
 bool SSInterface::sendPacket(const char *type, char *packet) {
-  // determine the number of fragments
-  // console.debug("\nin sendPacket:");
-  // console.debug(packet);
+  // FIXME Flush the serial port
   _setOutFrag(packet);
-  // console.debug("\noutFrag:");
-  // console.debug(m_outFrag);
-
-  // create the header in the buffer
   _header(type);
 
-  // console.debug("\nheader:");
-  // console.debug(m_buf);
-
-  // send the header
   if (!_send())
     return false;
 
   for (int i = 0; i < m_outFrag; i++) {
     _clearBuffer(); // not sure I need this
     memcpy(m_buf, packet + (i * m_blen), m_blen);
-    // console.debug("\n\n");
-    // console.debug("Fragment ");
-    // console.debug(i);
-    // console.debug("\n");
-    // console.debug(m_buf);
-    // console.debug("\n\n");
     if (!_send())
       return false;
   }
   return true;
 }
 
-// return an int corresponding to the type of request?
 bool SSInterface::receivePacket(char *buffer) {
   if (!_receive())
     return false;
-
   _readHeader(m_buf);
   for (int i = 0; i < m_inFrag; i++) {
     if (!_receive())
@@ -87,7 +65,7 @@ char *SSInterface::_getBuf() { return m_buf; }
 
 bool SSInterface::_send() {
   uint8_t size = strlen(m_buf);
-  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_serverId))   // ON THE ROVER
+  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_serverId)) 
     return true;
   return false;
 }
@@ -138,8 +116,6 @@ void SSInterface::setRetries(uint16_t retries) {
 
 void SSInterface::setClient(uint8_t addr) { m_clientId = addr; }
 void SSInterface::setServer(uint8_t addr) { m_serverId = addr; }
-
 int SSInterface::getTimeout() { return m_timeout; }
 int SSInterface::getRetries() { return m_retries; }
-
 bool SSInterface::available() { return m_manager.available(); }

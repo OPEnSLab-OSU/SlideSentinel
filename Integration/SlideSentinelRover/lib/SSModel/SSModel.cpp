@@ -110,24 +110,31 @@ void SSModel::m_addState(JsonDocument &doc) {
 
 void SSModel::m_addData(JsonDocument &doc) {
   JsonArray data = doc.createNestedArray(SS_DATA);
-  data.add(m_mode);
-  data.add(m_gps_time.wn);
-  data.add(m_gps_time.tow);
-  data.add(m_pos_llh.lat);
-  data.add(m_pos_llh.lon);
-  data.add(m_pos_llh.height);
-  data.add(m_pos_llh.n_sats);
-  data.add(m_baseline_ned.n);
-  data.add(m_baseline_ned.e);
-  data.add(m_baseline_ned.d);
-  data.add(m_vel_ned.n);
-  data.add(m_vel_ned.e);
-  data.add(m_vel_ned.d);
-  data.add(m_dops.gdop);
-  data.add(m_dops.hdop);
-  data.add(m_dops.pdop);
-  data.add(m_dops.tdop);
-  data.add(m_dops.vdop);
+  // data.add(m_mode);
+  // data.add(m_gps_time.wn);
+  // data.add(m_gps_time.tow);
+  // data.add(m_pos_llh.lat);
+  // data.add(m_pos_llh.lon);
+  // data.add(m_pos_llh.height);
+  // data.add(m_pos_llh.n_sats);
+  // data.add(m_baseline_ned.n);
+  // data.add(m_baseline_ned.e);
+  // data.add(m_baseline_ned.d);
+  // data.add(m_vel_ned.n);
+  // data.add(m_vel_ned.e);
+  // data.add(m_vel_ned.d);
+  // data.add(m_dops.gdop);
+  // data.add(m_dops.hdop);
+  // data.add(m_dops.pdop);
+  // data.add(m_dops.tdop);
+  // data.add(m_dops.vdop);
+
+  data.add(11232123);
+  data.add("hello how are you my name is kamron Ebrahimi");
+  data.add("I am a student at oregon State university studying both Electrical engineering and computer science");
+  data.add("I will be moving to Seattle in the summer ot start my career working at Oracle Cloud Infrastructure");
+  data.add("I am very excited for this change");
+
 }
 
 void SSModel::m_addHeader(JsonDocument &doc, const char *type) {
