@@ -318,7 +318,7 @@ void advancedTest2() {
       Serial.println("Timestampped directory created!");
     else {
       Serial.println("Throwing write error");
-      model.statusERR(WRITE_ERR);
+      model.setError(WRITE_ERR);
       Serial.println(model.toError());
       fsController.logDiag(model.toError());
     }
@@ -340,14 +340,14 @@ void advancedTest2() {
       Serial.println("Timestampped directory created!");
     else {
       Serial.println("Throwing write error");
-      model.statusERR(WRITE_ERR);
+      model.setError(WRITE_ERR);
       Serial.println(model.toError());
       fsController.logDiag(model.toError());
     }
     delay(2000);
     Serial.println("Throwing random error");
     delay(2000);
-    model.statusERR(ACK_ERR);
+    model.setError(ACK_ERR);
     Serial.println(model.toError());
     fsController.logDiag(model.toError());
     Serial.println("Get state of device");
@@ -387,6 +387,14 @@ void advancedTest2() {
     model.print();
     model.clear();
     break;
+
+  case '7':
+    Serial.println("\n\nTesting COMController");
+    Serial.println("Creating Request packet");
+    manager.status(model);
+    Serial.println(model.toDiag());
+    comController->request(model);
+    break;
   }
 }
 
@@ -415,30 +423,104 @@ void setup() {
   manager.add(&pmController);
   manager.add(&rtcController);
   manager.init();
+  pmController.enableRadio();
 }
 
-void loop() {
+void loop() { advancedTest2(); }
 
-  while (1) {
+// enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
 
-    // if (ADVANCED)
-    //   advancedTest();
+// void loop() {
+//   State state = WAKE;
 
-    if (ADVANCED2)
-      advancedTest2();
+//   while (1) {
+//     switch (state) {
 
-    // if (pollFlag && gnssController->poll(model)) {
-    //   // TODO only log if we have valid data, in case data stays in the
-    //   buffer
-    //   // at sleep?
-    //   fsController.logData(model.toData());
-    //   model.print();
-    // }
+//     case WAKE:
+//       // check if radio link is already busy
+//       if(comController.channelBust(model)){
+//         fsController.logDiag(model.toError());
+//         state = SLEEP;
+//         break;
+//       }
+//
+//       // create new directory for the wake cycle
+//       fsController.setupWakeCycle(rtcController.getTimestamp(),
+//                                   gnssController->getFormat());
+//       // enable the radio
+//       pmController.enableRadio();
+//       state = HANDSHAKE;
+//       break;
 
-    if (imuController.getWakeStatus())
-      Serial.println("IMU WAKE");
+//     case HANDSHAKE:
+//       // collect system status
+//       manager.status(model);
 
-    // if (rtcController.alarmDone())
-    //   Serial.println("RTC ALARM");
-  }
-}
+//       // log system status
+//       fsController.logDiag(model.toDiag());
+//       fsController.logDiag(model.toState());
+
+//       // make a request
+//       if (!comController->request(model)) {
+//         fsController.logDiag(model.toError());
+//         state = SLEEP;
+//         break;
+//       }
+
+//       state = UPDATE;
+//       break;
+
+//     case UPDATE:
+//       // update the systems properties
+//       manager.update(model);
+
+//       // enable the GNSS receiver
+//       pmController.enableGNSS();
+
+//       // set the poll alarm
+//       rtcController.setPollAlarm();
+//       state = POLL;
+//       break;
+
+//     case POLL:
+//       // check for data from the GNSS receiver
+//       if (gnssController->poll(model))
+//         fsController.logData(model.toData());
+
+//       // check ifs the alarm is triggered
+//       if (rtcController.alarmDone())
+//         state = UPLOAD;
+//       break;
+
+//     case UPLOAD:
+
+//       // disable the GNSS receiver
+//       pmController.disableGNSS();
+
+//       // collect the systems status
+//       manager.status(model);
+
+//       // log system status
+//       fsController.logDiag(model.toDiag());
+//       fsController.logDiag(model.toState());
+
+//       // make an upload
+//       if (!comController->upload(model))
+//         fsController.logDiag(model.toError());
+//       state = SLEEP;
+//       break;
+
+//     case SLEEP:
+//       // disable the radio
+//       pmController.disableRadio();
+
+//       // set the wake alarm
+//       rtcController.setWakeAlarm();
+
+//       // enter low power mode
+//       pmController.sleep();
+//       state = WAKE;
+//       break;
+//     }
+//   }
+// }

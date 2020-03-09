@@ -269,8 +269,13 @@ uint8_t GNSSController::poll(SSModel &model) {
            if (m_compare()) m_setBest();
 
            // update internal varibales of SSModel
-           model.statusGNSS(pos_llh, baseline_ned, vel_ned, dops, gps_time,
-                            m_getMode(), m_logFreq);
+           model.setPos_llh(m_pos_llh); 
+           model.setBaseline_ned(m_baseline_ned);
+           model.setMsg_vel_ned_t(m_vel_ned); 
+           model.setMsg_dops_t(m_dops);
+           model.setMsg_gps_time_t(m_gps_time); 
+           model.setMode(m_mode);
+           model.setLogFreq(m_logFreq);
 
            // check if we acheived an RTK fix, reset internal variables
            m_isFixed(datFlag); m_reset(););
@@ -304,8 +309,13 @@ char *GNSSController::getFormat() { return (char *)m_FORMAT; }
 void GNSSController::m_setLogFreq(uint16_t logFreq) { m_logFreq = logFreq; }
 
 void GNSSController::status(SSModel &model) {
-  model.statusGNSS(m_pos_llh, m_baseline_ned, m_vel_ned, m_dops, m_gps_time,
-                   m_mode, m_logFreq);
+  model.setPos_llh(m_pos_llh);
+  model.setBaseline_ned(m_baseline_ned);
+  model.setMsg_vel_ned_t(m_vel_ned);
+  model.setMsg_dops_t(m_dops);
+  model.setMsg_gps_time_t(m_gps_time);
+  model.setMode(m_mode);
+  model.setLogFreq(m_logFreq);
 }
 
 void GNSSController::update(SSModel &model) {

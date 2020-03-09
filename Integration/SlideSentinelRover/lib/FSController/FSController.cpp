@@ -93,7 +93,8 @@ void FSController::m_SDspace() {
 void FSController::m_cycles() { m_cycle++; }
 
 void FSController::status(SSModel &model) {
-  model.statusFS(m_spaceMB, m_cycle);
+  model.setSpace(m_spaceMB);
+  model.setCycles(m_cycle);
 }
 
 void FSController::update(SSModel &model) {}

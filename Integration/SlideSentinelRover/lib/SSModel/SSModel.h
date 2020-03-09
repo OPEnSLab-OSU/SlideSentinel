@@ -52,6 +52,7 @@
 // #define DOPS_TDOP 16
 // #define DOPS_VDOP 17
 
+// return a status object for each status function
 #include <Arduino.h>
 #include "ArduinoJson.h"
 #include "SwiftPiksi.h"
@@ -73,7 +74,7 @@ private:
   uint16_t m_cycles;       // diagnostic
   uint16_t m_dropped_pkts; // diagnostic
   uint16_t m_err_count;    // diagnostic
-  char *m_err;       // diagnostic
+  char *m_err;             // diagnostic
 
   // GNSSController
   msg_pos_llh_t m_pos_llh;           // data
@@ -108,18 +109,50 @@ public:
   int logFreq();
   int sensitivity();
 
-  // logs the data available in the controller
-  void statusGNSS(msg_pos_llh_t pos_llh, msg_baseline_ned_t baseline_ned,
-                  msg_vel_ned_t m_vel_ned, msg_dops_t m_dops,
-                  msg_gps_time_t m_gps_time, uint8_t m_mode,
-                  uint32_t m_logFreq);
-  void statusRTC(uint16_t wakeTime, uint16_t sleepTime);
-  void statusCOM(uint16_t timeout, uint8_t retries, uint16_t dropped_pkts);
-  void statusIMU(uint8_t sensitivity, bool imu_flag);
-  void statusPM(float bat);
-  void statusFS(uint32_t space, uint16_t cycles);
-  void statusERR(const char *err);
+  // void statusGNSS(msg_pos_llh_t pos_llh, msg_baseline_ned_t baseline_ned,
+  //                 msg_vel_ned_t m_vel_ned, msg_dops_t m_dops,
+  //                 msg_gps_time_t m_gps_time, uint8_t m_mode,
+  //                 uint32_t m_logFreq);
+  
+  // void statusRTC(uint16_t wakeTime, uint16_t sleepTime);
+  // void statusCOM(uint16_t timeout, uint8_t retries, uint16_t dropped_pkts);
+  // void statusIMU(uint8_t sensitivity, bool imu_flag);
+  // void statusPM(float bat);
+  // void statusFS(uint32_t space, uint16_t cycles);
+  // void statusERR(const char *err);
 
+  // GNSSController
+  void setPos_llh(msg_pos_llh_t pos_llh);
+  void setBaseline_ned(msg_baseline_ned_t baseline_ned);
+  void setMsg_vel_ned_t(msg_vel_ned_t vel_ned);
+  void setMsg_dops_t(msg_dops_t dops);
+  void setMsg_gps_time_t(msg_gps_time_t gps_time);
+  void setMode(uint8_t mode);
+  void setLogFreq(uint32_t logFreq);
+
+  // RTCController
+  void setWakeTime(uint16_t wakeTime);
+  void setSleepTime(uint16_t sleepTime);
+
+  // COMController
+  void setTimeout(uint16_t timeout);
+  void setRetries(uint8_t retries);
+  void setDropped_pkts(uint16_t dropped_pkts);
+
+  // IMUController
+  void setSensitivity(uint8_t sensitivity);
+  void setIMUflag(bool imu_flag);
+
+  // PMController
+  void setBat(float bat);
+
+  // FSController
+  void setSpace(uint32_t space);
+  void setCycles(uint16_t cycles);
+
+  // Error
+  void setError(const char *err);
+  
   // handles response data from the base station COMController::request()
   void handleRes(char *buf);
 

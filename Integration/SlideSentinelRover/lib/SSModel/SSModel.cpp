@@ -1,6 +1,7 @@
 #include "SSModel.h"
 #include "Console.h"
 
+// FIXME Error count is wonky
 SSModel::SSModel(int rover_id) : m_id(rover_id), m_err_count(0) { clear(); }
 
 // This data transfer protocol will ensure that -1 are received for invalid
@@ -37,7 +38,7 @@ char *SSModel::toReq() {
   m_addHeader(doc, REQ);
   m_addDiag(doc);
   if (!m_serializePkt(doc))
-    statusERR(SER_ERR);
+    setError(SER_ERR);
   return m_buffer;
 }
 
@@ -50,7 +51,7 @@ char *SSModel::toUpl() {
   if (m_mode >= 4)
     m_addData(doc);
   if (!m_serializePkt(doc))
-    statusERR(SER_ERR);
+    setError(SER_ERR);
   return m_buffer;
 }
 
@@ -58,7 +59,7 @@ char *SSModel::toDiag() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_addDiag(doc);
   if (!m_serializePkt(doc))
-    statusERR(SER_ERR);
+    setError(SER_ERR);
   return m_buffer;
 }
 
@@ -66,7 +67,7 @@ char *SSModel::toState() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_addState(doc);
   if (!m_serializePkt(doc))
-    statusERR(SER_ERR);
+    setError(SER_ERR);
   return m_buffer;
 }
 
@@ -74,7 +75,7 @@ char *SSModel::toData() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_addData(doc);
   if (!m_serializePkt(doc))
-    statusERR(SER_ERR);
+    setError(SER_ERR);
   return m_buffer;
 }
 
@@ -150,46 +151,49 @@ int SSModel::sleepTime() { return m_stateData[SLEEP_TIME]; }
 int SSModel::logFreq() { return m_stateData[LOG_FREQ]; }
 int SSModel::sensitivity() { return m_stateData[SENSITIVITY]; }
 
-void SSModel::statusGNSS(msg_pos_llh_t pos_llh, msg_baseline_ned_t baseline_ned,
-                         msg_vel_ned_t vel_ned, msg_dops_t dops,
-                         msg_gps_time_t gps_time, uint8_t mode,
-                         uint32_t logFreq) {
-  m_stateData[LOG_FREQ] = logFreq;
-  m_pos_llh = pos_llh;
+// GNSSController
+void SSModel::setPos_llh(msg_pos_llh_t pos_llh) { m_pos_llh = pos_llh; }
+void SSModel::setBaseline_ned(msg_baseline_ned_t baseline_ned) {
   m_baseline_ned = baseline_ned;
-  m_vel_ned = vel_ned;
-  m_dops = dops;
-  m_gps_time = gps_time;
-  m_mode = mode;
 }
+void SSModel::setMsg_vel_ned_t(msg_vel_ned_t vel_ned) { m_vel_ned = vel_ned; }
+void SSModel::setMsg_dops_t(msg_dops_t dops) { m_dops = dops; }
+void SSModel::setMsg_gps_time_t(msg_gps_time_t gps_time) {
+  m_gps_time = gps_time;
+}
+void SSModel::setMode(uint8_t mode) { m_mode = mode; }
+void SSModel::setLogFreq(uint32_t logFreq) { m_stateData[LOG_FREQ] = logFreq; }
 
-void SSModel::statusRTC(uint16_t wakeTime, uint16_t sleepTime) {
+// RTCController
+void SSModel::setWakeTime(uint16_t wakeTime) {
   m_stateData[WAKE_TIME] = wakeTime;
+}
+void SSModel::setSleepTime(uint16_t sleepTime) {
   m_stateData[SLEEP_TIME] = sleepTime;
 }
 
-void SSModel::statusCOM(uint16_t timeout, uint8_t retries,
-                        uint16_t dropped_pkts) {
-  m_stateData[TIMEOUT] = timeout;
-  m_stateData[RETRIES] = retries;
+// COMController
+void SSModel::setTimeout(uint16_t timeout) { m_stateData[TIMEOUT] = timeout; }
+void SSModel::setRetries(uint8_t retries) { m_stateData[RETRIES] = retries; }
+void SSModel::setDropped_pkts(uint16_t dropped_pkts) {
   m_dropped_pkts = dropped_pkts;
 }
 
-void SSModel::statusIMU(uint8_t sensitivity, bool imu_flag) {
+// IMUController
+void SSModel::setSensitivity(uint8_t sensitivity) {
   m_stateData[SENSITIVITY] = sensitivity;
-  m_imu_flag = imu_flag;
 }
+void SSModel::setIMUflag(bool imu_flag) { m_imu_flag = imu_flag; }
 
-void SSModel::statusPM(float bat) { m_bat = bat; }
+// PMController
+void SSModel::setBat(float bat) { m_bat = bat; }
 
-void SSModel::statusFS(uint32_t space, uint16_t cycles) {
-  m_space = space;
-  m_cycles = cycles;
-}
+// FSController
+void SSModel::setSpace(uint32_t space) { m_space = space; }
+void SSModel::setCycles(uint16_t cycles) { m_cycles = cycles; }
 
-// TODO errors should be logged and monitored as part of the FSControllers
-// diagnostics
-void SSModel::statusERR(const char *err) {
+// Error
+void SSModel::setError(const char *err) {
   m_err_count++;
   m_err = (char *)err;
 }

@@ -17,6 +17,7 @@ IMUController::IMUController(uint8_t pin, uint8_t sensitivity) : Controller("IMU
 void IMUController::IMU_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
   m_flag = true;
+  console.debug("IMU WAKE");
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
 }
 
@@ -56,7 +57,9 @@ void IMUController::m_setSensitivity(uint8_t sensitivity) {
 }
 
 void IMUController::status(SSModel &model) {
-  model.statusIMU(m_sensitivity, getWakeStatus());
+  // model.statusIMU(m_sensitivity, getWakeStatus());
+  model.setSensitivity(m_sensitivity);
+  model.setIMUflag(getWakeStatus());
 }
   
 void IMUController::update(SSModel &model) {

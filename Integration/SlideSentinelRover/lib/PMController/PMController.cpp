@@ -77,6 +77,9 @@ void PMController::sleep() {
   USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
 }
 
-void PMController::status(SSModel &model) { model.statusPM(readBat()); }
+void PMController::status(SSModel &model) { 
+  // model.statusPM(readBat());
+  model.setBat(readBat());
+}
 
 void PMController::update(SSModel &model) {}

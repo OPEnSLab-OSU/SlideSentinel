@@ -91,7 +91,8 @@ void RTCController::m_setSleepTime(uint16_t sleepTime) {
 }
 
 void RTCController::status(SSModel &model) {
-  model.statusRTC(m_wakeTime, m_sleepTime);
+  model.setWakeTime(m_wakeTime);
+  model.setSleepTime(m_sleepTime);
 }
 
 void RTCController::update(SSModel &model) {
