@@ -153,7 +153,7 @@ void loop() {
                                            // THINK ABOUT THIS STUFF
       Serial.print("data received");
       Serial.println(packet);
-      char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,3,4,10,200000,3]}";
+      char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,2,4,10,100000,3]}";
       if (!interface.sendPacket(RES, test))
         Serial.println("FAILED to respond");
     }

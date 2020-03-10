@@ -297,7 +297,7 @@ void GNSSController::m_reset() {
 
 char *GNSSController::getFormat() { return (char *)m_FORMAT; }
 
-void GNSSController::m_setLogFreq(uint16_t logFreq) { m_logFreq = logFreq; }
+void GNSSController::m_setLogFreq(int logFreq) { m_logFreq = logFreq; }
 
 void GNSSController::status(SSModel &model) {
   model.setPos_llh(m_pos_llh);

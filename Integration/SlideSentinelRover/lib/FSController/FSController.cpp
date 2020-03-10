@@ -30,18 +30,21 @@ void FSController::logDiag(char *data) {
 // TODO maintian a way to determine if SD failed and reactivley reattempt to
 // reinit()
 bool FSController::setupWakeCycle(char *timestamp, char *format) {
+  console.debug("Creating new wake cycle directory: ");
+  console.debug(timestamp);
+  console.debug("\n");
+  m_curDir = timestamp;
   m_cycles();
 
   // check if we wok up instantaneously, might occur due to accelerometer
-  if (m_sd.exists(timestamp) && m_sd.chdir(timestamp) && m_setFile(m_DATA))
+  if (m_sd.exists(m_curDir) && m_sd.chdir(m_curDir))
     return true;
 
   // reset ptr, enter "/data", cerify timestampped dir does not exists, make
   // timestamped dir, enter /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt,
   // set file ptr gnss.csv
-  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(timestamp) &&
-        m_sd.chdir(timestamp) && m_mkFile(m_DATA) && m_mkFile(m_DIAG) &&
-        m_setFile(m_DATA)))
+  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(m_curDir) &&
+        m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
     return false;
 
   m_write(format);     // write the data header
@@ -57,7 +60,8 @@ bool FSController::m_mkFile(const char *name) {
 }
 
 bool FSController::m_setFile(const char *file) {
-  if (!m_file.open(file, O_WRONLY | O_APPEND))
+  if (!m_sd.chdir() && m_sd.chdir(m_curDir) &&
+      m_file.open(file, O_WRONLY | O_APPEND))
     return false;
   return true;
 }

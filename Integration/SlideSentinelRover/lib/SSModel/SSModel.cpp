@@ -7,6 +7,8 @@
 // errors occur
 // TODO create classes for handling Diagnostic, State and Postional Data
 // These classes will compose the model
+// TODO error handle on rover so configurable state data is only ever changed if
+// parameterized properly
 // FIXME Error count is wonky
 SSModel::SSModel() : m_err_count(0) { clear(); }
 
@@ -94,6 +96,7 @@ void SSModel::m_addState(JsonDocument &doc) {
   data.add(m_stateData[SLEEP_TIME]);
   data.add(m_stateData[SENSITIVITY]);
   data.add(m_stateData[LOG_FREQ]);
+  data.add(m_stateData[THRESHOLD]);
 }
 
 void SSModel::m_addData(JsonDocument &doc) {

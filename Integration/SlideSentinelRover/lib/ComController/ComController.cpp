@@ -44,6 +44,9 @@ bool COMController::request(SSModel &model) {
 
   console.debug("successfully received config, RADIO ----> GNSS.\n");
   m_mux.comY2();
+  console.debug("Received packet: ");
+  console.debug(m_buf);
+  console.debug("\n");
   model.handleRes(m_buf);
   return true;
 }
@@ -85,6 +88,7 @@ void COMController::status(SSModel &model) {
   model.setTimeout(m_interface.getTimeout());
   model.setRetries(m_interface.getRetries());
   model.setDropped_pkts(m_dropped_pkts);
+  model.setThreshold(m_threshold);
 }
 
 void COMController::update(SSModel &model) {

@@ -25,7 +25,7 @@ private:
   void m_setBest();
   void m_isFixed(uint8_t &flag);
   void m_reset();
-  void m_setLogFreq(uint16_t logFreq);
+  void m_setLogFreq(int logFreq);
 
   msg_pos_llh_t m_pos_llh;
   msg_baseline_ned_t m_baseline_ned;

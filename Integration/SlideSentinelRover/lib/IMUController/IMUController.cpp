@@ -21,7 +21,7 @@ IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
 void IMUController::IMU_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
   m_flag = true;
-  console.debug("IMU WAKE");
+  console.debug("IMU WAKE\n");
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
 }
 

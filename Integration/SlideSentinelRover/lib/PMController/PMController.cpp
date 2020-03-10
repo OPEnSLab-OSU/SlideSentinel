@@ -44,6 +44,14 @@ void PMController::enableRadio() {
   if (m_RadioRail2)
     m_vcc2.enable();
   m_max4280.assertRail(0);
+
+  // delay for radio to initialize
+  console.debug("Initializing radio...\n");
+  for (int i = 0; i < 10; i++) {
+    console.debug(i);
+    console.debug("\n");
+    delay(1000);
+  }
   console.debug("Radio on\n");
 }
 
@@ -63,6 +71,7 @@ char *PMController::readBatStr() {
 }
 
 void PMController::sleep() {
+  console.debug("Going to sleep...");
   // Disable USB
   USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
 

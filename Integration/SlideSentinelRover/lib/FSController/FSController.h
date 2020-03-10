@@ -4,15 +4,16 @@
 #define MAIN "data"
 #define SD_SIZE 16 // GB
 
+#include "Controller.h"
+#include "SdFat.h"
 #include <Arduino.h>
 #include <constants.hpp>
 #include <string.h>
-#include "Controller.h"
-#include "SdFat.h"
 
 using namespace ErrorMsg;
 
-// TODO reactivley create directories
+// TODO consider copying over the timestamp so we dont depend on a string not
+// within the FSController class
 class FSController : public Controller {
 private:
   SdFat m_sd;
@@ -23,9 +24,10 @@ private:
 
   const char *m_DATA;
   const char *m_DIAG;
+  char *m_curDir;
 
   // TODO add error count diagnostic info
-  float m_spaceMB;    // diagnostic
+  float m_spaceMB;  // diagnostic
   uint16_t m_cycle; // diagnostic
   void m_cycles();
   void m_SDspace();
