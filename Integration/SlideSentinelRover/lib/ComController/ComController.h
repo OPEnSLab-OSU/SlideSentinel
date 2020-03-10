@@ -1,10 +1,11 @@
 #ifndef _COMCONTROLLER_H_
 #define _COMCONTROLLER_H_
 
+// TODO implement an exponential backoff scheme by checking the channel status
 #define MAX_DATA_LEN 1000
-#define REQ "REQ"
-#define UPL "UPL"
-#define RES "RES"
+#define REQ 1
+#define UPL 2
+#define RES 3
 
 #include <Arduino.h>
 #include "Controller.h"
@@ -24,15 +25,9 @@ private:
   Freewave &m_radio;
   MAX3243 &m_max3243;
   SN74LVC2G53 &m_mux;
-  // HardwareSerial &m_serial;
-  // RH_Serial m_driver;
-  // RHReliableDatagram m_manager;
-  // uint32_t m_baud;
-  // uint8_t m_clientId;
-  // uint8_t m_serverId;
-  // uint16_t m_timeout;      // state
-  // uint8_t m_retries;       // state
+
   uint16_t m_dropped_pkts; // diagnostic
+  uint8_t m_threshold;     // state
   char m_buf[MAX_DATA_LEN];
 
   bool m_send(char msg[]);

@@ -1,6 +1,7 @@
 #include "IMUController.h"
 #include "Console.h"
 
+// Consult the datasheet for MMA8451 to change these values
 #define CTRL_REG3 0b11000000
 #define CTRL_REG4 0b00100001
 #define CTRL_REG5 0b00100000
@@ -10,9 +11,12 @@
 uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
-IMUController::IMUController(uint8_t pin, uint8_t sensitivity) : Controller("IMU"), m_sensitivity(sensitivity) { m_pin = pin; }
+IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
+    : m_sensitivity(sensitivity) {
+  m_pin = pin;
+}
 
-// TODO continuous interrupts occuring interrupts, timestamping interrupts and
+// TODO continuously occuring interrupts, timestamping interrupts and
 // increase logging interval reactively
 void IMUController::IMU_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
@@ -39,7 +43,6 @@ bool IMUController::init() {
   return true;
 }
 
-// NOTE testing function
 bool IMUController::getWakeStatus() {
   if (!m_getFlag())
     return false;
@@ -57,11 +60,10 @@ void IMUController::m_setSensitivity(uint8_t sensitivity) {
 }
 
 void IMUController::status(SSModel &model) {
-  // model.statusIMU(m_sensitivity, getWakeStatus());
   model.setSensitivity(m_sensitivity);
   model.setIMUflag(getWakeStatus());
 }
-  
+
 void IMUController::update(SSModel &model) {
   if (model.valid(model.sensitivity()))
     m_setSensitivity(model.sensitivity());

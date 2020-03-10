@@ -7,9 +7,9 @@
 #include <SPI.h>
 #include <wiring_private.h>
 
-#define REQ "REQ"
-#define UPL "UPL"
-#define RES "RES"
+#define REQ 1
+#define UPL 2
+#define RES 3
 
 // RADIO INTERFACE
 #define RST 5
@@ -153,7 +153,7 @@ void loop() {
                                            // THINK ABOUT THIS STUFF
       Serial.print("data received");
       Serial.println(packet);
-      char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,3,4,10,200000]}";
+      char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,3,4,10,200000,3]}";
       if (!interface.sendPacket(RES, test))
         Serial.println("FAILED to respond");
     }

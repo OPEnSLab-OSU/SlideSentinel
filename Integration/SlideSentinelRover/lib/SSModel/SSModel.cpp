@@ -1,8 +1,14 @@
 #include "SSModel.h"
 #include "Console.h"
 
+// TODO configure threshold as a state variable, determines the quality of RTK
+// fizes that are suitable for upload
+// TODO Error build out error logging so we know what state we are in when
+// errors occur
+// TODO create classes for handling Diagnostic, State and Postional Data
+// These classes will compose the model
 // FIXME Error count is wonky
-SSModel::SSModel(int rover_id) : m_id(rover_id), m_err_count(0) { clear(); }
+SSModel::SSModel() : m_err_count(0) { clear(); }
 
 // This data transfer protocol will ensure that -1 are received for invalid
 // This function does not perform error handling, however a deserialization
@@ -16,7 +22,8 @@ void SSModel::handleRes(char *buf) {
   m_stateData[SLEEP_TIME] = json[SS_STATE][SLEEP_TIME];
   m_stateData[SENSITIVITY] = json[SS_STATE][SENSITIVITY];
   m_stateData[LOG_FREQ] = json[SS_STATE][LOG_FREQ];
-  console.debug("\n**** CONFIG RECEIVED ****\n");
+  m_stateData[THRESHOLD] = json[SS_STATE][THRESHOLD];
+  console.debug("\n\n**** CONFIG RECEIVED ****\n");
   console.debug("Timeout: ");
   console.debug(m_stateData[TIMEOUT]);
   console.debug("\nRetries: ");
@@ -29,30 +36,9 @@ void SSModel::handleRes(char *buf) {
   console.debug(m_stateData[SENSITIVITY]);
   console.debug("\nLog Frequency: ");
   console.debug(m_stateData[LOG_FREQ]);
-  console.debug("\n*************************\n");
-}
-
-char *SSModel::toReq() {
-  StaticJsonDocument<MAX_DATA_LEN> doc;
-  m_addId(doc);
-  m_addHeader(doc, REQ);
-  m_addDiag(doc);
-  if (!m_serializePkt(doc))
-    setError(SER_ERR);
-  return m_buffer;
-}
-
-char *SSModel::toUpl() {
-  StaticJsonDocument<MAX_DATA_LEN> doc;
-  m_addId(doc);
-  m_addHeader(doc, UPL);
-  m_addDiag(doc);
-  // only add data if we have an RTK fix
-  if (m_mode >= 4)
-    m_addData(doc);
-  if (!m_serializePkt(doc))
-    setError(SER_ERR);
-  return m_buffer;
+  console.debug("\nThreshold: ");
+  console.debug(m_stateData[THRESHOLD]);
+  console.debug("\n*************************\n\n");
 }
 
 char *SSModel::toDiag() {
@@ -71,9 +57,11 @@ char *SSModel::toState() {
   return m_buffer;
 }
 
-char *SSModel::toData() {
+// TODO test the outcome when we get a value lower than threshold
+char *SSModel::toData(int threshold) {
   StaticJsonDocument<MAX_DATA_LEN> doc;
-  m_addData(doc);
+  if (m_mode >= threshold)
+    m_addData(doc);
   if (!m_serializePkt(doc))
     setError(SER_ERR);
   return m_buffer;
@@ -110,38 +98,32 @@ void SSModel::m_addState(JsonDocument &doc) {
 
 void SSModel::m_addData(JsonDocument &doc) {
   JsonArray data = doc.createNestedArray(SS_DATA);
-  // data.add(m_mode);
-  // data.add(m_gps_time.wn);
-  // data.add(m_gps_time.tow);
-  // data.add(m_pos_llh.lat);
-  // data.add(m_pos_llh.lon);
-  // data.add(m_pos_llh.height);
-  // data.add(m_pos_llh.n_sats);
-  // data.add(m_baseline_ned.n);
-  // data.add(m_baseline_ned.e);
-  // data.add(m_baseline_ned.d);
-  // data.add(m_vel_ned.n);
-  // data.add(m_vel_ned.e);
-  // data.add(m_vel_ned.d);
-  // data.add(m_dops.gdop);
-  // data.add(m_dops.hdop);
-  // data.add(m_dops.pdop);
-  // data.add(m_dops.tdop);
-  // data.add(m_dops.vdop);
+  data.add(m_mode);
+  data.add(m_gps_time.wn);
+  data.add(m_gps_time.tow);
+  data.add(m_pos_llh.lat);
+  data.add(m_pos_llh.lon);
+  data.add(m_pos_llh.height);
+  data.add(m_pos_llh.n_sats);
+  data.add(m_baseline_ned.n);
+  data.add(m_baseline_ned.e);
+  data.add(m_baseline_ned.d);
+  data.add(m_vel_ned.n);
+  data.add(m_vel_ned.e);
+  data.add(m_vel_ned.d);
+  data.add(m_dops.gdop);
+  data.add(m_dops.hdop);
+  data.add(m_dops.pdop);
+  data.add(m_dops.tdop);
+  data.add(m_dops.vdop);
 
-  data.add(11232123);
-  data.add("hello how are you my name is kamron Ebrahimi");
-  data.add("I am a student at oregon State university studying both Electrical engineering and computer science");
-  data.add("I will be moving to Seattle in the summer ot start my career working at Oracle Cloud Infrastructure");
-  data.add("I am very excited for this change");
-
+  // data.add(11232123);
+  // data.add("hello how are you my name is kamron Ebrahimi");
+  // data.add("I am a student at oregon State university studying both
+  // Electrical engineering and computer science"); data.add("I will be moving
+  // to Seattle in the summer ot start my career working at Oracle Cloud
+  // Infrastructure"); data.add("I am very excited for this change");
 }
-
-void SSModel::m_addHeader(JsonDocument &doc, const char *type) {
-  doc[TYPE] = type;
-}
-
-void SSModel::m_addId(JsonDocument &doc) { doc[ROVER_ID] = m_id; }
 
 void SSModel::m_clear() { memset(m_buffer, '\0', sizeof(char) * MAX_DATA_LEN); }
 
@@ -157,6 +139,7 @@ int SSModel::wakeTime() { return m_stateData[WAKE_TIME]; }
 int SSModel::sleepTime() { return m_stateData[SLEEP_TIME]; }
 int SSModel::logFreq() { return m_stateData[LOG_FREQ]; }
 int SSModel::sensitivity() { return m_stateData[SENSITIVITY]; }
+int SSModel::threshold() { return m_stateData[THRESHOLD]; }
 
 // GNSSController
 void SSModel::setPos_llh(msg_pos_llh_t pos_llh) { m_pos_llh = pos_llh; }
@@ -182,6 +165,9 @@ void SSModel::setSleepTime(uint16_t sleepTime) {
 // COMController
 void SSModel::setTimeout(uint16_t timeout) { m_stateData[TIMEOUT] = timeout; }
 void SSModel::setRetries(uint8_t retries) { m_stateData[RETRIES] = retries; }
+void SSModel::setThreshold(uint8_t threshold) {
+  m_stateData[THRESHOLD] = threshold;
+}
 void SSModel::setDropped_pkts(uint16_t dropped_pkts) {
   m_dropped_pkts = dropped_pkts;
 }

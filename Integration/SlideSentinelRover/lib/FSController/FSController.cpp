@@ -2,8 +2,8 @@
 #include "Console.h"
 
 FSController::FSController(uint8_t cs, uint8_t rst)
-    : Controller("FS"), m_cs(cs), m_rst(rst), m_DATA("data.json"),
-      m_DIAG("diag.json"), m_cycle(0) {}
+    : m_cs(cs), m_rst(rst), m_DATA("data.json"), m_DIAG("diag.json"),
+      m_cycle(0) {}
 
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
@@ -65,11 +65,11 @@ bool FSController::m_setFile(const char *file) {
 bool FSController::m_write(char *msg) { return m_file.println(msg); }
 
 bool FSController::m_logMsg(const char *msg, const char *file) {
-  console.debug("\n\n");
-  console.debug(file);
-  console.debug("\n\n");
+  console.debug("Writing \"");
   console.debug(msg);
-  console.debug("\n\n");
+  console.debug("\" to file ");
+  console.debug(file);
+  console.debug("\n");
   if (!(m_setFile(file) && m_write((char *)msg))) {
     m_file.close();
     return false;

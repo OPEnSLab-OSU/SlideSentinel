@@ -9,8 +9,8 @@ SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
       m_timeout(timeout), m_retries(retries), m_base(isBase),
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
-bool SSInterface::sendPacket(const char *type, char *packet) {
-  // FIXME Flush the serial port
+bool SSInterface::sendPacket(const int type, char *packet) {
+  m_serial.flush();
   _setOutFrag(packet);
   _header(type);
 
@@ -18,7 +18,7 @@ bool SSInterface::sendPacket(const char *type, char *packet) {
     return false;
 
   for (int i = 0; i < m_outFrag; i++) {
-    _clearBuffer(); // not sure I need this
+    _clearBuffer();
     memcpy(m_buf, packet + (i * m_blen), m_blen);
     if (!_send())
       return false;
@@ -27,6 +27,7 @@ bool SSInterface::sendPacket(const char *type, char *packet) {
 }
 
 bool SSInterface::receivePacket(char *buffer) {
+  m_serial.flush();
   if (!_receive())
     return false;
   _readHeader(m_buf);
@@ -39,21 +40,25 @@ bool SSInterface::receivePacket(char *buffer) {
 }
 
 bool SSInterface::_receive() {
+  _clearBuffer();
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
   uint8_t from;
-  _clearBuffer();
   if (m_manager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_timeout, &from))
     return true;
   return false;
 }
 
-// TODO set the ID of the node we received from and the type!!
-int SSInterface::_readHeader(char *buf) {
+// TODO also check if the key exists in the document even though it should
+bool SSInterface::_readHeader(char *buf) {
   StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
   auto error = deserializeJson(doc, buf);
   if (error)
     return false;
   m_inFrag = doc[FRAGMENT_NUM];
+  m_type = doc[TYPE];
+  if (m_base)
+    m_clientId = doc[ROVER_ID];
+  return true;
 }
 
 void SSInterface::init() {
@@ -61,11 +66,9 @@ void SSInterface::init() {
   m_manager.init();
 }
 
-char *SSInterface::_getBuf() { return m_buf; }
-
 bool SSInterface::_send() {
   uint8_t size = strlen(m_buf);
-  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_serverId)) 
+  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_clientId))
     return true;
   return false;
 }
@@ -74,7 +77,7 @@ void SSInterface::_clearBuffer() {
   memset(m_buf, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
 }
 
-void SSInterface::_header(const char *type) {
+void SSInterface::_header(const int type) {
   StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
   if (!m_base)
     _addId(doc);
@@ -84,7 +87,7 @@ void SSInterface::_header(const char *type) {
   _serializePkt(doc);
 }
 
-void SSInterface::_addType(JsonDocument &doc, const char *type) {
+void SSInterface::_addType(JsonDocument &doc, const int type) {
   doc[TYPE] = type;
 }
 
@@ -114,8 +117,7 @@ void SSInterface::setRetries(uint16_t retries) {
   m_manager.setRetries(m_retries);
 }
 
-void SSInterface::setClient(uint8_t addr) { m_clientId = addr; }
-void SSInterface::setServer(uint8_t addr) { m_serverId = addr; }
 int SSInterface::getTimeout() { return m_timeout; }
 int SSInterface::getRetries() { return m_retries; }
+int SSInterface::getType() { return m_type; }
 bool SSInterface::available() { return m_manager.available(); }

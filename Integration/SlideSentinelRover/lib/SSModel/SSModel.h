@@ -4,15 +4,9 @@
 #define MAX_DATA_LEN 1000
 
 // JSON constants
-#define ROVER_ID "ID"        // rover ID
-#define TYPE "TYPE"          // message type (REQ, UPL, LOG, DAT)
 #define SS_STATE "STATE"     // State
 #define SS_DIAGNOSTIC "DIAG" // Diagnostics
 #define SS_DATA "DATA"       // Data
-
-// Header types
-#define REQ "REQ"
-#define UPL "UPL"
 
 // /******** Diagnostics ********/
 // #define IMU_FLAG 0
@@ -23,7 +17,7 @@
 // #define ERR_COUNT 5
 
 /******** State ********/
-#define NUM_STATE 6
+#define NUM_STATE 7
 #define INVALID_STATE -1
 #define TIMEOUT 0
 #define RETRIES 1
@@ -31,6 +25,7 @@
 #define SLEEP_TIME 3
 #define SENSITIVITY 4
 #define LOG_FREQ 5
+#define THRESHOLD 6
 
 // /******** Data ********/
 // #define FIX_MODE 0
@@ -58,13 +53,10 @@
 #include "SwiftPiksi.h"
 #include "constants.hpp"
 
-// NOTE Have an enum type, which changes
-
 using namespace ErrorMsg;
 
 class SSModel {
 private:
-  uint8_t m_id; // globals
 
   int m_stateData[NUM_STATE]; // state
 
@@ -96,7 +88,7 @@ private:
   bool m_serializePkt(JsonDocument &doc);
 
 public:
-  SSModel(int rover_id);
+  SSModel();
 
   // checks if STATE data is valid
   bool valid(int val);
@@ -108,18 +100,7 @@ public:
   int sleepTime();
   int logFreq();
   int sensitivity();
-
-  // void statusGNSS(msg_pos_llh_t pos_llh, msg_baseline_ned_t baseline_ned,
-  //                 msg_vel_ned_t m_vel_ned, msg_dops_t m_dops,
-  //                 msg_gps_time_t m_gps_time, uint8_t m_mode,
-  //                 uint32_t m_logFreq);
-  
-  // void statusRTC(uint16_t wakeTime, uint16_t sleepTime);
-  // void statusCOM(uint16_t timeout, uint8_t retries, uint16_t dropped_pkts);
-  // void statusIMU(uint8_t sensitivity, bool imu_flag);
-  // void statusPM(float bat);
-  // void statusFS(uint32_t space, uint16_t cycles);
-  // void statusERR(const char *err);
+  int threshold();
 
   // GNSSController
   void setPos_llh(msg_pos_llh_t pos_llh);
@@ -138,6 +119,7 @@ public:
   void setTimeout(uint16_t timeout);
   void setRetries(uint8_t retries);
   void setDropped_pkts(uint16_t dropped_pkts);
+  void setThreshold(uint8_t threshold);
 
   // IMUController
   void setSensitivity(uint8_t sensitivity);
@@ -157,11 +139,9 @@ public:
   void handleRes(char *buf);
 
   // creates a char[] of data relevant to the sorted packet type
-  char *toReq();
-  char *toUpl();
   char *toDiag();
   char *toState();
-  char *toData();
+  char *toData(int threshold);
   char *toError();
 
   void print();

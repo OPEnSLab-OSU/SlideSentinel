@@ -1,7 +1,5 @@
 #ifndef _GNSSCONTROLLER_H_
 #define _GNSSCONTROLLER_H_
-#define MAX_POS_STR 200
-#define MAX_POS_FIELD 30
 #define FIX_MODE_MASK 0b00000111
 #define FIX_MODE_CLR 0b11111000
 
@@ -44,6 +42,7 @@ public:
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);
+  void flush();
 };
 
 #endif // _GNSSCONTROLLER_H_

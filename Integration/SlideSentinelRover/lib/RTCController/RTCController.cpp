@@ -4,8 +4,9 @@
 uint8_t RTCController::m_pin;
 volatile bool RTCController::m_flag = false;
 
-RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime, uint16_t sleepTime)
-    : Controller("RTC"), m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime) {
+RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
+                             uint16_t sleepTime)
+    : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -56,6 +57,7 @@ void RTCController::m_setAlarm(int time) {
   m_RTC.alarmInterrupt(1, true);
   attachInterrupt(digitalPinToInterrupt(m_pin), RTC_ISR, FALLING);
 
+  console.debug("Setting alarm for ");
   console.debug(hr);
   console.debug(":");
   console.debug(min);

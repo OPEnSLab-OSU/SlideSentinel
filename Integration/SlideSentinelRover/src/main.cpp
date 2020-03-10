@@ -19,12 +19,16 @@
 #include <SPI.h>
 #include <Wire.h>
 
+// TODO send Tallysman an email about antenna
+// TODO libraries from Eagle in the github updated
+// TODO find out what components we need for two new units
 // TODO use a supported RTC library for DS3231
+
 /****** Test Routine ******/
 #define ADVANCED2 true
 
 /****** Model ******/
-SSModel model(CLIENT_ADDR);
+SSModel model;
 ConManager manager;
 
 /****** FSController Init ******/
@@ -328,7 +332,7 @@ void advancedTest2() {
     rtcController.setPollAlarm();
     while (1) {
       if (gnssController->poll(model))
-        fsController.logData(model.toData());
+        fsController.logData(model.toData(0));
       if (rtcController.alarmDone())
         break;
     }
@@ -371,11 +375,11 @@ void advancedTest2() {
     delay(2000);
     Serial.println("Creating Request packet");
     manager.status(model);
-    Serial.println(model.toReq());
+    Serial.println(model.toDiag());
     comController->request(model);
     delay(2000);
     Serial.println("Creating Upload Packet");
-    Serial.println(model.toUpl());
+    Serial.println(model.toData(3));
     comController->upload(model);
     model.clear();
     Serial.println("Handling response");
@@ -485,7 +489,7 @@ void loop() { advancedTest2(); }
 //     case POLL:
 //       // check for data from the GNSS receiver
 //       if (gnssController->poll(model))
-//         fsController.logData(model.toData());
+//         fsController.logData(model.toData(0));
 
 //       // check ifs the alarm is triggered
 //       if (rtcController.alarmDone())
@@ -511,6 +515,8 @@ void loop() { advancedTest2(); }
 //       break;
 
 //     case SLEEP:
+//       // flush pending GNSS data
+//       gnssController->flush();
 //       // disable the radio
 //       pmController.disableRadio();
 

@@ -1,10 +1,6 @@
 #include "GNSSController.h"
 #include "Console.h"
 
-char rj[MAX_POS_FIELD];
-char str[MAX_POS_STR];
-int str_i;
-
 /*
  * State of the SBP message parser.
  * Must be statically allocated.
@@ -144,15 +140,13 @@ u8 fifo_full(void) {
 // GNSSController method definitions
 GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
                                uint8_t rx, uint8_t tx, int logFreq)
-    : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx),
-      m_logFreq(logFreq),
+    : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<Week>,<Seconds>,<RTK "
                "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
                "North>,<Baselie East>,"
                "<Baseline Down>,<Velocity North>,<Velocity East>,<Velocity "
                "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {}
 
-// initialize the serial port
 bool GNSSController::init() {
   m_serial.begin(m_baud);
   pinPeripheral(m_tx, PIO_SERCOM);
@@ -196,7 +190,7 @@ void GNSSController::m_GNSSread() {
     fifo_write(m_serial.read());
 }
 
-// TODO terminates polling process if a reliable RTK fix occurs prior to the
+// TODO preemptively terminate the polling cycle if RTK is reached early
 void GNSSController::m_isFixed(uint8_t &flag) { flag = 1; }
 
 bool GNSSController::m_compare() {
@@ -204,11 +198,11 @@ bool GNSSController::m_compare() {
   if (m_mode > m_getMode())
     return false;
 
-  // check the gdop
+  // check the gdop X,Y,Z 3D accuracy
   if (m_dops.gdop > dops.gdop)
     return false;
 
-  // check the hdop
+  // check the hdop, X,Y 2D accuracy
   if (m_dops.hdop > dops.hdop)
     return false;
 
@@ -269,12 +263,9 @@ uint8_t GNSSController::poll(SSModel &model) {
            if (m_compare()) m_setBest();
 
            // update internal varibales of SSModel
-           model.setPos_llh(m_pos_llh); 
-           model.setBaseline_ned(m_baseline_ned);
-           model.setMsg_vel_ned_t(m_vel_ned); 
-           model.setMsg_dops_t(m_dops);
-           model.setMsg_gps_time_t(m_gps_time); 
-           model.setMode(m_mode);
+           model.setPos_llh(m_pos_llh); model.setBaseline_ned(m_baseline_ned);
+           model.setMsg_vel_ned_t(m_vel_ned); model.setMsg_dops_t(m_dops);
+           model.setMsg_gps_time_t(m_gps_time); model.setMode(m_mode);
            model.setLogFreq(m_logFreq);
 
            // check if we acheived an RTK fix, reset internal variables
@@ -322,6 +313,15 @@ void GNSSController::update(SSModel &model) {
   if (model.valid(model.logFreq()))
     m_setLogFreq(model.logFreq());
 }
+
+void GNSSController::flush() { m_serial.flush(); }
+
+// #define MAX_POS_STR 200
+// #define MAX_POS_FIELD 30
+
+// char rj[MAX_POS_FIELD];
+// char str[MAX_POS_STR];
+// int str_i;
 
 // doc["type"] = m_HEADER;
 // JsonArray data = doc.createNestedArray("data");
