@@ -266,7 +266,7 @@ uint8_t GNSSController::poll(SSModel &model) {
            model.setPos_llh(m_pos_llh); model.setBaseline_ned(m_baseline_ned);
            model.setMsg_vel_ned_t(m_vel_ned); model.setMsg_dops_t(m_dops);
            model.setMsg_gps_time_t(m_gps_time); model.setMode(m_mode);
-           model.setLogFreq(m_logFreq);
+           model.setProp(LOG_FREQ, m_logFreq);
 
            // check if we acheived an RTK fix, reset internal variables
            m_isFixed(datFlag); m_reset(););
@@ -306,12 +306,12 @@ void GNSSController::status(SSModel &model) {
   model.setMsg_dops_t(m_dops);
   model.setMsg_gps_time_t(m_gps_time);
   model.setMode(m_mode);
-  model.setLogFreq(m_logFreq);
+  model.setProp(LOG_FREQ, m_logFreq);
 }
 
 void GNSSController::update(SSModel &model) {
-  if (model.valid(model.logFreq()))
-    m_setLogFreq(model.logFreq());
+  if (model.validProp(LOG_FREQ))
+    m_setLogFreq(model.getProp(LOG_FREQ));
 }
 
 void GNSSController::flush() { m_serial.flush(); }

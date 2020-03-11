@@ -93,13 +93,13 @@ void RTCController::m_setSleepTime(uint16_t sleepTime) {
 }
 
 void RTCController::status(SSModel &model) {
-  model.setWakeTime(m_wakeTime);
-  model.setSleepTime(m_sleepTime);
+  model.setProp(WAKE_TIME, m_wakeTime);
+  model.setProp(SLEEP_TIME, m_sleepTime);
 }
 
 void RTCController::update(SSModel &model) {
-  if (model.valid(model.wakeTime()))
-    m_setWakeTime(model.wakeTime());
-  if (model.valid(model.sleepTime()))
-    m_setSleepTime(model.sleepTime());
+  if (model.validProp(WAKE_TIME))
+    m_setWakeTime(model.getProp(WAKE_TIME));
+  if (model.validProp(SLEEP_TIME))
+    m_setSleepTime(model.getProp(SLEEP_TIME));
 }

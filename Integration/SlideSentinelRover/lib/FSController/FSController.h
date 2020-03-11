@@ -1,18 +1,15 @@
 #ifndef _FSCONTROLLER_H_
 #define _FSCONTROLLER_H_
 
+#include <Arduino.h>
+#include <string.h>
+#include "Controller.h"
+#include "SdFat.h"
+
 #define MAIN "data"
 #define SD_SIZE 16 // GB
 
-#include "Controller.h"
-#include "SdFat.h"
-#include <Arduino.h>
-#include <constants.hpp>
-#include <string.h>
-
-using namespace ErrorMsg;
-
-// TODO consider copying over the timestamp so we dont depend on a string not
+// TODO consider deep copying over the timestamp so we dont depend on a string not
 // within the FSController class
 class FSController : public Controller {
 private:

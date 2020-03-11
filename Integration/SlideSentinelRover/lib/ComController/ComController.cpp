@@ -7,7 +7,7 @@ COMController::COMController(Freewave &radio, MAX3243 &max3243,
                              uint16_t timeout, uint8_t retries)
     : m_interface(serial, baud, clientId, serverId, timeout, retries, false),
       m_radio(radio), m_max3243(max3243), m_mux(mux), m_dropped_pkts(0),
-      m_threshold(0) {}
+      m_threshold(4) {}
 
 bool COMController::init() {
   m_interface.init();
@@ -57,7 +57,7 @@ bool COMController::upload(SSModel &model) {
   m_mux.comY1();
 
   if (!m_interface.sendPacket(UPL, model.toData(m_threshold))) {
-    console.debug("Failed to upload packet.\n");
+    console.debug("\nFailed to upload packet.\n");
     m_droppedPkt();
     model.setError(ACK_ERR);
     return false;
@@ -66,7 +66,7 @@ bool COMController::upload(SSModel &model) {
   if (m_radio.getZ9C())
     m_max3243.disable();
 
-  console.debug("Succesfully uploaded");
+  console.debug("\nSuccesfully uploaded\n");
   return true;
 }
 
@@ -85,15 +85,15 @@ void COMController::m_setRetries(uint16_t retries) {
 void COMController::m_droppedPkt() { m_dropped_pkts++; }
 
 void COMController::status(SSModel &model) {
-  model.setTimeout(m_interface.getTimeout());
-  model.setRetries(m_interface.getRetries());
+  model.setProp(TIMEOUT, m_interface.getTimeout());
+  model.setProp(RETRIES, m_interface.getRetries());
+  model.setProp(THRESHOLD, m_threshold);
   model.setDropped_pkts(m_dropped_pkts);
-  model.setThreshold(m_threshold);
 }
 
 void COMController::update(SSModel &model) {
-  if (model.valid(model.timeout()))
-    m_setTimeout(model.timeout());
-  if (model.valid(model.retries()))
-    m_setTimeout(model.retries());
+  if (model.validProp(TIMEOUT))
+    m_setTimeout(model.getProp(TIMEOUT));
+  if (model.validProp(RETRIES))
+    m_setRetries(model.getProp(RETRIES));
 }

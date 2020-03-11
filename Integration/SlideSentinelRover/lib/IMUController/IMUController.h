@@ -11,6 +11,7 @@ private:
   static uint8_t m_pin;
   static volatile bool m_flag;
   uint8_t m_sensitivity; // state
+  
   bool m_getFlag();
   void m_setFlag();
   void m_setSensitivity(uint8_t sensitivity);

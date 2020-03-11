@@ -24,9 +24,9 @@
 // TODO find out what components we need for two new units
 // TODO use a supported RTC library for DS3231
 // TODO clearing the wake flag if it triggers
-
-/****** Test Routine ******/
-#define ADVANCED2 true
+// TODO implement exponential backoff scheme by checking CD pin on Freewave
+// TODO implement global configs, RAIL GNSS RECEIVER AND RADIO ARE ON, THE TYPE
+// OF RADIO!
 
 /****** Model ******/
 SSModel model;
@@ -68,7 +68,7 @@ void setup() {
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
-  // Place instatiation here, Serial1 is not in the same compilation unit as
+  // Place instatiation here, Serial1 is not in the same compilation unit
   static COMController _comController(radio, max3243, mux, Serial1, RADIO_BAUD,
                                       CLIENT_ADDR, SERVER_ADDR, INIT_TIMEOUT,
                                       INIT_RETRIES);
@@ -84,7 +84,6 @@ void setup() {
   manager.add(&pmController);
   manager.add(&rtcController);
   manager.init();
-  pmController.enableRadio();
 }
 
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
@@ -119,7 +118,7 @@ void loop() {
 
       // log system status
       fsController.logDiag(model.toDiag());
-      fsController.logDiag(model.toState());
+      fsController.logDiag(model.toProp());
 
       // make a request
       if (!comController->request(model)) {
@@ -138,6 +137,13 @@ void loop() {
       // enable the GNSS receiver
       pmController.enableGNSS();
 
+      // collect system status
+      manager.status(model);
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+
       // set the poll alarm
       rtcController.setPollAlarm();
 
@@ -151,7 +157,7 @@ void loop() {
         fsController.logData(model.toData(0));
 
       // check ifs the alarm is triggered
-      if (rtcController.alarmDone()){
+      if (rtcController.alarmDone()) {
         Serial.println("Transitioning to UPLOAD...");
         state = UPLOAD;
       }
@@ -167,7 +173,8 @@ void loop() {
 
       // log system status
       fsController.logDiag(model.toDiag());
-      fsController.logDiag(model.toState());
+      fsController.logDiag(model.toProp());
+      model.print();
 
       // make an upload
       if (!comController->upload(model))
@@ -194,200 +201,3 @@ void loop() {
     }
   }
 }
-
-// void loop() { advancedTest2(); }
-
-// void advancedTest2() {
-//   char cmd = '\0';
-//   int count = 0;
-//   char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,3,4,10,200000]}";
-
-//   if (Serial.available())
-//     cmd = Serial.read();
-
-//   switch (cmd) {
-//   case '1': // PMController
-//     Serial.println("\n\nTesting PMCOntroller");
-//     delay(2000);
-//     Serial.println("Toggling GNSS");
-//     pmController.enableGNSS();
-//     delay(2000);
-//     pmController.disableGNSS();
-//     Serial.println("Toggling RADIO");
-//     pmController.enableRadio();
-//     delay(2000);
-//     pmController.disableRadio();
-//     Serial.print("Battery Voltage: ");
-//     Serial.println(pmController.readBatStr());
-//     delay(2000);
-//     Serial.print("Sleeping Tap Device to wake.....:\n");
-//     pmController.sleep();
-//     // ...
-//     delay(2000);
-//     Serial.println("Awake from sleep!");
-//     delay(2000);
-//     Serial.println("Collecting Status");
-//     pmController.status(model);
-//     delay(2000);
-//     model.print();
-//     model.clear();
-//     break;
-
-//   case '2':
-//     Serial.println("\n\nTesting IMUCOntroller");
-//     delay(2000);
-//     Serial.print("Collecting Status");
-//     imuController.status(model);
-//     model.print();
-//     model.clear();
-//     break;
-
-//   case '3':
-//     Serial.println("\n\nTesting RTCCOntroller");
-//     delay(2000);
-//     Serial.print("Timestamp: ");
-//     Serial.println(rtcController.getTimestamp());
-//     Serial.println("Setting 1 min wake alarm");
-//     // internal testing method
-//     count = 0;
-//     rtcController.setWakeAlarm();
-//     while (1) {
-//       delay(1000);
-//       Serial.print(count);
-//       Serial.println(" seconds");
-//       count++;
-//       if (rtcController.alarmDone())
-//         break;
-//     }
-//     Serial.println("Wake alarm triggered!");
-//     delay(2000);
-//     Serial.println("Setting 1 min poll alarm");
-//     count = 0;
-//     rtcController.setPollAlarm();
-//     while (1) {
-//       delay(1000);
-//       Serial.print(count);
-//       Serial.println(" seconds");
-//       count++;
-//       if (rtcController.alarmDone())
-//         break;
-//     }
-//     Serial.println("Poll alarm triggered!");
-//     delay(2000);
-//     Serial.print("Collecting Status");
-//     rtcController.status(model);
-//     model.print();
-//     model.clear();
-//     break;
-
-//     // TODO update routine so we can dynamically change props and test
-//     // log frequency not effecting logging rate?
-//     // model not getting updated
-//   case '4':
-//     Serial.println("\n\nTesting GNSSController");
-//     delay(2000);
-//     Serial.println("Polling for data");
-//     pmController.enableGNSS();
-//     rtcController.setPollAlarm();
-//     while (1) {
-//       if (gnssController->poll(model))
-//         model.print();
-//       if (rtcController.alarmDone())
-//         break;
-//     }
-//     pmController.disableGNSS();
-//     gnssController->status(model);
-//     model.print();
-//     model.clear();
-//     break;
-
-//   case '5':
-//     Serial.println("\n\nTesting FSController");
-//     delay(2000);
-//     Serial.print("Creating new timestampped directory: ");
-//     delay(2000);
-//     Serial.println(rtcController.getTimestamp());
-//     if (fsController.setupWakeCycle(rtcController.getTimestamp(),
-//                                     gnssController->getFormat()))
-//       Serial.println("Timestampped directory created!");
-//     else {
-//       Serial.println("Throwing write error");
-//       model.setError(WRITE_ERR);
-//       Serial.println(model.toError());
-//       fsController.logDiag(model.toError());
-//     }
-//     delay(2000);
-//     Serial.println("Simulated Wake...");
-//     pmController.enableGNSS();
-//     rtcController.setPollAlarm();
-//     while (1) {
-//       if (gnssController->poll(model))
-//         fsController.logData(model.toData(0));
-//       if (rtcController.alarmDone())
-//         break;
-//     }
-//     pmController.disableGNSS();
-//     Serial.println("Wake Cycle complete!");
-//     delay(2000);
-//     if (fsController.setupWakeCycle(rtcController.getTimestamp(),
-//                                     gnssController->getFormat()))
-//       Serial.println("Timestampped directory created!");
-//     else {
-//       Serial.println("Throwing write error");
-//       model.setError(WRITE_ERR);
-//       Serial.println(model.toError());
-//       fsController.logDiag(model.toError());
-//     }
-//     delay(2000);
-//     Serial.println("Throwing random error");
-//     delay(2000);
-//     model.setError(ACK_ERR);
-//     Serial.println(model.toError());
-//     fsController.logDiag(model.toError());
-//     Serial.println("Get state of device");
-//     delay(2000);
-//     manager.status(model);
-//     Serial.println("Status of machine: ");
-//     model.print();
-//     delay(2000);
-//     Serial.println("Created diagnostic and state packet:");
-//     Serial.println(model.toDiag());
-//     Serial.println(model.toState());
-//     Serial.println("Writing data to SD...");
-//     delay(2000);
-//     fsController.logDiag(model.toDiag());
-//     fsController.logDiag(model.toState());
-//     Serial.println("Complete");
-//     break;
-
-//   case '6':
-//     Serial.println("\n\nTesting COMController");
-//     delay(2000);
-//     Serial.println("Creating Request packet");
-//     manager.status(model);
-//     Serial.println(model.toDiag());
-//     comController->request(model);
-//     delay(2000);
-//     Serial.println("Creating Upload Packet");
-//     Serial.println(model.toData(3));
-//     comController->upload(model);
-//     model.clear();
-//     Serial.println("Handling response");
-//     delay(2000);
-//     model.handleRes(test);
-//     Serial.println("Collecting status");
-//     delay(2000);
-//     comController->status(model);
-//     model.print();
-//     model.clear();
-//     break;
-
-//   case '7':
-//     Serial.println("\n\nTesting COMController");
-//     Serial.println("Creating Request packet");
-//     manager.status(model);
-//     Serial.println(model.toDiag());
-//     comController->request(model);
-//     break;
-//   }
-// }

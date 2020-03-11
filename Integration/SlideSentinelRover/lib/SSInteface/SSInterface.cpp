@@ -30,7 +30,9 @@ bool SSInterface::receivePacket(char *buffer) {
   m_serial.flush();
   if (!_receive())
     return false;
+
   _readHeader(m_buf);
+  
   for (int i = 0; i < m_inFrag; i++) {
     if (!_receive())
       return false;

@@ -2,10 +2,10 @@
 #define _RTCCONTROLLER_H_
 #define MAX_TIMESTAMP_LEN 15
 
-#include "Controller.h"
-#include "RTClibExtended.h"
 #include <Arduino.h>
 #include <Wire.h>
+#include "Controller.h"
+#include "RTClibExtended.h"
 
 class RTCController : public Controller {
 private:

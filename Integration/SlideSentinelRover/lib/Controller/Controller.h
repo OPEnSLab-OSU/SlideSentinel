@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 #include "SSModel.h"
+#include "constants.hpp"
+
+using namespace errorMsg;
 
 class Controller {
 public:

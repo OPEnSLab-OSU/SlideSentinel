@@ -1,8 +1,6 @@
 #ifndef _COMCONTROLLER_H_
 #define _COMCONTROLLER_H_
 
-// TODO implement an exponential backoff scheme by checking the channel status
-#define MAX_DATA_LEN 1000
 #define REQ 1
 #define UPL 2
 #define RES 3
@@ -16,8 +14,6 @@
 #include "RH_Serial.h"
 #include "SN74LVC2G53.h"
 #include "SSInterface.h"
-
-using namespace ErrorMsg;
 
 class COMController : public Controller {
 private:

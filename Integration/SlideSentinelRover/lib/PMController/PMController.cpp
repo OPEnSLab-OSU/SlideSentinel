@@ -47,12 +47,12 @@ void PMController::enableRadio() {
 
   // delay for radio to initialize
   console.debug("Initializing radio...\n");
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 20; i++) {
     console.debug(i);
-    console.debug("\n");
+    console.debug(" ");
     delay(1000);
   }
-  console.debug("Radio on\n");
+  console.debug("\nRadio on\n");
 }
 
 void PMController::disableRadio() {

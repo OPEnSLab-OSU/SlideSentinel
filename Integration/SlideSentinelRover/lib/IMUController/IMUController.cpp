@@ -60,11 +60,11 @@ void IMUController::m_setSensitivity(uint8_t sensitivity) {
 }
 
 void IMUController::status(SSModel &model) {
-  model.setSensitivity(m_sensitivity);
+  model.setProp(SENSITIVITY, m_sensitivity);
   model.setIMUflag(getWakeStatus());
 }
 
 void IMUController::update(SSModel &model) {
-  if (model.valid(model.sensitivity()))
-    m_setSensitivity(model.sensitivity());
+  if (model.validProp(SENSITIVITY))
+    m_setSensitivity(model.getProp(SENSITIVITY));
 }
