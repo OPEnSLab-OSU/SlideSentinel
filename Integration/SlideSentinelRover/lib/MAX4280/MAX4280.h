@@ -8,8 +8,8 @@
 
 class MAX4280 {
 private:
-  uint8_t m_clear;
   uint8_t m_cs;
+  uint8_t m_clear;
   SPIClass *m_spi;
 
 public:

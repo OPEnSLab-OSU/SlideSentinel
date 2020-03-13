@@ -2,18 +2,17 @@
 #define _CONTROLLER_H_
 
 #include <Arduino.h>
-#include "ArduinoJson.h"
+#include "SSModel.h"
+#include "constants.hpp"
 
-class Controller
-{
-    public: 
-        Controller(const char* header);
-        virtual bool init() = 0;
-        virtual void update(JsonDocument &doc) = 0;
-        virtual void status(uint8_t verbosity, JsonDocument &doc) = 0; 
+using namespace errorMsg;
 
-    protected:
-        const char* m_HEADER;  
+class Controller {
+public:
+  Controller();
+  virtual bool init() = 0;
+  virtual void status(SSModel &model) = 0;
+  virtual void update(SSModel &model) = 0;
 };
 
 #endif // _CONTROLLER_H_

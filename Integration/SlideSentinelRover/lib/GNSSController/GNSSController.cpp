@@ -1,8 +1,5 @@
 #include "GNSSController.h"
-
-char rj[MAX_POS_FIELD];
-char str[MAX_POS_STR];
-int str_i;
+#include "Console.h"
 
 /*
  * State of the SBP message parser.
@@ -141,24 +138,21 @@ u8 fifo_full(void) {
 }
 
 // GNSSController method definitions
-GNSSController::GNSSController(HardwareSerial *serial, uint32_t baud,
-                               uint8_t rx, uint8_t tx)
-    : Controller("GNSS"), m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx),
-      m_logFreq(100000),
+GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
+                               uint8_t rx, uint8_t tx, int logFreq)
+    : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<Week>,<Seconds>,<RTK "
                "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
                "North>,<Baselie East>,"
                "<Baseline Down>,<Velocity North>,<Velocity East>,<Velocity "
-               "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {
-  init();
-  sbp_setup();
-}
+               "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {}
 
-// initialize the serial port
 bool GNSSController::init() {
-  m_serial->begin(m_baud);
+  m_serial.begin(m_baud);
   pinPeripheral(m_tx, PIO_SERCOM);
   pinPeripheral(m_rx, PIO_SERCOM);
+  sbp_setup();
+  console.debug("GNSSController initialized.\n");
   return true;
 }
 
@@ -192,11 +186,11 @@ void GNSSController::m_getModeStr(msg_pos_llh_t pos_llh, char rj[]) {
 uint8_t GNSSController::m_getMode() { return pos_llh.flags & FIX_MODE_MASK; }
 
 void GNSSController::m_GNSSread() {
-  if (m_serial->available())
-    fifo_write(m_serial->read());
+  if (m_serial.available())
+    fifo_write(m_serial.read());
 }
 
-// TODO terminates polling process if a reliable RTK fix occurs prior to the
+// TODO preemptively terminate the polling cycle if RTK is reached early
 void GNSSController::m_isFixed(uint8_t &flag) { flag = 1; }
 
 bool GNSSController::m_compare() {
@@ -204,11 +198,11 @@ bool GNSSController::m_compare() {
   if (m_mode > m_getMode())
     return false;
 
-  // check the gdop
+  // check the gdop X,Y,Z 3D accuracy
   if (m_dops.gdop > dops.gdop)
     return false;
 
-  // check the hdop
+  // check the hdop, X,Y 2D accuracy
   if (m_dops.hdop > dops.hdop)
     return false;
 
@@ -256,7 +250,7 @@ void GNSSController::m_setBest() {
  * 1 - data collected
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
-uint8_t GNSSController::poll(JsonDocument &doc) {
+uint8_t GNSSController::poll(SSModel &model) {
   m_GNSSread();
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
@@ -268,38 +262,11 @@ uint8_t GNSSController::poll(JsonDocument &doc) {
            // check if the current reading is better than the running best
            if (m_compare()) m_setBest();
 
-           // create data packet for writing to SD
-           memset(str, '\0', sizeof(char) * MAX_POS_STR);
-           memset(rj, '\0', sizeof(char) * MAX_POS_FIELD); str_i = 0;
-           doc["ID"] = m_HEADER;
-           str_i += sprintf(str + str_i, "%6d,", (int)gps_time.wn);
-           sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3);
-           str_i += sprintf(str + str_i, "%9s,", rj); m_getModeStr(pos_llh, rj);
-           str_i += sprintf(str + str_i, "%17s,", rj);
-           sprintf(rj, "%4.10lf", pos_llh.lat);
-           str_i += sprintf(str + str_i, "%17s,", rj);
-           sprintf(rj, "%4.10lf", pos_llh.lon);
-           str_i += sprintf(str + str_i, "%17s,", rj);
-           sprintf(rj, "%4.10lf", pos_llh.height);
-           str_i += sprintf(str + str_i, "%17s,", rj);
-
-           str_i += sprintf(str + str_i, "%04d,", pos_llh.n_sats);
-           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.n);
-           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.e);
-           str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.d);
-           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.n);
-           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.e);
-           str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.d);
-           sprintf(rj, "%4.2f", ((float)dops.gdop / 100));
-           str_i += sprintf(str + str_i, "%7s,", rj);
-           sprintf(rj, "%4.2f", ((float)dops.hdop / 100));
-           str_i += sprintf(str + str_i, "%7s,", rj);
-           sprintf(rj, "%4.2f", ((float)dops.pdop / 100));
-           str_i += sprintf(str + str_i, "%7s,", rj);
-           sprintf(rj, "%4.2f", ((float)dops.tdop / 100));
-           str_i += sprintf(str + str_i, "%7s,", rj);
-           sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
-           str_i += sprintf(str + str_i, "%7s", rj); doc["MSG"] = str;
+           // update internal varibales of SSModel
+           model.setPos_llh(m_pos_llh); model.setBaseline_ned(m_baseline_ned);
+           model.setMsg_vel_ned_t(m_vel_ned); model.setMsg_dops_t(m_dops);
+           model.setMsg_gps_time_t(m_gps_time); model.setMode(m_mode);
+           model.setProp(LOG_FREQ, m_logFreq);
 
            // check if we acheived an RTK fix, reset internal variables
            m_isFixed(datFlag); m_reset(););
@@ -330,10 +297,31 @@ void GNSSController::m_reset() {
 
 char *GNSSController::getFormat() { return (char *)m_FORMAT; }
 
-void GNSSController::update(JsonDocument &doc) {}
+void GNSSController::m_setLogFreq(int logFreq) { m_logFreq = logFreq; }
 
-// TODO This will be where we log the best reading for the wake cycle
-void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}
+void GNSSController::status(SSModel &model) {
+  model.setPos_llh(m_pos_llh);
+  model.setBaseline_ned(m_baseline_ned);
+  model.setMsg_vel_ned_t(m_vel_ned);
+  model.setMsg_dops_t(m_dops);
+  model.setMsg_gps_time_t(m_gps_time);
+  model.setMode(m_mode);
+  model.setProp(LOG_FREQ, m_logFreq);
+}
+
+void GNSSController::update(SSModel &model) {
+  if (model.validProp(LOG_FREQ))
+    m_setLogFreq(model.getProp(LOG_FREQ));
+}
+
+void GNSSController::flush() { m_serial.flush(); }
+
+// #define MAX_POS_STR 200
+// #define MAX_POS_FIELD 30
+
+// char rj[MAX_POS_FIELD];
+// char str[MAX_POS_STR];
+// int str_i;
 
 // doc["type"] = m_HEADER;
 // JsonArray data = doc.createNestedArray("data");
@@ -420,3 +408,38 @@ void GNSSController::status(uint8_t verbosity, JsonDocument &doc) {}
 // sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
 // str_i += sprintf(str + str_i, "\tVDOP\t\t: %7s\n", rj);
 // str_i += sprintf(str + str_i, "\n"); terminal.println(str);
+
+//  // create data packet for writing to SD
+//  memset(str, '\0', sizeof(char) * MAX_POS_STR);
+//  memset(rj, '\0', sizeof(char) * MAX_POS_FIELD);
+//  str_i = 0;
+//  doc["ID"] = m_HEADER;
+//  str_i += sprintf(str + str_i, "%6d,", (int)gps_time.wn);
+//  sprintf(rj, "%6.2f", ((float)gps_time.tow) / 1e3);
+//  str_i += sprintf(str + str_i, "%9s,", rj);
+//  m_getModeStr(pos_llh, rj);
+//  str_i += sprintf(str + str_i, "%17s,", rj);
+//  sprintf(rj, "%4.10lf", pos_llh.lat);
+//  str_i += sprintf(str + str_i, "%17s,", rj);
+//  sprintf(rj, "%4.10lf", pos_llh.lon);
+//  str_i += sprintf(str + str_i, "%17s,", rj);
+//  sprintf(rj, "%4.10lf", pos_llh.height);
+//  str_i += sprintf(str + str_i, "%17s,", rj);
+//  str_i += sprintf(str + str_i, "%04d,", pos_llh.n_sats);
+//  str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.n);
+//  str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.e);
+//  str_i += sprintf(str + str_i, "%6d,", (int)baseline_ned.d);
+//  str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.n);
+//  str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.e);
+//  str_i += sprintf(str + str_i, "%6d,", (int)vel_ned.d);
+//  sprintf(rj, "%4.2f", ((float)dops.gdop / 100));
+//  str_i += sprintf(str + str_i, "%7s,", rj);
+//  sprintf(rj, "%4.2f", ((float)dops.hdop / 100));
+//  str_i += sprintf(str + str_i, "%7s,", rj);
+//  sprintf(rj, "%4.2f", ((float)dops.pdop / 100));
+//  str_i += sprintf(str + str_i, "%7s,", rj);
+//  sprintf(rj, "%4.2f", ((float)dops.tdop / 100));
+//  str_i += sprintf(str + str_i, "%7s,", rj);
+//  sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
+//  str_i += sprintf(str + str_i, "%7s", rj);
+//  doc["MSG"] = str;

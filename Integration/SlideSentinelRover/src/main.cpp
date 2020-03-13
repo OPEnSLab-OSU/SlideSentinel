@@ -1,5 +1,6 @@
 #include "Battery.h"
-#include "ComController.h"
+#include "COMController.h"
+#include "ConManager.h"
 #include "Controller.h"
 #include "FSController.h"
 #include "FreewaveRadio.h"
@@ -11,24 +12,25 @@
 #include "RTCController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
+#include "SSModel.h"
 #include "VoltageReg.h"
+#include "config_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include "config_2.0.0.h"
 
-// TODO move state variables to centralized class State, inject the state into
-// all controllers for dynamic behavior changes.
-// TODO JSON compression object, we can use the object to compress verbose json
-// identifiers and decompress them
-// TODO centrailze "MSG" headers and reference this in all all files for ensured
-// consistency
-/****** Test Routine ******/
-#define ADVANCED true
+// TODO send Tallysman an email about antenna
+// TODO libraries from Eagle in the github updated
+// TODO find out what components we need for two new units
+// TODO use a supported RTC library for DS3231
+// TODO clearing the wake flag if it triggers
+// TODO implement exponential backoff scheme by checking CD pin on Freewave
+// TODO implement global configs, RAIL GNSS RECEIVER AND RADIO ARE ON, THE TYPE
+// OF RADIO!
 
-
-/****** Mail ******/
-StaticJsonDocument<1000> doc;
+/****** Model ******/
+SSModel model;
+ConManager manager;
 
 /****** FSController Init ******/
 FSController fsController(SD_CS, SD_RST);
@@ -37,17 +39,16 @@ FSController fsController(SD_CS, SD_RST);
 Freewave radio(RST, CD, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 MAX3243 max3243(FORCEOFF_N);
-ComController *comController;
+COMController *comController;
 
 /****** PMController Init ******/
-PoluluVoltageReg vcc2(VCC2_EN); // TODO rename this class to the id of the
-                                // voltage regulator from the manufacturer
+PoluluVoltageReg vcc2(VCC2_EN);
 MAX4280 max4280(MAX_CS, &SPI);
 Battery batReader(BAT);
-PMController pmController(&max4280, &vcc2, &batReader, false, true);
+PMController pmController(max4280, vcc2, batReader, false, true);
 
 /****** IMUController Init ******/
-IMUController imuController(ACCEL_INT, 0x1F);
+IMUController imuController(ACCEL_INT, INIT_SENSITIVITY);
 
 /****** GNSSController Init ******/
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -56,155 +57,7 @@ GNSSController *gnssController;
 
 /****** RTCController Init ******/
 RTC_DS3231 RTC_DS;
-RTCController rtcController(&RTC_DS, RTC_INT, INITIAL_WAKETIME,
-                            INITIAL_SLEEPTIME);
-
-bool pollFlag = false;
-void advancedTest() {
-  char cmd;
-  char test[] = "{\"sensor\":\"gps\",\"time\":1351824120}";
-
-  char fileName[30];
-  memset(fileName, '\0', sizeof(char) * 30);
-
-  if (Serial.available()) {
-    cmd = Serial.read();
-    switch (cmd) {
-    case '1':
-      pmController.enableGNSS();
-      break;
-    case '2':
-      pmController.disableGNSS();
-      break;
-    case '3':
-      pmController.enableRadio();
-      break;
-    case '4':
-      pmController.disableRadio();
-      break;
-    case '5':
-      Serial1.println(
-          "TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST "
-          "TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST "
-          "TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST "
-          "TEST TEST TEST TEST TEST TEST TEST TEST TEST");
-      Serial.println("Writing data out...");
-      break;
-    case '6':
-      Serial.println("RADIO -----> FEATHER M0 (A0 LOW)");
-      mux.comY1();
-      break;
-    case '7':
-      Serial.println("RADIO -----> GNSS RECEIVER (A0 HIGH)");
-      mux.comY2();
-      break;
-    case '8':
-      Serial.println("RS232 ---> OFF (Driving it LOW)");
-      max3243.disable();
-      break;
-    case '9':
-      Serial.println("RS232 ---> ON (Driving it HIGH)");
-      max3243.enable();
-      break;
-    case 'q':
-      Serial.println("Resetting the radio, DRIVING RST LOW");
-      comController->resetRadio();
-      break;
-    case 'w':
-      Serial.print("STATE of CD pin: ");
-      if (comController->channelBusy())
-        Serial.println("BUSY");
-      else
-        Serial.println("NOT BUSY");
-      break;
-    case 'e':
-      Serial.print("Printing timestamp: ");
-      Serial.println(rtcController.getTimestamp());
-      break;
-    case 't':
-      Serial.println("Sleeping");
-      pmController.disableGNSS();
-      pmController.disableRadio();
-      pmController.sleep();
-
-      Serial.begin(115200);
-      pmController.enableGNSS();
-      delay(2000);
-      pmController.disableGNSS();
-      Serial.println("Awake");
-      break;
-    case 'y':
-      Serial.print("reading battery voltage: ");
-      Serial.println(pmController.readBat());
-      break;
-    case 'u':
-      Serial.print("reading battery voltage string: ");
-      Serial.println(pmController.readBatStr());
-      break;
-    case 'i':
-      Serial.println("Turning off VCC2");
-      vcc2.disable();
-      break;
-    case 'o':
-      Serial.println("Turning on VCC2");
-      vcc2.enable();
-      break;
-    case 'p':
-      char buffer[RH_SERIAL_MAX_MESSAGE_LEN];
-      memset(buffer, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
-      Serial.println("Turning BASE station ON");
-      comController->request(doc);
-      serializeJson(doc, buffer);
-      Serial.print("Config Received:    ");
-      Serial.println(buffer);
-      pmController.enableGNSS();
-      delay(500);
-      break;
-
-    case 's':
-      Serial.println("Creating new directory");
-      Serial.println(rtcController.getTimestamp());
-      fsController.setupWakeCycle(rtcController.getTimestamp(), gnssController->getFormat());
-      break;
-
-    case 'd':
-      Serial.println("Attempting to send with no connection");
-      comController->request(doc);
-      serializeJsonPretty(doc, Serial);
-      fsController.log(doc);
-      break;
-
-    case 'a':
-      Serial.println("Turning BASE station OFF");
-      deserializeJson(doc, test);
-      comController->upload(doc);
-      pmController.disableGNSS();
-      delay(500);
-      break;
-    case 'f':
-      if (!pollFlag) {
-        Serial.println("Polling...");
-        pollFlag = true;
-      } else {
-        Serial.println("Done Polling...");
-        pollFlag = false; 
-      }
-      break;
-    case 'g':
-      Serial.println("Setting poll alarm for: ");
-      rtcController.setPollAlarm();
-      break;
-    case 'h':
-      Serial.println("Setting wake alarm for: ");
-      rtcController.setWakeAlarm();
-      break;
-    }
-  }
-
-  if (Serial1.available()) {
-    Serial.print(Serial1.read());
-  }
-}
+RTCController rtcController(RTC_DS, RTC_INT, INIT_WAKETIME, INIT_SLEEPTIME);
 
 void setup() {
   Serial.begin(115200);
@@ -215,52 +68,136 @@ void setup() {
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
-  // Place instatiation here, Serial1 is not in the same compilation unit as
-  static ComController _comController(&radio, &max3243, &mux, &Serial1,
-                                      RADIO_BAUD, CLIENT_ADDR, SERVER_ADDR);
+  // Place instatiation here, Serial1 is not in the same compilation unit
+  static COMController _comController(radio, max3243, mux, Serial1, RADIO_BAUD,
+                                      CLIENT_ADDR, SERVER_ADDR, INIT_TIMEOUT,
+                                      INIT_RETRIES);
   comController = &_comController;
-
-  // TODO Serial2 initialization occurs after instantiation, we do not need to
-  // make this static like the ComController
-  static GNSSController _gnssController(&Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX);
+  static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
+                                        INIT_LOG_FREQ);
   gnssController = &_gnssController;
 
-  // Init IMUController
-  if (imuController.init())
-    Serial.println("initialized IMUCONTROLLER");
-  // // RTC INIT
-  if (rtcController.init())
-    Serial.println("initialized RTCCONTROLLER");
-
-  if (fsController.init())
-    Serial.println("initialized FSCONTROLLER");
-
-  // must be done after first call to attac1hInterrupt()
-  if (pmController.init())
-    Serial.println("initialized PMCONTROLLER");
+  manager.add(&_comController);
+  manager.add(&_gnssController);
+  manager.add(&fsController);
+  manager.add(&imuController);
+  manager.add(&pmController);
+  manager.add(&rtcController);
+  manager.init();
 }
 
+enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
+
 void loop() {
+  State state = WAKE;
 
   while (1) {
+    switch (state) {
 
-    if (ADVANCED)
-      advancedTest();
+    case WAKE:
+      Serial.println("Checking if channel is busy...");
+      // check if radio link is already busy
+      if (comController->channelBusy()) {
+        state = SLEEP;
+        break;
+      }
 
-    if (pollFlag && gnssController->poll(doc)) {
-      serializeJsonPretty(doc, Serial);
-      // TODO only log if we have valid data, in case data stays in the buffer
-      // at sleep?
-      fsController.log(doc);
+      // create new directory for the wake cycle
+      fsController.setupWakeCycle(rtcController.getTimestamp(),
+                                  gnssController->getFormat());
+
+      // enable the radio
+      pmController.enableRadio();
+      Serial.println("Transitioning to HANDSHAKE...");
+      state = HANDSHAKE;
+      break;
+
+    case HANDSHAKE:
+      // collect system status
+      manager.status(model);
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+
+      // make a request
+      if (!comController->request(model)) {
+        fsController.logDiag(model.toError());
+        state = SLEEP;
+        break;
+      }
+      Serial.println("Transitioning to UPDATE...");
+      state = UPDATE;
+      break;
+
+    case UPDATE:
+      // update the systems properties
+      manager.update(model);
+
+      // enable the GNSS receiver
+      pmController.enableGNSS();
+
+      // collect system status
+      manager.status(model);
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+
+      // set the poll alarm
+      rtcController.setPollAlarm();
+
+      Serial.println("Transitioning to POLL...");
+      state = POLL;
+      break;
+
+    case POLL:
+      // check for data from the GNSS receiver
+      if (gnssController->poll(model))
+        fsController.logData(model.toData(0));
+
+      // check ifs the alarm is triggered
+      if (rtcController.alarmDone()) {
+        Serial.println("Transitioning to UPLOAD...");
+        state = UPLOAD;
+      }
+      break;
+
+    case UPLOAD:
+
+      // disable the GNSS receiver
+      pmController.disableGNSS();
+
+      // collect the systems status
+      manager.status(model);
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+      model.print();
+
+      // make an upload
+      if (!comController->upload(model))
+        fsController.logDiag(model.toError());
+      Serial.println("Transitioning to SLEEP...");
+      state = SLEEP;
+      break;
+
+    case SLEEP:
+      // flush pending GNSS data
+      gnssController->flush();
+
+      // disable the radio
+      pmController.disableRadio();
+
+      // set the wake alarm
+      rtcController.setWakeAlarm();
+
+      // enter low power mode
+      pmController.sleep();
+      Serial.println("Transitioning to WAKE...");
+      state = WAKE;
+      break;
     }
-
-    if (imuController.getWakeStatus(doc)) {
-      serializeJsonPretty(doc, Serial);
-      Serial.println("IMU ALARM");
-      doc.clear();
-    }
-
-    if(rtcController.alarmDone())
-      Serial.println("RTC ALARM");
   }
 }

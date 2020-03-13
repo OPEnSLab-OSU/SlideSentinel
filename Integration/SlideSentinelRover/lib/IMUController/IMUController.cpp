@@ -1,5 +1,7 @@
 #include "IMUController.h"
+#include "Console.h"
 
+// Consult the datasheet for MMA8451 to change these values
 #define CTRL_REG3 0b11000000
 #define CTRL_REG4 0b00100001
 #define CTRL_REG5 0b00100000
@@ -10,13 +12,16 @@ uint8_t IMUController::m_pin;
 volatile bool IMUController::m_flag = false;
 
 IMUController::IMUController(uint8_t pin, uint8_t sensitivity)
-    : Controller("IMU"), m_sensitivity(sensitivity), IMU_WAKE("IMU_WAKE") {
+    : m_sensitivity(sensitivity) {
   m_pin = pin;
 }
 
+// TODO continuously occuring interrupts, timestamping interrupts and
+// increase logging interval reactively
 void IMUController::IMU_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
   m_flag = true;
+  console.debug("IMU WAKE\n");
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
 }
 
@@ -34,13 +39,13 @@ bool IMUController::init() {
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_CT, REG_TRANS_CT);
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
+  console.debug("IMUController initialized.\n");
   return true;
 }
 
-bool IMUController::getWakeStatus(JsonDocument &doc) {
+bool IMUController::getWakeStatus() {
   if (!m_getFlag())
     return false;
-  doc["MSG"] = IMU_WAKE;
   m_setFlag();
   return true;
 }
@@ -49,6 +54,17 @@ bool IMUController::m_getFlag() { return m_flag; }
 
 void IMUController::m_setFlag() { m_flag = false; }
 
-void IMUController::update(JsonDocument &doc) {}
+void IMUController::m_setSensitivity(uint8_t sensitivity) {
+  m_sensitivity = sensitivity;
+  m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
+}
 
-void IMUController::status(uint8_t verbosity, JsonDocument &doc) {}
+void IMUController::status(SSModel &model) {
+  model.setProp(SENSITIVITY, m_sensitivity);
+  model.setIMUflag(getWakeStatus());
+}
+
+void IMUController::update(SSModel &model) {
+  if (model.validProp(SENSITIVITY))
+    m_setSensitivity(model.getProp(SENSITIVITY));
+}

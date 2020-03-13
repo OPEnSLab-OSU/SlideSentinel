@@ -1,9 +1,7 @@
 #include "MAX4280.h"
 
-MAX4280::MAX4280(uint8_t cs, SPIClass *spi) {
-  m_cs = cs;
-  m_clear = 0x00;
-  m_spi = spi;
+MAX4280::MAX4280(uint8_t cs, SPIClass *spi)
+    : m_cs(cs), m_clear(0x00), m_spi(spi) {
   pinMode(m_cs, OUTPUT);
 }
 
