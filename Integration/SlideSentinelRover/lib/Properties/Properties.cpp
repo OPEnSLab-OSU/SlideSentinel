@@ -1,25 +1,25 @@
-#include "PropHandler.h"
+#include "Properties.h"
 #include "Console.h"
 
-PropHandler::PropHandler() {}
+Properties::Properties() {}
 
 // checks if the value is valid
-bool PropHandler::valid(int prop) {
+bool Properties::valid(int prop) {
   if (get(prop) >= 0)
     return true;
   return false;
 }
 
-int PropHandler::get(int prop) { return m_prop[prop]; }
+int Properties::get(int prop) { return m_prop[prop]; }
 
-void PropHandler::set(int prop, int val) { m_prop[prop] = val; }
+void Properties::set(int prop, int val) { m_prop[prop] = val; }
 
-void PropHandler::clear() {
+void Properties::clear() {
   for (int i = 0; i < NUM_PROP; i++)
     m_prop[i] = INVALID_PROP;
 }
 
-void PropHandler::m_writeProp(JsonDocument &doc) {
+void Properties::write(JsonDocument &doc) {
   JsonArray data = doc.createNestedArray(SS_PROP);
   data.add(get(TIMEOUT));
   data.add(get(RETRIES));
@@ -30,7 +30,7 @@ void PropHandler::m_writeProp(JsonDocument &doc) {
   data.add(get(THRESHOLD));
 }
 
-void PropHandler::m_readProp(char *buf) {
+void Properties::read(char *buf) {
   StaticJsonDocument<MAX_PROP_LEN> json;
   auto err = deserializeJson(json, buf);
   if (err) {

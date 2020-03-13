@@ -1,5 +1,5 @@
-#ifndef _PROPHANDLER_H_
-#define _PROPHANDLER_H_
+#ifndef _PROPERTIES_H_
+#define _PROPERTIES_H_
 
 #include <Arduino.h>
 #include "ArduinoJson.h"
@@ -16,19 +16,18 @@
 #define LOG_FREQ 5
 #define THRESHOLD 6
 
-class PropHandler {
+class Properties {
 private:
   int m_prop[NUM_PROP];
-  void m_clear();
 
 public:
-  PropHandler();
-  void m_writeProp(JsonDocument &doc);
-  void m_readProp(char* buf);
+  Properties();
+  void write(JsonDocument &doc);
+  void read(char* buf);
   bool valid(int prop);
   int get(int prop);
   void set(int prop, int val);
   void clear();
 };
 
-#endif // _PROPHANDLER_H_
+#endif // _PROPERTIES_H_

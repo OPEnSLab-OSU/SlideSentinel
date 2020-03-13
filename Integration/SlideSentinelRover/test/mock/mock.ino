@@ -439,3 +439,67 @@ void setup_sd() {
 //     break;
 //   }
 // }
+
+
+
+// /******** Diagnostics ********/
+// #define IMU_FLAG 0
+// #define BAT 1
+// #define SPACE 2
+// #define CYCLES 3
+// #define DROPPED_PKTS 4
+// #define ERR_COUNT 5
+
+// /******** Data ********/
+// #define FIX_MODE 0
+// #define GPS_TIME_WN 1
+// #define GPS_TIME_TOW 2
+// #define POS_LLH_LAT 3
+// #define POS_LLH_LON 4
+// #define POS_LLH_HEIGHT 5
+// #define POS_LLH_N_SATS 6
+// #define BASELINE_N 7
+// #define BASELINE_E 8
+// #define BASELINE_D 9
+// #define VEL_N 10
+// #define VEL_E 11
+// #define VEL_D 12
+// #define DOPS_GDOP 13
+// #define DOPS_HDOP 14
+// #define DOPS_PDOP 15
+// #define DOPS_TDOP 16
+// #define DOPS_VDOP 17
+
+// void SSModel::clear() {
+//   // clear state
+//   m_propHandler.clear();
+
+//   // clear diagnostic
+//   m_imu_flag = false;
+//   m_bat = 0;
+//   m_space = 0;
+//   m_cycles = 0;
+//   m_dropped_pkts = 0;
+//   m_err_count = 0;
+
+//   // clear data
+//   m_mode = 0;
+//   m_gps_time.wn = 0;
+//   m_gps_time.tow = 0;
+//   m_pos_llh.flags = 0;
+//   m_pos_llh.lat = 0;
+//   m_pos_llh.lon = 0;
+//   m_pos_llh.height = 0;
+//   m_pos_llh.n_sats = 0;
+//   m_baseline_ned.n = 0;
+//   m_baseline_ned.e = 0;
+//   m_baseline_ned.d = 0;
+//   m_vel_ned.n = 0;
+//   m_vel_ned.e = 0;
+//   m_vel_ned.d = 0;
+//   m_dops.gdop = 0;
+//   m_dops.hdop = 0;
+//   m_dops.pdop = 0;
+//   m_dops.tdop = 0;
+//   m_dops.vdop = 0;
+// }

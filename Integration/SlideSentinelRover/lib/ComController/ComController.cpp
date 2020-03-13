@@ -88,7 +88,7 @@ void COMController::status(SSModel &model) {
   model.setProp(TIMEOUT, m_interface.getTimeout());
   model.setProp(RETRIES, m_interface.getRetries());
   model.setProp(THRESHOLD, m_threshold);
-  model.setDropped_pkts(m_dropped_pkts);
+  model.setDroppedPkts(m_dropped_pkts);
 }
 
 void COMController::update(SSModel &model) {

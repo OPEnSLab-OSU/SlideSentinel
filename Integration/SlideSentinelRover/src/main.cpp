@@ -1,3 +1,6 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <Wire.h>
 #include "Battery.h"
 #include "COMController.h"
 #include "ConManager.h"
@@ -15,13 +18,9 @@
 #include "SSModel.h"
 #include "VoltageReg.h"
 #include "config_2.0.0.h"
-#include <Arduino.h>
-#include <SPI.h>
-#include <Wire.h>
 
 // TODO send Tallysman an email about antenna
 // TODO libraries from Eagle in the github updated
-// TODO find out what components we need for two new units
 // TODO use a supported RTC library for DS3231
 // TODO clearing the wake flag if it triggers
 // TODO implement exponential backoff scheme by checking CD pin on Freewave

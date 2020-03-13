@@ -22,7 +22,7 @@ private:
   MAX3243 &m_max3243;
   SN74LVC2G53 &m_mux;
 
-  uint16_t m_dropped_pkts; // diagnostic
+  int m_dropped_pkts; // diagnostic
   uint8_t m_threshold;     // state
   char m_buf[MAX_DATA_LEN];
 

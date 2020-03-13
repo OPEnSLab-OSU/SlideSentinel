@@ -4,15 +4,14 @@
 // TODO build out error logging so we know what state we are in when
 // errors occur
 // TODO error handle on rover so configurable state data is only ever changed if
-// parameterized properly
-// FIXME Error count is wonky
-SSModel::SSModel() : m_err_count(0) { clear(); }
+// constrained value wise properly
+SSModel::SSModel() { clear(); }
 
-void SSModel::handleRes(char *buf) { m_propHandler.m_readProp(buf); }
+void SSModel::handleRes(char *buf) { m_props.read(buf); }
 
 char *SSModel::toDiag() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
-  m_addDiag(doc);
+  m_diag.write(doc);
   if (!m_serializePkt(doc))
     setError(SER_ERR);
   return m_buffer;
@@ -20,13 +19,12 @@ char *SSModel::toDiag() {
 
 char *SSModel::toProp() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
-  m_propHandler.m_writeProp(doc);
+  m_props.write(doc);
   if (!m_serializePkt(doc))
     setError(SER_ERR);
   return m_buffer;
 }
 
-// TODO test the outcome when we get a value lower than threshold
 char *SSModel::toData(int threshold) {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   if (m_mode >= threshold)
@@ -44,15 +42,6 @@ bool SSModel::m_serializePkt(JsonDocument &doc) {
   if (error)
     return false;
   return true;
-}
-
-void SSModel::m_addDiag(JsonDocument &doc) {
-  JsonArray data = doc.createNestedArray(SS_DIAGNOSTIC);
-  data.add(m_imu_flag);
-  data.add(m_bat);
-  data.add(m_space);
-  data.add(m_cycles);
-  data.add(m_dropped_pkts);
 }
 
 void SSModel::m_addData(JsonDocument &doc) {
@@ -79,9 +68,9 @@ void SSModel::m_addData(JsonDocument &doc) {
 
 void SSModel::m_clear() { memset(m_buffer, '\0', sizeof(char) * MAX_DATA_LEN); }
 
-int SSModel::getProp(int prop) { return m_propHandler.get(prop); }
-void SSModel::setProp(int prop, int val) { m_propHandler.set(prop, val); }
-bool SSModel::validProp(int prop) { return m_propHandler.valid(prop); }
+int SSModel::getProp(int prop) { return m_props.get(prop); }
+void SSModel::setProp(int prop, int val) { m_props.set(prop, val); }
+bool SSModel::validProp(int prop) { return m_props.valid(prop); }
 
 void SSModel::setPos_llh(msg_pos_llh_t pos_llh) { m_pos_llh = pos_llh; }
 void SSModel::setBaseline_ned(msg_baseline_ned_t baseline_ned) {
@@ -93,16 +82,17 @@ void SSModel::setMsg_gps_time_t(msg_gps_time_t gps_time) {
   m_gps_time = gps_time;
 }
 void SSModel::setMode(uint8_t mode) { m_mode = mode; }
-void SSModel::setDropped_pkts(uint16_t dropped_pkts) {
-  m_dropped_pkts = dropped_pkts;
+
+void SSModel::setDroppedPkts(uint16_t dropped_pkts) {
+  m_diag.setDroppedPkts(dropped_pkts);
 }
-void SSModel::setIMUflag(bool imu_flag) { m_imu_flag = imu_flag; }
-void SSModel::setBat(float bat) { m_bat = bat; }
-void SSModel::setSpace(uint32_t space) { m_space = space; }
-void SSModel::setCycles(uint16_t cycles) { m_cycles = cycles; }
+void SSModel::setIMUflag(bool imu_flag) { m_diag.setFlag(imu_flag); }
+void SSModel::setBat(float bat) { m_diag.setBat(bat); }
+void SSModel::setSpace(uint32_t space) { m_diag.setSpace(space); }
+void SSModel::setCycles(uint16_t cycles) { m_diag.setCycles(cycles); }
 
 void SSModel::setError(const char *err) {
-  m_err_count++;
+  m_diag.setErrCount(m_diag.errCount() + 1);
   m_err = (char *)err;
 }
 
@@ -123,20 +113,20 @@ void SSModel::print() {
 
   console.debug("\n\n------- DIAGNOSTIC -------\n");
   console.debug("\nIMU Flag: ");
-  if (m_imu_flag)
+  if (m_diag.imu())
     console.debug("TRUE");
   else
     console.debug("FALSE");
   console.debug("\nBattery: ");
-  console.debug(m_bat);
+  console.debug(m_diag.bat());
   console.debug("\nSD Card Space: ");
-  console.debug(m_space);
+  console.debug(m_diag.space());
   console.debug("\nCycles: ");
-  console.debug(m_cycles);
+  console.debug(m_diag.cycles());
   console.debug("\nDropped Packets: ");
-  console.debug(m_dropped_pkts);
+  console.debug(m_diag.droppedPkts());
   console.debug("\nError Count: ");
-  console.debug(m_err_count);
+  console.debug(m_diag.errCount());
 
   console.debug("\n\n------- DATA -------\n");
   console.debug("\nGPS time week: ");
@@ -180,15 +170,10 @@ void SSModel::print() {
 
 void SSModel::clear() {
   // clear state
-  m_propHandler.clear();
+  m_props.clear();
 
-  // clear diagnostic
-  m_imu_flag = false;
-  m_bat = 0;
-  m_space = 0;
-  m_cycles = 0;
-  m_dropped_pkts = 0;
-  m_err_count = 0;
+  // clear diagnostics
+  m_diag.clear();
 
   // clear data
   m_mode = 0;
