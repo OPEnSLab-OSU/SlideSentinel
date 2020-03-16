@@ -62,7 +62,7 @@ RTCController rtcController(RTC_DS, RTC_INT, INIT_WAKETIME, INIT_SLEEPTIME);
 void setup() {
   Serial.begin(115200);
   while (!Serial)
-    ;
+    yield();
 
   // SPI INIT
   SPI.begin();

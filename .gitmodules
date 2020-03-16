@@ -1,0 +1,9 @@
+[submodule "Integration/SlideSentinelRover/lib/ArduinoJson"]
+	path = Integration/SlideSentinelRover/lib/ArduinoJson
+	url = https://github.com/bblanchon/ArduinoJson.git
+[submodule "Integration/SlideSentinelRover/lib/Adafruit_MMA8451"]
+	path = Integration/SlideSentinelRover/lib/Adafruit_MMA8451
+	url = https://github.com/adafruit/Adafruit_MMA8451_Library.git
+[submodule "Integration/SlideSentinelRover/lib/TinyFSM"]
+	path = Integration/SlideSentinelRover/lib/TinyFSM
+	url = https://github.com/digint/tinyfsm.git
