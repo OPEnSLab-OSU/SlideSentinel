@@ -14,7 +14,10 @@ void tearDown() {
 void process() {
     UNITY_BEGIN();
     // Register your tests here
-    // RUN_TEST(test_dosomething);
+    RUN_TEST(TestInitial);
+    RUN_TEST(TestReset);
+    RUN_TEST(TestToggle);
+    RUN_TEST(TestInvalid);
     UNITY_END();
 }
 

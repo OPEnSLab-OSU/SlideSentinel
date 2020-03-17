@@ -14,6 +14,9 @@
         "utility": "cpp",
         "fstream": "cpp",
         "iosfwd": "cpp",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "iostream": "cpp",
+        "memory": "cpp",
+        "optional": "cpp"
     }
 }
