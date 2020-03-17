@@ -1,12 +1,3 @@
-[submodule "Integration/SlideSentinelRover/lib/ArduinoJson"]
-	path = Integration/SlideSentinelRover/lib/ArduinoJson
-	url = https://github.com/bblanchon/ArduinoJson.git
-[submodule "Integration/SlideSentinelRover/lib/Adafruit_Sensor"]
-	path = Integration/SlideSentinelRover/lib/Adafruit_Sensor
-	url = https://github.com/adafruit/Adafruit_Sensor.git
-[submodule "Integration/SlideSentinelRover/lib/SdFat"]
-	path = Integration/SlideSentinelRover/lib/SdFat
-	url = https://github.com/greiman/SdFat.git
 [submodule "Integration/SlideSentinelRover/lib/RadioHead"]
 	path = Integration/SlideSentinelRover/lib/RadioHead
 	url = https://github.com/adafruit/RadioHead.git
