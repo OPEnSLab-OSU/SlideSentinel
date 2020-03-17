@@ -1,3 +1,0 @@
-[submodule "Integration/SlideSentinelRover/lib/RadioHead"]
-	path = Integration/SlideSentinelRover/lib/RadioHead
-	url = https://github.com/adafruit/RadioHead.git
