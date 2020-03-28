@@ -39,11 +39,9 @@ jobs:
   include:
     # Build stage: ensure that all three varients build
     - stage: "Build"
-      name: "Native"
+      name: "Embedded w/ Bootloader"
       script:
-        - platformio run -e native
-    - name: "Embedded w/ Bootloader"
-      script:
+        - ls -lah
         - platformio run -e adafruit_feather_m0
     - name: "Embedded w/o Bootloader"
       script:
