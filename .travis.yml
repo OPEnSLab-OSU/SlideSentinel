@@ -29,7 +29,6 @@ cache:
 
 install:
   - pip install -U platformio
-  - platformio upgrade --dev
   - platformio update
 
 before_script:
