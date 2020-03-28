@@ -31,6 +31,10 @@ install:
   - pip install -U platformio
   - platformio update
 
+before_script:
+    # TODO: Monorepo? Split into another repository?
+    - cd Integration/SlideSentinelRover
+
 jobs:
   include:
     # Build stage: ensure that all three varients build
