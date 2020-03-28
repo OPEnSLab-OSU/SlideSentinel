@@ -3,14 +3,6 @@
 
 #ifdef UNIT_TEST
 
-void setUp() {
-    // ?
-}
-
-void tearDown() {
-    // ?
-}
-
 void process() {
     UNITY_BEGIN();
     // Register your tests here

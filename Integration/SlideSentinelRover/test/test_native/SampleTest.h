@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(ARDUINO) && defined(UNIT_TEST)
+#if !defined(ARDUINO) && defined(UNIT_TEST)
 
 #include "unity.h"
 

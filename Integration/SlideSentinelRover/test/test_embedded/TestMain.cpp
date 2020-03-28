@@ -1,19 +1,11 @@
-#include "unity.h"
-
 #if defined(UNIT_TEST) && defined(ARDUINO)
 
-void setUp() {
-    // ?
-}
-
-void tearDown() {
-    // ?
-}
+#include "unity.h"
+#include "SampleTest.h"
 
 void process() {
     UNITY_BEGIN();
-    // Register your tests here
-    // RUN_TEST(test_dosomething);
+    RUN_TEST(TestTesting);
     UNITY_END();
 }
 
