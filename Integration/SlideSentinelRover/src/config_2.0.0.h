@@ -1,6 +1,6 @@
 #pragma once
 
-/****** ComController ******/
+/****** COMController ******/
 #define CLIENT_ADDR 1         	// Node_ID
 #define SERVER_ADDR 2
 #define RADIO_BAUD 115200

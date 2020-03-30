@@ -35,7 +35,7 @@ ConManager manager;
 /****** FSController Init ******/
 FSController fsController(SD_CS, SD_RST);
 
-/****** ComController Init ******/
+/****** COMController Init ******/
 Freewave radio(RST, CD, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 MAX3243 max3243(FORCEOFF_N);
