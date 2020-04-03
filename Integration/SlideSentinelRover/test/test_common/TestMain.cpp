@@ -1,15 +1,22 @@
 #include "unity.h"
 #include "TestTinyFSM.h"
+#include "TestCircularBuffer.h"
 
 #ifdef UNIT_TEST
 
 void process() {
     UNITY_BEGIN();
     // Register your tests here
+    // TinyFSM
     RUN_TEST(TestInitial);
     RUN_TEST(TestReset);
     RUN_TEST(TestToggle);
     RUN_TEST(TestInvalid);
+    // Circular Buffer
+    RUN_TEST(TestInsertion);
+    RUN_TEST(TestIteration);
+    RUN_TEST(TestRemove);
+    RUN_TEST(TestFront);
     UNITY_END();
 }
 
