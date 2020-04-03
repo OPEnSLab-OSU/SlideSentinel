@@ -53,17 +53,12 @@ namespace tinyfsm
   // --------------------------------------------------------------------------
 
   struct Event { 
-    virtual const char* get_name() const { return "Event"; }
-  };
-
-  template<class T>
-  struct PrintingEvent : Event {
-      virtual const char* get_name() const override { return typeid(T).name(); }
+    virtual const char* get_info() const { return "Event"; }
   };
 
   template<typename T>
   T& operator<<(T& ost, const tinyfsm::Event& event) {
-    ost << event.get_name();
+    ost << event.get_info();
     return ost;
   }
 

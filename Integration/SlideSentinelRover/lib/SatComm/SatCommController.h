@@ -16,7 +16,7 @@ namespace SatComm {
     //
 
     // Inbound
-    struct QueueMessage : tinyfsm::PrintingEvent<QueueMessage> {
+    struct QueueMessage : tinyfsm::Event {
         QueueMessage(const char* const msg_in, const size_t len_in)
             : msg(msg_in)
             , len(len_in) {}
@@ -25,10 +25,10 @@ namespace SatComm {
         const size_t len;
     };
 
-    struct SendImmediate : tinyfsm::PrintingEvent<SendImmediate> { };
+    struct SendImmediate : tinyfsm::Event { };
 
     // Outbound
-    struct MessageRecieved : tinyfsm::PrintingEvent<MessageRecieved> {
+    struct MessageRecieved : tinyfsm::Event {
         MessageRecieved(const Packet& recieved_in)
             : recieved(recieved_in) {}
 
