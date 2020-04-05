@@ -10,7 +10,7 @@ SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
 bool SSInterface::sendPacket(const int type, char *packet) {
-  clear();
+  m_serial.flush();
   _setOutFrag(packet);
   _header(type);
 
@@ -27,12 +27,10 @@ bool SSInterface::sendPacket(const int type, char *packet) {
 }
 
 bool SSInterface::receivePacket(char *buffer) {
-  clear();
+  m_serial.flush();
   if (!_receive())
     return false;
-
   _readHeader(m_buf);
-
   for (int i = 0; i < m_inFrag; i++) {
     if (!_receive())
       return false;
@@ -119,13 +117,7 @@ void SSInterface::setRetries(uint16_t retries) {
   m_manager.setRetries(m_retries);
 }
 
-void SSInterface::clear(void) {
-  while (m_serial.available())
-    uint8_t c = m_serial.read();
-}
-
 int SSInterface::getTimeout() { return m_timeout; }
 int SSInterface::getRetries() { return m_retries; }
 int SSInterface::getType() { return m_type; }
-int SSInterface::getId() { return m_clientId; }
 bool SSInterface::available() { return m_manager.available(); }

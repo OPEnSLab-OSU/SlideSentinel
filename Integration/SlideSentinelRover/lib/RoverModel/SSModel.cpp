@@ -5,7 +5,10 @@
 // errors occur
 // TODO error handle on rover so configurable state data is only ever changed if
 // constrained value wise properly
-SSModel::SSModel() { clear(); }
+SSModel::SSModel() {
+  m_props.init();
+  clear();
+}
 
 void SSModel::handleRes(char *buf) { m_props.read(buf); }
 
@@ -97,36 +100,8 @@ void SSModel::setError(const char *err) {
 }
 
 void SSModel::print() {
-  console.debug("\n\n------- CONFIG -------\n");
-  console.debug("Timeout: ");
-  console.debug(getProp(TIMEOUT));
-  console.debug("\nRetries: ");
-  console.debug(getProp(RETRIES));
-  console.debug("\nWake Time: ");
-  console.debug(getProp(WAKE_TIME));
-  console.debug("\nSleep Time: ");
-  console.debug(getProp(SLEEP_TIME));
-  console.debug("\nSensitivity: ");
-  console.debug(getProp(SENSITIVITY));
-  console.debug("\nLog Frequency: ");
-  console.debug(getProp(LOG_FREQ));
-
-  console.debug("\n\n------- DIAGNOSTIC -------\n");
-  console.debug("\nIMU Flag: ");
-  if (m_diag.imu())
-    console.debug("TRUE");
-  else
-    console.debug("FALSE");
-  console.debug("\nBattery: ");
-  console.debug(m_diag.bat());
-  console.debug("\nSD Card Space: ");
-  console.debug(m_diag.space());
-  console.debug("\nCycles: ");
-  console.debug(m_diag.cycles());
-  console.debug("\nDropped Packets: ");
-  console.debug(m_diag.droppedPkts());
-  console.debug("\nError Count: ");
-  console.debug(m_diag.errCount());
+  m_props.print();
+  m_diag.print();
 
   console.debug("\n\n------- DATA -------\n");
   console.debug("\nGPS time week: ");
@@ -170,7 +145,7 @@ void SSModel::print() {
 
 void SSModel::clear() {
   // clear state
-  m_props.clear();
+  m_props.init();
 
   // clear diagnostics
   m_diag.clear();

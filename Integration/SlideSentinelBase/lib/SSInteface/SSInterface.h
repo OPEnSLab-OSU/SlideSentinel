@@ -57,7 +57,6 @@ public:
   int getRetries();
   int getType();
   int getId();
-  void clear();
 };
 
 #endif // _SSINTERFACE_H_

@@ -6,8 +6,8 @@ COMController::COMController(Freewave &radio, MAX3243 &max3243,
                              uint32_t baud, uint8_t clientId, uint8_t serverId,
                              uint16_t timeout, uint8_t retries)
     : m_interface(serial, baud, clientId, serverId, timeout, retries, false),
-      m_radio(radio), m_max3243(max3243), m_mux(mux), m_dropped_pkts(0),
-      m_threshold(4) {}
+      m_radio(radio), m_max3243(max3243), m_mux(mux), m_serial(serial),
+      m_timer(0), m_dropped_pkts(0), m_threshold(4) {}
 
 bool COMController::init() {
   m_interface.init();
@@ -72,7 +72,17 @@ bool COMController::upload(SSModel &model) {
 
 void COMController::resetRadio() { m_radio.reset(); }
 
-bool COMController::channelBusy() { return m_radio.channel_busy(); }
+bool COMController::channelBusy(SSModel &model) {
+  m_interface.clear();
+  m_timer.startTimer(5);
+  while (!m_timer.timerDone()) {
+    if (m_serial.available()) {
+      model.setError(CHNNL_ERR);
+      return true;
+    }
+  }
+  return false;
+}
 
 void COMController::m_setTimeout(uint16_t timeout) {
   m_interface.setTimeout(timeout);

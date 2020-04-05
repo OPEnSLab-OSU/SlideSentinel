@@ -6,7 +6,8 @@ volatile bool RTCController::m_flag = false;
 
 RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
                              uint16_t sleepTime)
-    : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime) {
+    : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime),
+      m_backoffCounter(1) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -48,6 +49,7 @@ bool RTCController::init() {
   return true;
 }
 
+// TODO Add second level precision
 void RTCController::m_setAlarm(int time) {
   m_clearAlarm();
   m_setDate();
@@ -72,9 +74,22 @@ char *RTCController::getTimestamp() {
   return m_timestamp;
 }
 
-void RTCController::setPollAlarm() { m_setAlarm(m_wakeTime); }
+void RTCController::setPollAlarm() {
+  // reset the backoff counter if no collision occured
+  m_backoffCounter = 1;
+  m_setAlarm(m_wakeTime);
+}
 
-void RTCController::setWakeAlarm() { m_setAlarm(m_sleepTime); }
+void RTCController::setWakeAlarm() {
+  m_setAlarm(m_sleepTime * m_backoffCounter);
+}
+
+// need access to unconnected analog in for seeding 
+// random number generator
+void RTCController::incrementBackoff() {
+  if (m_backoffCounter < 3)
+    m_backoffCounter++;
+}
 
 bool RTCController::alarmDone() {
   if (!m_getFlag())
@@ -86,11 +101,9 @@ bool RTCController::alarmDone() {
 
 void RTCController::m_setDate() { m_date = m_RTC.now(); }
 
-void RTCController::m_setWakeTime(uint16_t wakeTime) { m_wakeTime = wakeTime; }
+void RTCController::m_setWakeTime(int wakeTime) { m_wakeTime = wakeTime; }
 
-void RTCController::m_setSleepTime(uint16_t sleepTime) {
-  m_sleepTime = sleepTime;
-}
+void RTCController::m_setSleepTime(int sleepTime) { m_sleepTime = sleepTime; }
 
 void RTCController::status(SSModel &model) {
   model.setProp(WAKE_TIME, m_wakeTime);
