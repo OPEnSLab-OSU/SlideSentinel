@@ -1,61 +1,35 @@
 #pragma once
 
-#if !defined(ARDUINO) && defined(UNIT_TEST)
+#ifdef UNIT_TEST
 
 #include "unity.h"
 #include "tinyfsm.h"
 #include "SatCommController.h"
 #include "EventBus.h"
 #include "Mockable.h"
-#include <ArduinoFake.h>
-
-// Events MUST be passed by value, as they are copied in FakeIt
-class MockInterface {
-public:
-	virtual void dispatch(const SatComm::MessageRecieved) = 0;
-	virtual void dispatch(const SatComm::StartSendRecieve) = 0;
-	virtual void dispatch(const SatComm::StartRecieve) = 0;
-	virtual void dispatch(const tinyfsm::Event) = 0;
-};
-
-using MockType = MockOutput<MockInterface>;
-
-static void stub_mock(fakeit::Mock<MockInterface>& mymock) {
-	using namespace fakeit;
-
-	Fake(OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve)));
-	Fake(OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve)));
-	Fake(OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved)));
-	Fake(OverloadedMethod(mymock, dispatch, void(const tinyfsm::Event)));
-}
+#include "DebugEventBus.h"
+#include "UnitySameType.h"
 
 void TestNoSignal() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// test that if there is no signal, there is no attempt to transmit
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 	Controller::dispatch(SatComm::SignalLost{});
 	Controller::dispatch(SatComm::SendImmediate{});
 	Controller::dispatch(SatComm::RingAlert{});
 
-	using namespace fakeit;
-	VerifyNoOtherInvocations(mymock);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestNoPackets() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// test that if there is no packets, there is no attempt to transmit
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 	Controller::dispatch(SatComm::SignalLost{});
@@ -63,23 +37,17 @@ void TestNoPackets() {
 	Controller::dispatch(SatComm::Success{});
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	using namespace fakeit;
-
 	// should attempt to recieve once on startup, then nothing else
-	Verify(OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve))).Once();
-
-	VerifyNoOtherInvocations(mymock);
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestTransmitNoRx() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// test that if there is no signal, there is no attempt to transmit
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 
@@ -96,8 +64,6 @@ void TestTransmitNoRx() {
 		message2,
 		sizeof(message2)
 	});
-
-	using namespace fakeit;
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -110,29 +76,21 @@ void TestTransmitNoRx() {
 	// we should not recieve a third
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	
-	Verify(	OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-				.Matching([message](const SatComm::StartSendRecieve& e) {
-					return strcmp(e.send.bytes.data(), message) == 0;
-				})
-			+ OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-				.Matching([message2](const SatComm::StartSendRecieve& e) {
-					return strcmp(e.send.bytes.data(), message2) == 0;
-				}))
-		.Once();
-
-	VerifyNoOtherInvocations(mymock);
+	auto event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message);
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message2);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestTransmitNoRxBadSignal() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// test that if there is no signal, there is no attempt to transmit
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 
@@ -149,8 +107,6 @@ void TestTransmitNoRxBadSignal() {
 		message2,
 		sizeof(message2)
 		});
-
-	using namespace fakeit;
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -168,31 +124,27 @@ void TestTransmitNoRxBadSignal() {
 	// we should not recieve a third
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	Verify(
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-			.Matching([message](const SatComm::StartSendRecieve& e) {
-				return strcmp(e.send.bytes.data(), message) == 0;
-			})
-		+ OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-			.Matching([message2](const SatComm::StartSendRecieve& e) {
-				return strcmp(e.send.bytes.data(), message2) == 0;
-			}) * 2
-	).Once();
-
-	VerifyNoOtherInvocations(mymock);
+	auto event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message);
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message2);
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message2);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestTransmitRx() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
 
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// initialize the packets to be sent back
 	SatComm::Packet recv1{ { 'I', '\'', 'm', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 10 };
 	SatComm::Packet recv2{ { 'A', 'l', 's', 'o', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 11 };
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 
@@ -202,8 +154,6 @@ void TestTransmitRx() {
 		message,
 		sizeof(message)
 		});
-
-	using namespace fakeit;
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -215,45 +165,31 @@ void TestTransmitRx() {
 	Controller::dispatch(SatComm::SendRecieveSuccess{ recv2, 0 });
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	// Driver
-	Verify(
-		// first send
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-			.Matching([message](const SatComm::StartSendRecieve& e) {
-				return strcmp(e.send.bytes.data(), message) == 0;
-			}),
-		// second recieve
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve))
-	).Once();
-
-	// Controller
-	Verify(
-		// first recv
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv1](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv1.bytes;
-			}),
-		// second recv
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv2](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv2.bytes;
-			})
-	).Once();
-
-	VerifyNoOtherInvocations(mymock);
+	// first send
+	auto event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message);
+	// got a packet
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv1.bytes);
+	// second recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// second packet
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv2.bytes);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestTransmitRxBadSignal() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// initialize the packets to be sent back
 	SatComm::Packet recv1{ { 'I', '\'', 'm', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 10 };
 	SatComm::Packet recv2{ { 'A', 'l', 's', 'o', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 11 };
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
 
@@ -263,8 +199,6 @@ void TestTransmitRxBadSignal() {
 		message,
 		sizeof(message)
 		});
-
-	using namespace fakeit;
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -283,50 +217,35 @@ void TestTransmitRxBadSignal() {
 	// we should not recieve a fourth
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	// Driver
-	Verify(
-		// first send
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartSendRecieve))
-			.Matching([message](const SatComm::StartSendRecieve& e) {
-				return strcmp(e.send.bytes.data(), message) == 0;
-			}),
-		// first and second recv
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve)),
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve))
-	).Once();
-
-	// Controller
-	Verify(
-		// first recv data
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv1](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv1.bytes;
-			}),
-		// second recv data
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv2](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv2.bytes;
-			})
-	).Once();
-
-	VerifyNoOtherInvocations(mymock);
+	// first send
+	auto event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendRecieve);
+	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendRecieve>().send.bytes.data(), message);
+	// got a packet
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv1.bytes);
+	// second recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// third recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// second packet
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv2.bytes);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 void TestRingAlert() {
-	fakeit::Mock<MockInterface> mymock;
-	stub_mock(mymock);
-	MockType::set_mock(mymock.get());
-
-	using Controller = SatComm::Controller <MockType>;
+	using Controller = SatComm::Controller <DebugEventBus>;
 
 	// initialize the packets to be sent back
 	SatComm::Packet recv1{ { 'I', '\'', 'm', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 10 };
 	SatComm::Packet recv2{ { 'A', 'l', 's', 'o', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 11 };
 
+	DebugEventBus::reset();
 	Controller::reset();
 	Controller::start();
-
-	using namespace fakeit;
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -343,29 +262,21 @@ void TestRingAlert() {
 	// we should not recieve a third
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	// Driver
-	Verify(
-		// first and second recv
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve)),
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve)),
-		OverloadedMethod(mymock, dispatch, void(const SatComm::StartRecieve))
-	).Once();
-
-	// Controller
-	Verify(
-		// first recv data
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv1](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv1.bytes;
-			}),
-		// second recv data
-		OverloadedMethod(mymock, dispatch, void(const SatComm::MessageRecieved))
-			.Matching([recv2](const SatComm::MessageRecieved& e) {
-				return e.recieved.bytes == recv2.bytes;
-			})
-	).Once();
-	
-	VerifyNoOtherInvocations(mymock);
+	// first recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// second recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// got a packet
+	auto event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv1.bytes);
+	// third recieve
+	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartRecieve);
+	// second packet
+	event = DebugEventBus::front();
+	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageRecieved);
+	TEST_ASSERT_TRUE(event.as<SatComm::MessageRecieved>().recieved.bytes == recv2.bytes);
+	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
 #endif
