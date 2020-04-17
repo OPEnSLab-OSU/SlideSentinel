@@ -1,0 +1,12 @@
+//
+// Created by Noah on 4/17/2020.
+//
+
+#if !defined(SLIDESENTINELROVER_TESTEVENTQUEUE_H) && defined(UNIT_TEST)
+#define SLIDESENTINELROVER_TESTEVENTQUEUE_H
+
+void TestDispatch() {
+    // TODO
+}
+
+#endif //SLIDESENTINELROVER_TESTEVENTQUEUE_H

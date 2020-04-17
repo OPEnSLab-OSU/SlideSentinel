@@ -1,6 +1,8 @@
 #include "unity.h"
 #include "TestTinyFSM.h"
 #include "TestCircularBuffer.h"
+#include "TestCircularHeap.h"
+#include "TestEventQueue.h"
 #include "TestSatComm.h"
 
 #ifdef UNIT_TEST
@@ -18,6 +20,13 @@ void process() {
     RUN_TEST(TestIteration);
     RUN_TEST(TestRemove);
     RUN_TEST(TestFront);
+    // CircularHeap
+    RUN_TEST(TestCircularHeapInitial);
+    RUN_TEST(TestCircularHeapTestAllocate);
+    RUN_TEST(TestCircularHeapDeAllocate);
+    RUN_TEST(TestCircularHeapCircular);
+    RUN_TEST(TestCircularHeapFill);
+    RUN_TEST(TestCircularHeapLong);
     // SatComm
     RUN_TEST(TestNoSignal);
     RUN_TEST(TestNoPackets);
@@ -26,6 +35,7 @@ void process() {
     RUN_TEST(TestTransmitRx);
     RUN_TEST(TestTransmitRxBadSignal);
     RUN_TEST(TestRingAlert);
+    RUN_TEST(TestTransmitMultiPacket);
     UNITY_END();
 }
 

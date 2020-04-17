@@ -3,7 +3,7 @@
 #include <array>
 #include "tinyfsm.h"
 #include "GlobalEvents.h"
-#include "SatCommDriver.h"
+#include "SatCommDriverEvents.h"
 #include "CircularBuffer.h"
 
 namespace SatComm {
@@ -28,44 +28,39 @@ namespace SatComm {
     struct SendImmediate : tinyfsm::Event { };
 
     // Outbound
-    struct MessageRecieved : tinyfsm::Event {
-        MessageRecieved(const Packet& recieved_in)
-            : recieved(recieved_in) {}
+    struct MessageReceived : tinyfsm::Event {
+        explicit MessageReceived(const Packet& received_in)
+            : received(received_in) {}
 
-        const Packet& recieved;
+        const Packet& received;
     };
 
     // ----------------------------------------------------------------------------
     // SatCommController (FSM base class) declaration
+    // Implements a Queue on top of the Iridium driver.
     //
 
     template<class EventBus>
     class Controller
         : public tinyfsm::Fsm<Controller<EventBus>>
     {
-        /* NOTE: react(), entry() and exit() functions need to be accessible
-         * from tinyfsm::Fsm class. You might as well declare friendship to
-         * tinyfsm::Fsm, and make these functions private:
-         *
-         * friend class Fsm;
-         */
     public:
 
         // SatComm Inbound
         void react(QueueMessage const&);
         void react(SignalLost const&);
         virtual void react(SendImmediate const&) { }
+        // SatComm Driver Inbound
         virtual void react(RingAlert const&) { }
         virtual void react(DriverReady const&) { }
         virtual void react(SendSuccess const&) { }
-        virtual void react(SendRecieveSuccess const&) { }
+        virtual void react(SendReceiveSuccess const&) { }
         virtual void react(Success const&) { }
+        // misc.
         void react(tinyfsm::Event const&) { }
 
-        // SatComm Driver Inbound
-
-        virtual void entry(void) { };  /* entry actions in some states */
-        virtual void exit(void) { };  /* exit actions in some states */
+        virtual void entry() { };  /* entry actions in some states */
+        virtual void exit() { };  /* exit actions in some states */
 
         static void  reset();
         static void  start();
@@ -88,8 +83,8 @@ namespace SatComm {
         class Wait
             : public Controller<EventBus>
         {
-            virtual void react(DriverReady const& e) override {
-                // ready to recieve!
+            void react(DriverReady const& e) override {
+                // ready to receive!
                 Wait::template transit<TXRX>();
             }
         };
@@ -103,12 +98,12 @@ namespace SatComm {
         {
             // TODO: timer?
             
-            virtual void react(SendImmediate const& e) override {
+            void react(SendImmediate const& e) override {
                 if (!Parent::m_outgoing.empty())
                     Idle::template transit<TXRX>();
             }
 
-            virtual void react(RingAlert const& e) override {
+            void react(RingAlert const& e) override {
                 Idle::template transit<TXRX>();
             }
         };
@@ -116,7 +111,7 @@ namespace SatComm {
         // ----------------------------------------------------------------------------
         // State: TXRX
         // Desc: Queues a transmission with then satelitte driver, retransmitting until the internal
-        // buffer is emptey or signal is lost
+        // buffer is empty or signal is lost
         //
         class TXRX
             : public Parent
@@ -125,40 +120,40 @@ namespace SatComm {
                 // deque the packet, since it sent successfully
                 Parent::m_outgoing.destroy_front();
                 // next, continue to TX only if we have a packet
-                // or the device has indicated that there are more packets to recieve
+                // or the device has indicated that there are more packets to receive
                 if (!Parent::m_outgoing.empty() || more_packets)
                     TXRX::template transit<TXRX>();
                 else
                     TXRX::template transit<Idle>();
             }
             
-            virtual void entry() override {
-                // check if the buffer has any items, if not then just recieve
+            void entry() override {
+                // check if the buffer has any items, if not then just receive
                 if (Parent::m_outgoing.empty())
-                    EventBus::dispatch(StartRecieve{});
+                    EventBus::dispatch(StartReceive{});
                 // queue the top of the buffer to transmit
                 else
-                    EventBus::dispatch(StartSendRecieve{
+                    EventBus::dispatch(StartSendReceive{
                         Parent::m_outgoing.front()
                     });
             }
 
-            virtual void react(SendRecieveSuccess const& e) override {
-                // dispatch the message recieved event to our higher ups
-                EventBus::dispatch(MessageRecieved{
-                    e.recieved
+            void react(SendReceiveSuccess const& e) override {
+                // dispatch the message received event to our higher ups
+                EventBus::dispatch(MessageReceived{
+                    e.received
                 });
                 // transmit worked!
                 transmit_success(e.pending_packets > 0);
             }
 
-            virtual void react(SendSuccess const& e) override {
+            void react(SendSuccess const& e) override {
                 transmit_success();
             }
 
-            virtual void react(Success const&) override {
-                // succeded, but did not transmit or recieve
-                // in this case we assume that we started a recieve cycle
+            void react(Success const&) override {
+                // succeded, but did not transmit or receive
+                // in this case we assume that we started a receive cycle
                 TXRX::template transit<Idle>();
             }
         };

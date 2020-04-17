@@ -1,7 +1,7 @@
+#ifdef UNIT_TEST
+
 #include "CircularBuffer.h"
 #include "unity.h"
-
-#ifdef UNIT_TEST
 
 class Int {
 public:

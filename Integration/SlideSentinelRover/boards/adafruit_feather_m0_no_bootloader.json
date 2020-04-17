@@ -51,7 +51,8 @@
         "sam-ba",
         "blackmagic",
         "jlink",
-        "atmel-ice"
+        "atmel-ice",
+        "cmsis-dap"
       ],
       "require_upload_port": true,
       "use_1200bps_touch": true,
