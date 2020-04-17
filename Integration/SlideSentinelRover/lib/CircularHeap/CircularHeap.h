@@ -7,6 +7,7 @@
 
 #include <type_traits>
 #include <new>
+#include "CircularBuffer.h"
 
 /**
  * @brief A ring-buffer implementation with arbitrary element size.]
@@ -16,8 +17,8 @@
  * arbitrary size. Only the top element of the CircularHeap can be
  * accesses/removed, behaving like an opaque queue structure.
  * CircularHeap can store any type, but relies on the user to
- * memorize the order of types in the CircularHeap for access and
- * removal. In addition, all types must be trivially destructible,
+ * memorize the order of types in the CircularHeap for access.
+ * In addition, all types must be trivially destructible,
  * as CircularHeap does not call any destructors.
  *
  * The combination of the above assumptions allows CircularHeap to
@@ -49,9 +50,10 @@ public:
             : m_array{}
             , m_length(0)
             , m_start(0)
-            , m_last_right_pad(0) {}
+            , m_last_right_pad(0)
+            , m_obj_sizes() {}
 
-    void clear() { m_length = 0; m_start = 0; m_last_right_pad = 0; }
+    void clear() { m_length = 0; m_start = 0; m_last_right_pad = 0; m_obj_sizes.reset(); }
 
     ~CircularHeap() = default;
     CircularHeap& operator=(CircularHeap& rhs) = delete;
@@ -61,6 +63,8 @@ public:
      * (may be larger than the sum of the sizes of the allocated objects).
      */
     size_t size() const { return m_length; }
+    /** Returns the number of objects currently in the heap. */
+    size_t count() const { return m_obj_sizes.size(); }
     /** Returns the bytes allocated for this heap in total. */
     size_t max() const { return max_size; }
 
@@ -86,12 +90,9 @@ public:
     }
 
     /**
-     * "Deallocates" (read: overwrites) type_size bytes from the
-     * front of the queue. Note that if the incorrect number for
-     * type_size is specified, you may end up slicing objects!
-     * @param type_size Size of the object on the top of the queue in bytes.
+     * "Deallocates" (read: overwrites) the item at the front of the queue.
      */
-    void deallocate_pop_front(const size_t type_size);
+    void deallocate_pop_front();
 private:
 
     static size_t m_get_true_index(const size_t index, const size_t m_start) {
@@ -107,6 +108,7 @@ private:
     size_t m_length;
     size_t m_start;
     size_t m_last_right_pad;
+    CircularBuffer<size_t, 64> m_obj_sizes;
 };
 
 template<size_t max_size, size_t min_alignment>
@@ -116,10 +118,10 @@ bool CircularHeap<max_size, min_alignment>::allocate_push_back(Args&& ... args) 
     // make sure the size of T is word aligned to prevent hard faults
     const size_t tsize = m_align(sizeof(T));
     // if we're out of space, return
-    if (tsize > (max() - size()))
+    if (tsize > (max() - size()) || m_obj_sizes.full())
         return false;
     // if the type is larger than the aligned size we have at the end,
-    // skip to the begining
+    // skip to the beginning
     if (m_start + m_length < max_size
         && tsize >  max_size - (m_start + m_length)) {
         // if we wouldn't have space anyway, oh well
@@ -135,19 +137,21 @@ bool CircularHeap<max_size, min_alignment>::allocate_push_back(Args&& ... args) 
     }
     // get the pointer
     T* ret = reinterpret_cast<T*>(&m_array[m_get_true_index(m_length, m_start)]);
+    // construct a new T obj at the pointer
+    new (ret) T(args...);
     // add the size of T to the length
     m_length += tsize;
-    // construct a new T obj there
-    new (ret) T(args...);
+    // and to the object size tracker
+    m_obj_sizes.add_back(tsize);
     // done!
     return true;
 }
 
 template<size_t max_size, size_t min_alignment>
-void CircularHeap<max_size, min_alignment>::deallocate_pop_front(const size_t type_size) {
+void CircularHeap<max_size, min_alignment>::deallocate_pop_front() {
     if (empty())
         return;
-    const size_t tsize = m_align(type_size);
+    const size_t tsize = m_obj_sizes.front();
     if (tsize > m_length) {
         // TODO: error?
         return;
@@ -157,7 +161,7 @@ void CircularHeap<max_size, min_alignment>::deallocate_pop_front(const size_t ty
     // decrement the length
     m_length -= tsize;
     // check if we need to account for right padding
-    // by reseting the start to zero
+    // by resetting the start to zero
     if (m_length == 0
         || (m_last_right_pad > 0
             && m_start >= (max_size - m_last_right_pad))) {
@@ -176,6 +180,8 @@ void CircularHeap<max_size, min_alignment>::deallocate_pop_front(const size_t ty
         // else wrap if needed
     else if (m_start >= max_size)
         m_start -= max_size;
+    // pop the front of the size tracker
+    m_obj_sizes.destroy_front();
 }
 
 #endif //SLIDESENTINELROVER_CIRCULARHEAP_H

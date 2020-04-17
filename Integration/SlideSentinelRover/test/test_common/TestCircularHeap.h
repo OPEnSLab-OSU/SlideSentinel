@@ -74,7 +74,7 @@ void TestCircularHeapDeAllocate() {
     const TestType1* ptr = static_cast<const TestType1*>(heap.get_front());
     TEST_ASSERT_TRUE(ptr->data == TestType1{}.data);
 
-    heap.deallocate_pop_front(sizeof(TestType1));
+    heap.deallocate_pop_front();
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType2) + sizeof(TestType3), heap.size());
     const TestType2* ptr2 = static_cast<const TestType2*>(heap.get_front());
     const TestType2 test{};
@@ -85,12 +85,12 @@ void TestCircularHeapDeAllocate() {
     TEST_ASSERT_EQUAL_FLOAT(ptr2->why, test.why);
     TEST_ASSERT_EQUAL(ptr2->t, test.t);
 
-    heap.deallocate_pop_front(sizeof(TestType2));
+    heap.deallocate_pop_front();
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType3), heap.size());
     const TestType3* ptr3 = static_cast<const TestType3*>(heap.get_front());
     TEST_ASSERT_NOT_NULL(ptr3);
 
-    heap.deallocate_pop_front(sizeof(TestType3));
+    heap.deallocate_pop_front();
     TEST_ASSERT_EQUAL(heap.size(), 0);
 }
 
@@ -118,16 +118,16 @@ void TestCircularHeapCircular() {
     TEST_ASSERT_TRUE(heap.allocate_push_back<TestType2>());
     TEST_ASSERT_TRUE(heap.allocate_push_back<TestType3>());
 
-    heap.deallocate_pop_front(sizeof(TestType1));
-    heap.deallocate_pop_front(sizeof(TestType2));
-    heap.deallocate_pop_front(sizeof(TestType3));
+    heap.deallocate_pop_front();
+    heap.deallocate_pop_front();
+    heap.deallocate_pop_front();
 
     TEST_ASSERT_GREATER_OR_EQUAL(0, heap.size());
     // make sure the heap starts in the middle
     TEST_ASSERT_TRUE(heap.allocate_push_back<TestType3>());
 
     TEST_ASSERT_TRUE(heap.allocate_push_back<TestType1>());
-    heap.deallocate_pop_front(sizeof(TestType3));
+    heap.deallocate_pop_front();
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType1), heap.size());
     const TestType1* ptr = static_cast<const TestType1*>(heap.get_front());
     TEST_ASSERT_TRUE(ptr->data == TestType1{}.data);
@@ -155,7 +155,7 @@ void TestCircularHeapFill() {
     TEST_ASSERT_FALSE(heap.allocate_push_back<TestType1>());
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType1) * 2, heap.size());
 
-    heap.deallocate_pop_front(sizeof(TestType1));
+    heap.deallocate_pop_front();
     TEST_ASSERT_TRUE(heap.allocate_push_back<TestType1>());
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType1) * 2, heap.size());
 }
@@ -184,19 +184,19 @@ void TestCircularHeapLong() {
             // first object
             const TestType1 *ptr1 = static_cast<const TestType1 *>(heap.get_front());
             TEST_ASSERT_TRUE(ptr1->data == type1Test.data);
-            heap.deallocate_pop_front(sizeof(TestType1));
+            heap.deallocate_pop_front();
             TEST_ASSERT_TRUE(heap.allocate_push_back<TestType1>());
             TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType1) + sizeof(TestType2), heap.size());
             // second object
             const TestType2 *ptr2 = static_cast<const TestType2 *>(heap.get_front());
             TEST_ASSERT_TRUE(ptr2->data == type2Test.data);
-            heap.deallocate_pop_front(sizeof(TestType2));
+            heap.deallocate_pop_front();
             TEST_ASSERT_TRUE(heap.allocate_push_back<TestType2>());
         }
 
         // deallocate both the events
-        heap.deallocate_pop_front(sizeof(TestType1));
-        heap.deallocate_pop_front(sizeof(TestType2));
+        heap.deallocate_pop_front();
+        heap.deallocate_pop_front();
 
         // check empty
         TEST_ASSERT_EQUAL(heap.size(), 0);

@@ -15,7 +15,7 @@ private:
     using DispatchPtr = void(*)(const void*);
 
     static CircularHeap<2048> m_ev_buffer;
-    static CircularBuffer<std::pair<DispatchPtr, size_t>, 32> m_dis_buffer;
+    static CircularBuffer<DispatchPtr, 32> m_dis_buffer;
 
 public:
     template<typename E>
@@ -26,17 +26,17 @@ public:
         if (!m_ev_buffer.allocate_push_back<E>(event))
             return;
         // and store both the size of the event and the pointer to dispatch it
-        m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base<E>), sizeof(E));
+        m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base<E>));
     }
 
     static void next() {
         if (!m_ev_buffer.empty()) {
-            const std::pair<DispatchPtr, size_t> disptr = m_dis_buffer.front();
+            DispatchPtr disptr = m_dis_buffer.front();
             // get the function pointer, which contains the event type to dispatch for
             // and call it
-            disptr.first(m_ev_buffer.get_front());
+            disptr(m_ev_buffer.get_front());
             // destroy the pointer, deallocating the size of the event stored with the dispatch pointer
-            m_ev_buffer.deallocate_pop_front(disptr.second);
+            m_ev_buffer.deallocate_pop_front();
             m_dis_buffer.destroy_front();
         }
     }
@@ -51,4 +51,4 @@ template<template<class> class... S>
 CircularHeap<2048> EventQueue<S...>::m_ev_buffer{};
 
 template<template<class> class... S>
-CircularBuffer<std::pair<void(*)(const void*), size_t>, 32> EventQueue<S...>::m_dis_buffer{};
+CircularBuffer<void(*)(const void*), 32> EventQueue<S...>::m_dis_buffer{};
