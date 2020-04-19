@@ -15,6 +15,7 @@
 #include "SSModel.h"
 #include "VoltageReg.h"
 #include "config_2.0.0.h"
+#include "network_config_2.0.0.h"
 #include "pcb_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
@@ -104,10 +105,13 @@ enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
 //     Serial.write(Serial1.read()); // read it and send it out Serial (USB)
 //   }
 // }
-void execute();
-void test();
 
-void loop() { test(); }
+void execute();
+void executeTest();
+void test();
+void wait();
+
+void loop() { executeTest(); }
 
 void execute() {
   State state = WAKE;
@@ -116,13 +120,6 @@ void execute() {
 
     case WAKE:
       Serial.println("Checking if channel is busy...");
-      // check if radio link is already busy
-      if (comController->channelBusy(model)) {
-        fsController.logDiag(model.toError());
-        rtcController.incrementBackoff();
-        state = SLEEP;
-        break;
-      }
 
       // create new directory for the wake cycle
       fsController.setupWakeCycle(rtcController.getTimestamp(),
@@ -130,6 +127,16 @@ void execute() {
 
       // enable the radio
       pmController.enableRadio();
+
+      // check if radio link is already busy
+      if (comController->channelBusy(model)) {
+        Serial.println("Channel busy. Going back to sleep");
+        fsController.logDiag(model.toError());
+        rtcController.incrementBackoff();
+        state = SLEEP;
+        break;
+      }
+
       Serial.println("Transitioning to HANDSHAKE...");
       state = HANDSHAKE;
       break;
@@ -142,12 +149,13 @@ void execute() {
       fsController.logDiag(model.toDiag());
       fsController.logDiag(model.toProp());
 
-      // make a request
+      // make a request, send diagnostics/receive props
       if (!comController->request(model)) {
         fsController.logDiag(model.toError());
         state = SLEEP;
         break;
       }
+
       Serial.println("Transitioning to UPDATE...");
       state = UPDATE;
       break;
@@ -207,7 +215,7 @@ void execute() {
 
     case SLEEP:
       // flush pending GNSS data
-      gnssController->flush();
+      gnssController->reset();
 
       // disable the radio
       pmController.disableRadio();
@@ -221,6 +229,148 @@ void execute() {
       state = WAKE;
       break;
     }
+  }
+}
+
+void executeTest() {
+  State state = WAKE;
+  while (1) {
+    switch (state) {
+
+    case WAKE:
+      wait();
+
+      // create new directory for the wake cycle
+      fsController.setupWakeCycle(rtcController.getTimestamp(),
+                                  gnssController->getFormat());
+
+      // enable the radio
+      pmController.enableRadio();
+
+      Serial.println("Checking if channel is busy...");
+      // check if radio link is already busy
+      if (comController->channelBusy(model)) {
+        Serial.println("Channel is busy! Going back to sleep.");
+        fsController.logDiag(model.toError());
+        rtcController.incrementBackoff();
+        state = SLEEP;
+        break;
+      }
+
+      Serial.println("Transitioning to HANDSHAKE...");
+      state = HANDSHAKE; // EDIT!
+      break;
+
+    case HANDSHAKE:
+      wait();
+      // collect system status
+      manager.status(model);
+
+      model.print();
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+
+      // make a request, send diagnostics/receive props
+      if (!comController->request(model)) {
+        fsController.logDiag(model.toError());
+        Serial.println("Transitioning to SLEEP...");
+        state = SLEEP;
+        break;
+      }
+
+      Serial.println("Transitioning to UPDATE...");
+      state = UPDATE;
+      break;
+
+    case UPDATE:
+      wait();
+      // update the systems properties
+      manager.update(model);
+
+      // enable the GNSS receiver
+      pmController.enableGNSS();
+
+      // collect system status
+      manager.status(model);
+      Serial.println("System status post update..");
+      model.print();
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+
+      // set the poll alarm
+      rtcController.setPollAlarm();
+
+      Serial.println("Transitioning to POLL...");
+      state = POLL;
+      break;
+
+    case POLL:
+      // check for data from the GNSS receiver
+      if (gnssController->poll(model))
+        fsController.logData(model.toData(model.getProp(THRESHOLD)));
+
+      // check ifs the alarm is triggered
+      if (rtcController.alarmDone()) {
+        Serial.println("Transitioning to UPLOAD...");
+        state = UPLOAD;
+      }
+      break;
+
+    case UPLOAD:
+      wait();
+
+      // disable the GNSS receiver
+      pmController.disableGNSS();
+
+      // collect the systems status
+      manager.status(model);
+      model.print();
+
+      // log system status
+      fsController.logDiag(model.toDiag());
+      fsController.logDiag(model.toProp());
+      model.print();
+
+      // make an upload
+      if (!comController->upload(model))
+        fsController.logDiag(model.toError());
+      Serial.println("Transitioning to SLEEP...");
+      state = SLEEP;
+      break;
+
+    case SLEEP:
+      wait();
+      // flush pending GNSS data
+      gnssController->reset();
+
+      // disable the radio
+      pmController.disableRadio();
+
+      // set the wake alarm
+      rtcController.setWakeAlarm();
+
+      // enter low power mode
+      pmController.sleep();
+      pmController.enableGNSS();
+      delay(200);
+      pmController.disableGNSS();
+      Serial.println("Transitioning to WAKE...");
+      state = WAKE;
+      break;
+    }
+  }
+}
+
+void wait() {
+  Serial.println("waiting for input");
+  while (!Serial.available())
+    ;
+  while (Serial.available()) {
+    Serial.read();
   }
 }
 

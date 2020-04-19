@@ -18,18 +18,19 @@ private:
   char m_data[MAX_DATA_LEN];
   char m_buf[MAX_DATA_LEN];
   void m_clear();
-  bool m_serializePkt(JsonDocument &doc);
+  void m_serializePkt(JsonDocument &doc);
 
 public:
   Shadow();
   int getId();
-  int getWakeTime();
   char *toProps();
   char *toDiag();
   char *toData();
   void setProps(char *buf);
   void setDiag(char *buf);
   void setData(char *buf);
+  bool getIMUFlag();
+  int getWakeTime();
   void print();
 };
 

@@ -10,7 +10,7 @@ SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
 bool SSInterface::sendPacket(const int type, char *packet) {
-  clear();
+  clearSerial();
   _setOutFrag(packet);
   _header(type);
 
@@ -27,7 +27,7 @@ bool SSInterface::sendPacket(const int type, char *packet) {
 }
 
 bool SSInterface::receivePacket(char *buffer) {
-  clear();
+  clearSerial();
   if (!_receive())
     return false;
 
@@ -103,6 +103,11 @@ void SSInterface::_setOutFrag(char *buf) {
   m_outFrag = num;
 }
 
+void SSInterface::clearSerial(void) {
+  while (m_serial.available())
+    uint8_t c = m_serial.read();
+}
+
 void SSInterface::_addFragment(JsonDocument &doc) {
   doc[FRAGMENT_NUM] = m_outFrag;
 }
@@ -117,11 +122,6 @@ void SSInterface::setTimeout(uint16_t timeout) { m_timeout = timeout; }
 void SSInterface::setRetries(uint16_t retries) {
   m_retries = retries;
   m_manager.setRetries(m_retries);
-}
-
-void SSInterface::clear(void) {
-  while (m_serial.available())
-    uint8_t c = m_serial.read();
 }
 
 int SSInterface::getTimeout() { return m_timeout; }

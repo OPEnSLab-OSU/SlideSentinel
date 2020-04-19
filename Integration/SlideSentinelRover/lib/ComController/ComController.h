@@ -34,6 +34,7 @@ private:
 
   void m_setTimeout(uint16_t timeout);
   void m_setRetries(uint16_t retries);
+  void m_setThreshold(uint8_t threshold);
   void m_droppedPkt();
 
 public:

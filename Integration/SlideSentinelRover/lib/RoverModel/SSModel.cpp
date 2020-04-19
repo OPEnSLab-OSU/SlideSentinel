@@ -12,39 +12,35 @@ SSModel::SSModel() {
 
 void SSModel::handleRes(char *buf) { m_props.read(buf); }
 
+
 char *SSModel::toDiag() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_diag.write(doc);
-  if (!m_serializePkt(doc))
-    setError(SER_ERR);
+  m_serializePkt(doc);
   return m_buffer;
 }
 
 char *SSModel::toProp() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_props.write(doc);
-  if (!m_serializePkt(doc))
-    setError(SER_ERR);
+  m_serializePkt(doc);
   return m_buffer;
 }
+
 
 char *SSModel::toData(int threshold) {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   if (m_mode >= threshold)
     m_addData(doc);
-  if (!m_serializePkt(doc))
-    setError(SER_ERR);
+  m_serializePkt(doc);
   return m_buffer;
 }
 
 char *SSModel::toError() { return m_err; }
 
-bool SSModel::m_serializePkt(JsonDocument &doc) {
+void SSModel::m_serializePkt(JsonDocument &doc) {
   m_clear();
-  auto error = serializeJson(doc, m_buffer);
-  if (error)
-    return false;
-  return true;
+  serializeJson(doc, m_buffer);
 }
 
 void SSModel::m_addData(JsonDocument &doc) {
@@ -71,10 +67,11 @@ void SSModel::m_addData(JsonDocument &doc) {
 
 void SSModel::m_clear() { memset(m_buffer, '\0', sizeof(char) * MAX_DATA_LEN); }
 
+// Props
 int SSModel::getProp(int prop) { return m_props.get(prop); }
 void SSModel::setProp(int prop, int val) { m_props.set(prop, val); }
-bool SSModel::validProp(int prop) { return m_props.valid(prop); }
 
+// Positional Data
 void SSModel::setPos_llh(msg_pos_llh_t pos_llh) { m_pos_llh = pos_llh; }
 void SSModel::setBaseline_ned(msg_baseline_ned_t baseline_ned) {
   m_baseline_ned = baseline_ned;
@@ -86,6 +83,7 @@ void SSModel::setMsg_gps_time_t(msg_gps_time_t gps_time) {
 }
 void SSModel::setMode(uint8_t mode) { m_mode = mode; }
 
+// Diag
 void SSModel::setDroppedPkts(uint16_t dropped_pkts) {
   m_diag.setDroppedPkts(dropped_pkts);
 }

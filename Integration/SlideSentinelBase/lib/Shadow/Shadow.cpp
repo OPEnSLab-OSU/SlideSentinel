@@ -7,21 +7,17 @@ void Shadow::m_clear() { memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN); }
 
 int Shadow::getId() { return m_id; }
 
-int Shadow::getWakeTime() { return m_props.get(WAKE_TIME); }
-
 char *Shadow::toProps() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_props.write(doc);
-  if (!m_serializePkt(doc))
-    return NULL;
+  m_serializePkt(doc);
   return m_buf;
 }
 
 char *Shadow::toDiag() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   m_diag.write(doc);
-  if (!m_serializePkt(doc))
-    return NULL;
+  m_serializePkt(doc);
   return m_buf;
 }
 
@@ -31,12 +27,9 @@ char *Shadow::toData() {
   return m_buf;
 }
 
-bool Shadow::m_serializePkt(JsonDocument &doc) {
+void Shadow::m_serializePkt(JsonDocument &doc) {
   m_clear();
-  auto error = serializeJson(doc, m_buf);
-  if (error)
-    return false;
-  return true;
+  serializeJson(doc, m_buf);
 }
 
 void Shadow::print() {
@@ -51,3 +44,7 @@ void Shadow::setProps(char *buf) { m_props.read(buf); }
 void Shadow::setDiag(char *buf) { m_diag.read(buf); }
 
 void Shadow::setData(char *buf) { strcpy(m_data, buf); }
+
+bool Shadow::getIMUFlag() { return m_diag.imu(); }
+
+int Shadow::getWakeTime() { return m_props.get(WAKE_TIME); }

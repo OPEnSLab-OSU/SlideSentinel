@@ -45,6 +45,7 @@ public:
   void setCycles(int cycles);
   void setDroppedPkts(int drop);
   void setErrCount(int errCount);
+
   void clear();
   void print();
 };

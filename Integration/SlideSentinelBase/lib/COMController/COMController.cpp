@@ -47,6 +47,9 @@ bool COMController::listenUpl(BaseModel &model) {
   if (type != UPL)
     return false;
 
+  console.debug("Received Upload: \n");
+  console.debug(m_buf);
+  console.debug("\n");
   model.setData(rover_id, m_buf);
   return true;
 }
@@ -66,11 +69,25 @@ bool COMController::listenReq(BaseModel &model) {
   if (type != REQ)
     return false;
 
+  model.setRover(rover_id);
   model.setDiag(rover_id, m_buf);
+
+  console.debug("\nState of rover: ");
+  console.debug(rover_id);
+  console.debug("\n");
+  console.debug(model.getDiag(rover_id));
+  console.debug("\n");
+  console.debug(model.getProps(rover_id));
+  console.debug("\n");
+
   if (!m_interface.sendPacket(RES, model.getProps(rover_id)))
     return false;
 
-  m_timer.startTimer(m_interface.getTimeout());
+  console.debug("\nSetting alarm for: ");
+  console.debug(model.getRoverWakeTime(rover_id));
+  console.debug("\n");
+  m_timer.startTimer(model.getRoverWakeTime(rover_id) * 60);
+
   m_mux.comY1();
   return true;
 }

@@ -42,11 +42,12 @@ bool COMController::request(SSModel &model) {
     return false;
   }
 
-  console.debug("successfully received config, RADIO ----> GNSS.\n");
+  console.debug("\nsuccessfully received config, RADIO ----> GNSS.\n");
   m_mux.comY2();
   console.debug("Received packet: ");
   console.debug(m_buf);
   console.debug("\n");
+
   model.handleRes(m_buf);
   return true;
 }
@@ -56,6 +57,8 @@ bool COMController::upload(SSModel &model) {
   console.debug("RADIO ----> FEATHER.\n");
   m_mux.comY1();
 
+  console.debug("Data from wake cycle: \n");
+  console.debug(model.toData(m_threshold));
   if (!m_interface.sendPacket(UPL, model.toData(m_threshold))) {
     console.debug("\nFailed to upload packet.\n");
     m_droppedPkt();
@@ -73,7 +76,7 @@ bool COMController::upload(SSModel &model) {
 void COMController::resetRadio() { m_radio.reset(); }
 
 bool COMController::channelBusy(SSModel &model) {
-  m_interface.clear();
+  m_interface.clearSerial();
   m_timer.startTimer(5);
   while (!m_timer.timerDone()) {
     if (m_serial.available()) {
@@ -92,6 +95,10 @@ void COMController::m_setRetries(uint16_t retries) {
   m_interface.setRetries(retries);
 }
 
+void COMController::m_setThreshold(uint8_t threshold) {
+  m_threshold = threshold;
+}
+
 void COMController::m_droppedPkt() { m_dropped_pkts++; }
 
 void COMController::status(SSModel &model) {
@@ -102,8 +109,7 @@ void COMController::status(SSModel &model) {
 }
 
 void COMController::update(SSModel &model) {
-  if (model.validProp(TIMEOUT))
-    m_setTimeout(model.getProp(TIMEOUT));
-  if (model.validProp(RETRIES))
-    m_setRetries(model.getProp(RETRIES));
+  m_setTimeout(model.getProp(TIMEOUT));
+  m_setRetries(model.getProp(RETRIES));
+  m_setThreshold(model.getProp(THRESHOLD));
 }

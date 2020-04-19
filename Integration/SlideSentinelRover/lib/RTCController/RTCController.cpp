@@ -49,8 +49,8 @@ bool RTCController::init() {
   return true;
 }
 
-// TODO Add second level precision
 void RTCController::m_setAlarm(int time) {
+  m_setFlag();
   m_clearAlarm();
   m_setDate();
   uint8_t min = (m_date.minute() + time) % 60;
@@ -58,6 +58,12 @@ void RTCController::m_setAlarm(int time) {
   m_RTC.setAlarm(ALM1_MATCH_HOURS, min, hr, 0);
   m_RTC.alarmInterrupt(1, true);
   attachInterrupt(digitalPinToInterrupt(m_pin), RTC_ISR, FALLING);
+
+  console.debug("\nCurrent Time: ");
+  console.debug(m_date.hour());
+  console.debug(":");
+  console.debug(m_date.minute());
+  console.debug("\n");
 
   console.debug("Setting alarm for ");
   console.debug(hr);
@@ -84,7 +90,7 @@ void RTCController::setWakeAlarm() {
   m_setAlarm(m_sleepTime * m_backoffCounter);
 }
 
-// need access to unconnected analog in for seeding 
+// need access to unconnected analog in for seeding
 // random number generator
 void RTCController::incrementBackoff() {
   if (m_backoffCounter < 3)
@@ -95,7 +101,6 @@ bool RTCController::alarmDone() {
   if (!m_getFlag())
     return false;
   m_clearAlarm();
-  m_setFlag();
   return true;
 }
 
@@ -111,8 +116,6 @@ void RTCController::status(SSModel &model) {
 }
 
 void RTCController::update(SSModel &model) {
-  if (model.validProp(WAKE_TIME))
-    m_setWakeTime(model.getProp(WAKE_TIME));
-  if (model.validProp(SLEEP_TIME))
-    m_setSleepTime(model.getProp(SLEEP_TIME));
+  m_setWakeTime(model.getProp(WAKE_TIME));
+  m_setSleepTime(model.getProp(SLEEP_TIME));
 }

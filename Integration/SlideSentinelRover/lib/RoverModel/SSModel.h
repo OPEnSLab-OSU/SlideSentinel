@@ -31,14 +31,13 @@ private:
   char m_buffer[MAX_DATA_LEN];
   void m_addData(JsonDocument &doc);
   void m_clear();
-  bool m_serializePkt(JsonDocument &doc);
+  void m_serializePkt(JsonDocument &doc);
 
 public:
   SSModel();
 
   int getProp(int prop);
   void setProp(int prop, int val);
-  bool validProp(int prop);
 
   void setPos_llh(msg_pos_llh_t pos_llh);
   void setBaseline_ned(msg_baseline_ned_t baseline_ned);
@@ -46,7 +45,7 @@ public:
   void setMsg_dops_t(msg_dops_t dops);
   void setMsg_gps_time_t(msg_gps_time_t gps_time);
   void setMode(uint8_t mode);
-  
+
   void setDroppedPkts(uint16_t dropped_pkts);
   void setIMUflag(bool imu_flag);
   void setBat(float bat);

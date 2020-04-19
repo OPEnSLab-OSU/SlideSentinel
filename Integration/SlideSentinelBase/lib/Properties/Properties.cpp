@@ -3,16 +3,12 @@
 
 Properties::Properties() {}
 
-// checks if the value is valid
-bool Properties::valid(int prop) {
-  if (get(prop) >= 0)
-    return true;
-  return false;
-}
-
 int Properties::get(int prop) { return m_prop[prop]; }
 
-void Properties::set(int prop, int val) { m_prop[prop] = val; }
+void Properties::set(int prop, int val) {
+  if (val != -1)
+    m_prop[prop] = val;
+}
 
 void Properties::init() {
   for (int i = 0; i < NUM_PROP; i++)
@@ -47,7 +43,7 @@ void Properties::read(char *buf) {
 
 void Properties::print() {
   console.debug("******* PROPERTIES ********");
-  console.debug("Timeout: ");
+  console.debug("\nTimeout: ");
   console.debug(get(TIMEOUT));
   console.debug("\nRetries: ");
   console.debug(get(RETRIES));
@@ -61,5 +57,5 @@ void Properties::print() {
   console.debug(get(LOG_FREQ));
   console.debug("\nThreshold: ");
   console.debug(get(THRESHOLD));
-  console.debug("**************************");
+  console.debug("\n**************************\n");
 }

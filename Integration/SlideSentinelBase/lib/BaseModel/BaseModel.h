@@ -12,13 +12,17 @@ using namespace errorMsg;
 class BaseModel {
 private:
   int m_numRovers;
+  int m_roverId;
   Shadow *m_shadow;
-  char* m_err
+  char *m_err;
 
 public:
   BaseModel(int numRovers);
   bool dataReady();
   char *getDiag(int id);
+  bool getRoverIMUFlag(int id);
+  int getRoverWakeTime(int id);
+
   char *getProps(int id);
   char *getData(int id);
   void setDiag(int id, char *buf);
@@ -26,8 +30,12 @@ public:
   void setData(int id, char *buf);
   void print();
 
+  // id of the currently serviced rover
+  void setRover(int rover_id);
+  int getRover();
+
   void setError(char *err);
-  char* getError();
+  char *getError();
 };
 
 #endif // _BASEMODEL_H_

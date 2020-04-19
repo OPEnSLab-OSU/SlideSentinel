@@ -86,7 +86,6 @@ void PMController::sleep() {
 }
 
 void PMController::status(SSModel &model) {
-  // model.statusPM(readBat());
   model.setBat(readBat());
 }
 

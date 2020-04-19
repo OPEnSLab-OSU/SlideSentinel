@@ -10,6 +10,7 @@ void Diagnostics::write(JsonDocument &doc) {
   data.add(m_space);
   data.add(m_cycles);
   data.add(m_dropped_pkts);
+  data.add(m_err_count);
 }
 
 void Diagnostics::read(char *buf) {
@@ -19,16 +20,16 @@ void Diagnostics::read(char *buf) {
     clear();
     return;
   }
-  setFlag(json[IMU_FLAG]);
-  setBat(json[BAT]);
-  setSpace(json[SPACE]);
-  setCycles(json[CYCLES]);
-  setDroppedPkts(json[DROPPED_PKTS]);
-  setErrCount(json[ERR_COUNT]);
+  setFlag(json[SS_DIAG][IMU_FLAG]);
+  setBat(json[SS_DIAG][BAT]);
+  setSpace(json[SS_DIAG][SPACE]);
+  setCycles(json[SS_DIAG][CYCLES]);
+  setDroppedPkts(json[SS_DIAG][DROPPED_PKTS]);
+  setErrCount(json[SS_DIAG][ERR_COUNT]);
 }
 
 void Diagnostics::print() {
-  console.debug("\n\n**** DIAGNOSTICS RECEIVED ****\n");
+  console.debug("\n\n**** DIAGNOSTICS ****\n");
   console.debug("IMU Flag: ");
   console.debug(imu());
   console.debug("\nBattery Voltage: ");

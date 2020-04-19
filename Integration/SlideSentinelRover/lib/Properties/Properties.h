@@ -24,7 +24,6 @@ public:
   Properties();
   void write(JsonDocument &doc);
   void read(char* buf);
-  bool valid(int prop);
   int get(int prop);
   void set(int prop, int val);
   void init();

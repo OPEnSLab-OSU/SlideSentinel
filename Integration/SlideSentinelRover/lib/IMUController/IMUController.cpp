@@ -65,6 +65,5 @@ void IMUController::status(SSModel &model) {
 }
 
 void IMUController::update(SSModel &model) {
-  if (model.validProp(SENSITIVITY))
-    m_setSensitivity(model.getProp(SENSITIVITY));
+  m_setSensitivity(model.getProp(SENSITIVITY));
 }
