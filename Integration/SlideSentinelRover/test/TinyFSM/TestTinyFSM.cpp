@@ -1,7 +1,7 @@
+#ifdef UNIT_TEST
+
 #include "tinyfsm.h"
 #include "unity.h"
-
-#ifdef UNIT_TEST
 
 struct ToggleSwitch : tinyfsm::Event { };
 
@@ -61,7 +61,7 @@ void TestInitial() {
     Switch::reset();
     Switch::start();
     TEST_ASSERT_TRUE(Switch::is_in_state<Off>());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<Off>().getCounter());
+    TEST_ASSERT_EQUAL_INT(Switch::state<Off>().getCounter(), 1);
 }
 
 void TestReset() {
@@ -71,8 +71,8 @@ void TestReset() {
     Switch::start();
     TEST_ASSERT_TRUE(Switch::is_in_state<Off>());
     TEST_ASSERT_FALSE(Switch::is_in_state<On>());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<Off>().getCounter());
-    TEST_ASSERT_EQUAL_INT(0, Switch::state<On>().getCounter());
+    TEST_ASSERT_EQUAL_INT(Switch::state<Off>().getCounter(), 1);
+    TEST_ASSERT_EQUAL_INT(Switch::state<On>().getCounter(), 0);
 }
 
 void TestToggle() {
@@ -81,13 +81,13 @@ void TestToggle() {
     Switch::dispatch(ToggleSwitch{});
     TEST_ASSERT_FALSE(Switch::is_in_state<Off>());
     TEST_ASSERT_TRUE(Switch::is_in_state<On>());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<Off>().getCounter());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<On>().getCounter());
+    TEST_ASSERT_EQUAL_INT(Switch::state<Off>().getCounter(),1);
+    TEST_ASSERT_EQUAL_INT(Switch::state<On>().getCounter(), 1);
     Switch::dispatch(ToggleSwitch{});
     TEST_ASSERT_TRUE(Switch::is_in_state<Off>());
     TEST_ASSERT_FALSE(Switch::is_in_state<On>());
-    TEST_ASSERT_EQUAL_INT(2, Switch::state<Off>().getCounter());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<On>().getCounter());
+    TEST_ASSERT_EQUAL_INT(Switch::state<Off>().getCounter(), 2);
+    TEST_ASSERT_EQUAL_INT(Switch::state<On>().getCounter(), 1);
 }
 
 void TestInvalid() {
@@ -96,8 +96,21 @@ void TestInvalid() {
     Switch::dispatch(tinyfsm::Event());
     TEST_ASSERT_TRUE(Switch::is_in_state<Off>());
     TEST_ASSERT_FALSE(Switch::is_in_state<On>());
-    TEST_ASSERT_EQUAL_INT(1, Switch::state<Off>().getCounter());
-    TEST_ASSERT_EQUAL_INT(0, Switch::state<On>().getCounter());
+    TEST_ASSERT_EQUAL_INT(Switch::state<Off>().getCounter(), 1);
+    TEST_ASSERT_EQUAL_INT(Switch::state<On>().getCounter(), 0);
 }
+
+void process() {
+    UNITY_BEGIN();
+    // Register your tests here
+    // TinyFSM
+    RUN_TEST(TestInitial);
+    RUN_TEST(TestReset);
+    RUN_TEST(TestToggle);
+    RUN_TEST(TestInvalid);
+    UNITY_END();
+}
+
+#include "../test_common/TestMain.h"
 
 #endif

@@ -1,11 +1,11 @@
 //
 // Created by Noah on 4/17/2020.
 //
-#if !defined(SLIDESENTINELROVER_TESTCIRCULARHEAP_H) && defined(UNIT_TEST)
-#define SLIDESENTINELROVER_TESTCIRCULARHEAP_H
+#ifdef UNIT_TEST
 
 #include <array>
 #include "CircularHeap.h"
+#include "unity.h"
 
 void TestCircularHeapInitial() {
     CircularHeap<64> heap;
@@ -78,12 +78,12 @@ void TestCircularHeapDeAllocate() {
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType2) + sizeof(TestType3), heap.size());
     const TestType2* ptr2 = static_cast<const TestType2*>(heap.get_front());
     const TestType2 test{};
-    TEST_ASSERT_EQUAL_FLOAT(ptr2->thing, test.thing);
-    TEST_ASSERT_EQUAL(ptr2->otherthing, test.otherthing);
-    TEST_ASSERT_EQUAL_CHAR(ptr2->superthing, test.superthing);
-    TEST_ASSERT_EQUAL_CHAR(ptr2->superotherthing, test.superotherthing);
-    TEST_ASSERT_EQUAL_FLOAT(ptr2->why, test.why);
-    TEST_ASSERT_EQUAL(ptr2->t, test.t);
+    TEST_ASSERT_EQUAL_FLOAT(test.thing, ptr2->thing);
+    TEST_ASSERT_EQUAL(test.otherthing, ptr2->otherthing);
+    TEST_ASSERT_EQUAL_CHAR(test.superthing, ptr2->superthing);
+    TEST_ASSERT_EQUAL_CHAR(test.superotherthing, ptr2->superotherthing);
+    TEST_ASSERT_EQUAL_FLOAT(test.why, ptr2->why);
+    TEST_ASSERT_EQUAL(test.t, ptr2->t);
 
     heap.deallocate_pop_front();
     TEST_ASSERT_GREATER_OR_EQUAL(sizeof(TestType3), heap.size());
@@ -91,7 +91,7 @@ void TestCircularHeapDeAllocate() {
     TEST_ASSERT_NOT_NULL(ptr3);
 
     heap.deallocate_pop_front();
-    TEST_ASSERT_EQUAL(heap.size(), 0);
+    TEST_ASSERT_EQUAL(0, heap.size());
 }
 
 void TestCircularHeapCircular() {
@@ -199,8 +199,21 @@ void TestCircularHeapLong() {
         heap.deallocate_pop_front();
 
         // check empty
-        TEST_ASSERT_EQUAL(heap.size(), 0);
+        TEST_ASSERT_EQUAL(0, heap.size());
     }
 }
 
-#endif //SLIDESENTINELROVER_TESTCIRCULARHEAP_H
+void process() {
+    UNITY_BEGIN();
+    RUN_TEST(TestCircularHeapInitial);
+    RUN_TEST(TestCircularHeapTestAllocate);
+    RUN_TEST(TestCircularHeapDeAllocate);
+    RUN_TEST(TestCircularHeapCircular);
+    RUN_TEST(TestCircularHeapFill);
+    RUN_TEST(TestCircularHeapLong);
+    UNITY_END();
+}
+
+#include "../test_common/TestMain.h"
+
+#endif // UNIT_TEST

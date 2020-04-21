@@ -1,6 +1,8 @@
 #pragma once
 
 #include "tinyfsm.h"
+#include "CircularBuffer.h"
+#include "CircularHeap.h"
 
 template<template<class> class... Sources>
 class EventQueue {
@@ -39,6 +41,10 @@ public:
             m_ev_buffer.deallocate_pop_front();
             m_dis_buffer.destroy_front();
         }
+    }
+
+    static size_t queued() {
+        return m_dis_buffer.size();
     }
 
     static void reset() {

@@ -52,15 +52,7 @@ namespace tinyfsm
 
   // --------------------------------------------------------------------------
 
-  struct Event { 
-    virtual const char* get_info() const { return "Event"; }
-  };
-
-  template<typename T>
-  T& operator<<(T& ost, const tinyfsm::Event& event) {
-    ost << event.get_info();
-    return ost;
-  }
+  struct Event {};
 
   // --------------------------------------------------------------------------
 

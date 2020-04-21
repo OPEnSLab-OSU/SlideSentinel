@@ -1,14 +1,9 @@
-#pragma once
-
 #ifdef UNIT_TEST
 
 #include "unity.h"
 #include "tinyfsm.h"
 #include "SatCommController.h"
-#include "EventQueue.h"
-#include "Mockable.h"
-#include "DebugEventBus.h"
-#include "UnitySameType.h"
+#include "../test_common/DebugEventBus.h"
 
 void TestNoSignal() {
 	using Controller = SatComm::Controller <DebugEventBus>;
@@ -38,7 +33,7 @@ void TestNoPackets() {
 	Controller::dispatch(SatComm::SendImmediate{});
 
 	// should attempt to receive once on startup, then nothing else
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -76,12 +71,11 @@ void TestTransmitNoRx() {
 	// we should not receive a third
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	auto event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message);
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message2);
+    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
+
+    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message2, event2.send.bytes.data());
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -124,15 +118,14 @@ void TestTransmitNoRxBadSignal() {
 	// we should not receive a third
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	auto event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message);
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message2);
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message2);
+    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
+
+    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message2, event2.send.bytes.data());
+
+    auto event3 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message2, event3.send.bytes.data());
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -166,19 +159,16 @@ void TestTransmitRx() {
 	Controller::dispatch(SatComm::SendImmediate{});
 
 	// first send
-	auto event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message);
+    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
 	// got a packet
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv1.bytes);
+    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event2.received.bytes == recv1.bytes);
 	// second receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv2.bytes);
+    auto event3 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event3.received.bytes == recv2.bytes);
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -218,21 +208,17 @@ void TestTransmitRxBadSignal() {
 	Controller::dispatch(SatComm::SendImmediate{});
 
 	// first send
-	auto event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
-	TEST_ASSERT_EQUAL_STRING(event.as<SatComm::StartSendReceive>().send.bytes.data(), message);
+    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
+	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
 	// got a packet
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv1.bytes);
-	// second receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event2.received.bytes == recv1.bytes);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// third receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv2.bytes);
+    auto event3 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event3.received.bytes == recv2.bytes);
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -263,19 +249,17 @@ void TestRingAlert() {
 	Controller::dispatch(SatComm::SendImmediate{});
 
 	// first receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// got a packet
-	auto event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv1.bytes);
+    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event.received.bytes == recv1.bytes);
 	// third receive
-	TEST_ASSERT_SAME_TYPE(*DebugEventBus::front(), SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-	event = DebugEventBus::front();
-	TEST_ASSERT_SAME_TYPE(*event, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.as<SatComm::MessageReceived>().received.bytes == recv2.bytes);
+    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
+	TEST_ASSERT_TRUE(event2.received.bytes == recv2.bytes);
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -304,12 +288,11 @@ void TestTransmitMultiPacket() {
     size_t idx = 0;
     while (!DebugEventBus::empty()) {
         // check the message
-        auto event = DebugEventBus::front();
-        TEST_ASSERT_SAME_TYPE(*event, SatComm::StartSendReceive);
+        auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
         // and check the contents
-        const auto& packet = event.as<SatComm::StartSendReceive>().send;
+        const auto& packet = event.send;
         TEST_ASSERT_LESS_OR_EQUAL(sizeof(message), idx + packet.length);
-        TEST_ASSERT_EQUAL_CHAR_ARRAY(packet.bytes.data(), &message[idx], packet.length);
+        TEST_ASSERT_EQUAL_CHAR_ARRAY(&message[idx], packet.bytes.data(), packet.length);
         // move the index forward!
         idx += packet.length;
         // reply with success
@@ -319,5 +302,20 @@ void TestTransmitMultiPacket() {
     Controller::dispatch(SatComm::SendImmediate{});
     TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
+
+void process() {
+	UNITY_BEGIN();
+	RUN_TEST(TestNoSignal);
+    RUN_TEST(TestNoPackets);
+    RUN_TEST(TestTransmitNoRx);
+    RUN_TEST(TestTransmitNoRxBadSignal);
+    RUN_TEST(TestTransmitRx);
+    RUN_TEST(TestTransmitRxBadSignal);
+    RUN_TEST(TestRingAlert);
+    RUN_TEST(TestTransmitMultiPacket);
+    UNITY_END();
+}
+
+#include "../test_common/TestMain.h"
 
 #endif
