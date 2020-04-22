@@ -2,9 +2,10 @@
 // Created by Noah on 4/8/2020.
 //
 
-#ifndef SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
-#define SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
+#ifndef SLIDESENTINELROVER_SATCOMMDRIVER_H
+#define SLIDESENTINELROVER_SATCOMMDRIVER_H
 
+#include <atomic>
 #include <IridiumSBD.h>
 #include "Arduino.h"
 #include "tinyfsm.h"
@@ -20,6 +21,7 @@ namespace SatComm {
     // ----------------------------------------------------------------------------
     // SatCommDriver (FSM base class) declaration
     //
+    // TODO: PowerDown, invalid events, reset/start
     template<class EventBus>
     class Driver
             : public tinyfsm::Fsm<Driver<EventBus>>
@@ -47,16 +49,12 @@ namespace SatComm {
         // Shared global data
         // IridumSBD driver
         static IridiumSBD m_modem;
-        // buffer packet used to store send/recv data
-        static Packet m_buffer;
 
         // forward decelerations
         using Parent = Driver<EventBus>;
         class Off;
         class Wait;
         class Ready;
-        class SendReceive;
-        class Receive;
 
         // ----------------------------------------------------------------------------
         // State: Off (Initial State)
@@ -107,63 +105,87 @@ namespace SatComm {
 
         // ----------------------------------------------------------------------------
         // State: Ready
-        // Desc: Waits for the controller to send a packet
+        // Desc: Waits for the controller to send a packet, and attaches an interrupt
+        // to the RING pin.
         //
         class Ready : public Parent
         {
+        public:
+
+            static void handleRing() {
+                m_did_ring.store(true);
+            }
+
             void entry() override {
+                // set did_ring to false
+                m_did_ring.store(false);
+                // register ring alert interrupt
+                attachInterrupt(RING_INDICATOR_PIN, handleRing, LOW);
+                // ready!
                 EventBus::dispatch(DriverReady{});
+            }
+
+            void exit() override {
+                // de-register ring alert interrupt
+                detachInterrupt(RING_INDICATOR_PIN);
+            }
+
+            // TODO: Do we need to check signal every time?
+            void react(const Update&) override {
+                // if we got a ring alert interrupt, follow it
+                if (m_did_ring.load()) {
+                    m_did_ring.store(false);
+                    if (Parent::m_modem.hasRingAsserted() || Parent::m_modem.getWaitingMessageCount() > 0)
+                        EventBus::dispatch(RingAlert{});
+                }
+                // if signal is lost, transit out of ready
+                else if (!digitalRead(NET_AV_PIN))
+                    Parent::template transit<Wait>();
             }
 
             // trigger a transmission!
             void react(const StartSendReceive& e) override {
                 // check signal
                 if (!digitalRead(NET_AV_PIN))
-                    Parent::template transit<Wait>();
-                // check packet validity
-                else if (e.send.length > 0) {
-                    // write the packet to an internal buffer
-                    Parent::m_buffer = e.send;
-                    // transit to SendReceive
-                    Parent::template transit<SendReceive>();
-                }
-                // else just receive
-                else
-                    Parent::template transit<Receive>();
-
-            }
-
-            void react(const StartReceive& e) override {
-                // check signal
-                if (!digitalRead(NET_AV_PIN))
-                    Parent::template transit<Wait>();
-                else
-                    Parent::template transit<Receive>();
-            }
-        };
-
-        // ----------------------------------------------------------------------------
-        // State: StartSendReceive
-        // Desc: Writes a packet to the modem, then reads a packet from the modem if one
-        // is available
-        //
-        class StartSendReceive : public Parent
-        {
-            void react(const Update&) override {
-                size_t bufmax = Parent::m_buffer.bytes.max_size();
+                    return Parent::template transit<Wait>();
+                // good to go! send/receive the packet
+                Packet buf{ {}, 0 };
+                size_t bufmax = buf.bytes.max_size(); // NOTE: this is also an output parameter
                 int err = Parent::m_modem.sendReceiveSBDBinary(
-                        reinterpret_cast<uint8_t*>(Parent::m_buffer.bytes.data()),
-                        Parent::m_buffer.length,
-                        reinterpret_cast<uint8_t*>(Parent::m_buffer.bytes.data()),
+                        reinterpret_cast<const uint8_t*>(e.send.bytes.data()),
+                        e.send.length,
+                        reinterpret_cast<uint8_t*>(buf.bytes.data()),
                         bufmax);
                 // check error
                 if (err != ISBD_SUCCESS) {
                     // TODO: Panic differently for different errors?
-                    Parent::template transit<Wait>();
-                    return;
+                    return Parent::template transit<Wait>();
                 }
-                // dispatch a
+                // if we received any data, copy it and indicate need for further data
+                if (bufmax > 0) {
+                    // get the number of messages pending reception
+                    err = Parent::m_modem.getWaitingMessageCount();
+                    if (err < 0) {
+                        // TODO: Panic
+                        return Parent::template transit<Wait>();
+                    }
+                    // send a success event!
+                    EventBus::dispatch(SendReceiveSuccess{ buf, static_cast<size_t>(err) });
+                }
+                else if (e.send.length > 0)
+                    EventBus::dispatch(SendSuccess{});
+                else
+                    EventBus::dispatch(Success{});
             }
+
+            void react(const StartReceive& e) override {
+                // redirect to StartSendReceive, but with an empty packet
+                react(StartSendReceive{{ {}, 0 }});
+            }
+
+        private:
+            // boolean to detect ring alerts
+            static std::atomic_bool m_did_ring;
         };
     };
 
@@ -171,7 +193,7 @@ namespace SatComm {
     IridiumSBD Driver<T>::m_modem(IridiumSerial, -1, RING_INDICATOR_PIN);
 
     template <class T>
-    Packet Driver<T>::m_buffer = {{}, 0};
-}
+    std::atomic_bool Driver<T>::Ready::m_did_ring{ false };
+};
 
-#endif //SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
+#endif //SLIDESENTINELROVER_SATCOMMDRIVER_H

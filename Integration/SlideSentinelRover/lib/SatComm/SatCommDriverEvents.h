@@ -20,7 +20,7 @@ namespace SatComm {
 		StartSendReceive(const Packet& send_in)
 			: send(send_in) {}
 
-		const Packet& send;
+		const Packet send;
 	};
 	struct StartReceive : tinyfsm::Event { };
 
@@ -32,7 +32,7 @@ namespace SatComm {
 			: received(recv_in)
 			, pending_packets(pending_packets_in) {}
 
-		const Packet& received;
+		const Packet received;
 		const size_t pending_packets;
 	};
 	struct Success : tinyfsm::Event { };

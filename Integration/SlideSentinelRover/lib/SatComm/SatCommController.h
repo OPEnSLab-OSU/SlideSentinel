@@ -32,7 +32,7 @@ namespace SatComm {
         explicit MessageReceived(const Packet& received_in)
             : received(received_in) {}
 
-        const Packet& received;
+        const Packet received;
     };
 
     // ----------------------------------------------------------------------------
@@ -152,7 +152,7 @@ namespace SatComm {
             }
 
             void react(Success const&) override {
-                // succeded, but did not transmit or receive
+                // succeed, but did not transmit or receive
                 // in this case we assume that we started a receive cycle
                 TXRX::template transit<Idle>();
             }
