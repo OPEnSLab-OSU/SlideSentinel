@@ -2,7 +2,6 @@
 
 #include "unity.h"
 #include "SampleTest.h"
-#include "TestSatCommDriver.h"
 
 void process() {
     UNITY_BEGIN();
