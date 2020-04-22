@@ -2,8 +2,8 @@
 // Created by Noah on 4/8/2020.
 //
 
-#ifndef SLIDESENTINELROVER_SATCOMMDRIVER_H
-#define SLIDESENTINELROVER_SATCOMMDRIVER_H
+#ifndef SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
+#define SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
 
 #include <IridiumSBD.h>
 #include "Arduino.h"
@@ -174,4 +174,4 @@ namespace SatComm {
     Packet Driver<T>::m_buffer = {{}, 0};
 }
 
-#endif //SLIDESENTINELROVER_SATCOMMDRIVER_H
+#endif //SLIDESENTINELROVER_TESTSATCOMMDRIVER_H
