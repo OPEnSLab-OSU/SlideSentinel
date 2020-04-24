@@ -63,8 +63,6 @@ void DangerousTestReceiveData() {
 
     start();
 
-    // test receiving data!
-    Controller::recv_now();
     // cycle until done or 5 seconds
     const auto start = millis();
     while (millis() - start < 5000) {
