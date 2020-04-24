@@ -18,6 +18,8 @@ void TestNoSignal() {
 	Controller::dispatch(SatComm::RingAlert{});
 
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
+	TEST_ASSERT_FALSE(Controller::connected());
+	TEST_ASSERT_EQUAL(0, Controller::available());
 }
 
 void TestNoPackets() {
@@ -35,6 +37,8 @@ void TestNoPackets() {
 	// should attempt to receive once on startup, then nothing else
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
+    TEST_ASSERT_TRUE(Controller::connected());
+    TEST_ASSERT_EQUAL(0, Controller::available());
 }
 
 void TestTransmitNoRx() {
@@ -48,10 +52,7 @@ void TestTransmitNoRx() {
 
 	// queue the message
 	const char message[] = "Hello message!";
-	Controller::dispatch(SatComm::QueueMessage{
-		message,
-		sizeof(message)
-	});
+	Controller::queue(message, sizeof(message));
 
 	// and another one
 	const char message2[] = "Another message!";
@@ -59,6 +60,8 @@ void TestTransmitNoRx() {
 		message2,
 		sizeof(message2)
 	});
+
+	TEST_ASSERT_EQUAL(2, Controller::send_pending());
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -101,6 +104,8 @@ void TestTransmitNoRxBadSignal() {
 		message2,
 		sizeof(message2)
 		});
+
+    TEST_ASSERT_EQUAL(2, Controller::send_pending());
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -148,27 +153,35 @@ void TestTransmitRx() {
 		sizeof(message)
 		});
 
+    TEST_ASSERT_EQUAL(1, Controller::send_pending());
+
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
 	Controller::dispatch(SatComm::DriverReady{});
 	// should receive a StartSendReceive event here w/ the first message
 	// we reply with success, and a received message
 	Controller::dispatch(SatComm::SendReceiveSuccess{ recv1, 1 });
+	TEST_ASSERT_EQUAL(1, Controller::available());
 	// should receive a StartReceive event here
 	Controller::dispatch(SatComm::SendReceiveSuccess{ recv2, 0 });
+	TEST_ASSERT_EQUAL(2, Controller::available());
 	Controller::dispatch(SatComm::SendImmediate{});
 
 	// first send
     auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
 	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
-	// got a packet
-    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event2.received.bytes == recv1.bytes);
+	// check the packet
+	SatComm::Packet pkt;
+	Controller::receive(pkt);
+	TEST_ASSERT_TRUE(pkt.bytes == recv1.bytes);
+	TEST_ASSERT_EQUAL(recv1.length, pkt.length);
 	// second receive
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-    auto event3 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event3.received.bytes == recv2.bytes);
+    Controller::receive(pkt);
+    TEST_ASSERT_TRUE(pkt.bytes == recv2.bytes);
+    TEST_ASSERT_EQUAL(recv2.length, pkt.length);
+    TEST_ASSERT_EQUAL(0, Controller::available());
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -189,6 +202,8 @@ void TestTransmitRxBadSignal() {
 		message,
 		sizeof(message)
 		});
+
+    TEST_ASSERT_EQUAL(1, Controller::send_pending());
 
 	// start the controller
 	Controller::dispatch(SatComm::SignalLost{});
@@ -211,14 +226,19 @@ void TestTransmitRxBadSignal() {
     auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartSendReceive);
 	TEST_ASSERT_EQUAL_STRING(message, event.send.bytes.data());
 	// got a packet
-    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event2.received.bytes == recv1.bytes);
+    SatComm::Packet pkt;
+    Controller::receive(pkt);
+    TEST_ASSERT_TRUE(pkt.bytes == recv1.bytes);
+    TEST_ASSERT_EQUAL(recv1.length, pkt.length);
+    // second receive
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// third receive
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-    auto event3 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event3.received.bytes == recv2.bytes);
+    Controller::receive(pkt);
+    TEST_ASSERT_TRUE(pkt.bytes == recv2.bytes);
+    TEST_ASSERT_EQUAL(recv2.length, pkt.length);
+    TEST_ASSERT_EQUAL(0, Controller::available());
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -253,13 +273,17 @@ void TestRingAlert() {
 	// second receive
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// got a packet
-    auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event.received.bytes == recv1.bytes);
+    SatComm::Packet pkt;
+    Controller::receive(pkt);
+    TEST_ASSERT_TRUE(pkt.bytes == recv1.bytes);
+    TEST_ASSERT_EQUAL(recv1.length, pkt.length);
 	// third receive
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
 	// second packet
-    auto event2 = DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::MessageReceived);
-	TEST_ASSERT_TRUE(event2.received.bytes == recv2.bytes);
+    Controller::receive(pkt);
+    TEST_ASSERT_TRUE(pkt.bytes == recv2.bytes);
+    TEST_ASSERT_EQUAL(recv2.length, pkt.length);
+    TEST_ASSERT_EQUAL(0, Controller::available());
 	TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 

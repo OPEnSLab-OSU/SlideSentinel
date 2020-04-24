@@ -40,7 +40,6 @@ void TestEventQueueInitial() {
     DebugEventBus::reset();
 
     TEST_ASSERT_EQUAL(0, TestEventQueue::queued());
-    TestEventQueue::next();
     TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -61,6 +60,20 @@ void TestEventQueueReset() {
     TEST_ASSERT_EQUAL(0, TestEventQueue::queued());
 }
 
+void TestEventQueuePanic() {
+    using TestEventQueue = EventQueue<DebugEventBusProxy>;
+
+    TestEventQueue::reset();
+    DebugEventBus::reset();
+
+    TestEventQueue::dispatch(TestEvent1());
+    TestEventQueue::dispatch(Panic{});
+    TestEventQueue::dispatch(TestEvent2());
+
+    TEST_ASSERT_FALSE(TestEventQueue::next());
+    TEST_ASSERT_TRUE(DebugEventBus::empty());
+}
+
 void TestEventQueueDispatch() {
     using TestEventQueue = EventQueue<DebugEventBusProxy>;
 
@@ -74,6 +87,10 @@ void TestEventQueueDispatch() {
     TestEventQueue::next();
     DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent1);
     TEST_ASSERT_EQUAL(0, TestEventQueue::queued());
+
+    TestEventQueue::next();
+    DEBUG_BUS_POP_EVENT(DebugEventBus, Update);
+
     TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -98,6 +115,7 @@ void TestEventQueueDispatchOrder() {
     DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent1);
     VerifyTestEvent2(DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent2));
     TEST_ASSERT_TRUE(DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent3).myarr == TestEvent3().myarr);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, Update);
     TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -145,6 +163,7 @@ void TestEventQueueCircular() {
     DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent1);
     VerifyTestEvent2(DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent2));
     TEST_ASSERT_TRUE(DEBUG_BUS_POP_EVENT(DebugEventBus, TestEvent3).myarr == TestEvent3().myarr);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, Update);
     TEST_ASSERT_TRUE(DebugEventBus::empty());
 }
 
@@ -152,6 +171,7 @@ void process() {
     UNITY_BEGIN();
     RUN_TEST(TestEventQueueInitial);
     RUN_TEST(TestEventQueueReset);
+    RUN_TEST(TestEventQueuePanic);
     RUN_TEST(TestEventQueueDispatch);
     RUN_TEST(TestEventQueueDispatchOrder);
     RUN_TEST(TestEventQueueCircular);

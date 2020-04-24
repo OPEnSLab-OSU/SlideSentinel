@@ -11,6 +11,7 @@
 #include "tinyfsm.h"
 #include "GlobalEvents.h"
 #include "SatCommDriverEvents.h"
+#include "PanicHandler.h"
 
 namespace SatComm {
     constexpr auto RING_INDICATOR_PIN = A3;
@@ -21,7 +22,6 @@ namespace SatComm {
     // ----------------------------------------------------------------------------
     // SatCommDriver (FSM base class) declaration
     //
-    // TODO: PowerDown, invalid events, reset/start
     template<class EventBus>
     class Driver
             : public tinyfsm::Fsm<Driver<EventBus>>
@@ -30,17 +30,17 @@ namespace SatComm {
         // Global Events Inbound
         virtual void react(const Update&) { }
         virtual void react(const PowerUp&) { }
-        virtual void react(const PowerDown&);
 
         // SatCommDriver Events Inbound
-        virtual void react(const StartSendReceive&);
-        virtual void react(const StartReceive&);
+        // Default dispatch an error
+        virtual void react(const StartSendReceive&) { EventBus::dispatch(SignalLost{}); }
+        virtual void react(const StartReceive&) { EventBus::dispatch(SignalLost{}); }
 
         // misc.
         void react(tinyfsm::Event const&) { }
 
-        virtual void entry(void) { };  /* entry actions in some states */
-        virtual void exit(void) { };  /* exit actions in some states */
+        virtual void entry() { };  /* entry actions in some states */
+        virtual void exit() { };  /* exit actions in some states */
 
         static void  reset();
         static void  start();
@@ -55,13 +55,20 @@ namespace SatComm {
         class Off;
         class Wait;
         class Ready;
+        using StateList = tinyfsm::StateList<Off, Wait, Ready>;
 
+    public:
+        // Initial state
+        using InitialState = Off;
+
+    protected:
         // ----------------------------------------------------------------------------
         // State: Off (Initial State)
         // Desc: Waits for the PowerUp signal to be sent
         //
         class Off : public Parent
         {
+            // Note: this can take up to 2 minutes
             void react(const PowerUp&) override {
                 // power up actions
                 // set the RING pin to input
@@ -70,15 +77,26 @@ namespace SatComm {
                 // start serial bus
                 IridiumSerial.begin(IridiumBaud);
                 // start the driver
-                int result = Parent::m_modem.begin();
+                int result;
+                result = Parent::m_modem.begin();
                 if (result != ISBD_SUCCESS) {
-                    // TODO: Panic?
+                    char message[64];
+                    snprintf(message, sizeof(message), "Modem failed to begin with error: %d", result);
+                    PANIC(message);
+                    EventBus::dispatch(Panic{});
+                    return;
                 }
                 // log the firmware version
                 char version[12] = {};
-                result = Parent::m_modem.getFirmwareVersion(version, sizeof(version));
+                size_t try_count = 0;
+                do {
+                    result = Parent::m_modem.getFirmwareVersion(version, sizeof(version));
+                } while(result != ISBD_SUCCESS && try_count++ < 5);
                 if (result != ISBD_SUCCESS) {
-                    // TODO: Panic?
+                    char message[64];
+                    snprintf(message, sizeof(message), "Modem version failed with error: %d", result);
+                    PANIC(message);
+                    EventBus::dispatch(Panic{});
                 }
                 Serial.print("Firmware version: ");
                 Serial.println(version);
@@ -114,6 +132,7 @@ namespace SatComm {
 
             static void handleRing() {
                 m_did_ring.store(true);
+                detachInterrupt(RING_INDICATOR_PIN);
             }
 
             void entry() override {
@@ -134,9 +153,10 @@ namespace SatComm {
             void react(const Update&) override {
                 // if we got a ring alert interrupt, follow it
                 if (m_did_ring.load()) {
-                    m_did_ring.store(false);
                     if (Parent::m_modem.hasRingAsserted() || Parent::m_modem.getWaitingMessageCount() > 0)
                         EventBus::dispatch(RingAlert{});
+                    m_did_ring.store(false);
+                    attachInterrupt(RING_INDICATOR_PIN, handleRing, LOW);
                 }
                 // if signal is lost, transit out of ready
                 else if (!digitalRead(NET_AV_PIN))
@@ -166,7 +186,7 @@ namespace SatComm {
                     // get the number of messages pending reception
                     err = Parent::m_modem.getWaitingMessageCount();
                     if (err < 0) {
-                        // TODO: Panic
+                        // I guess we lost the signal>
                         return Parent::template transit<Wait>();
                     }
                     // send a success event!
@@ -188,6 +208,16 @@ namespace SatComm {
             static std::atomic_bool m_did_ring;
         };
     };
+
+    template <class T>
+    void Driver<T>::reset() {
+        StateList::reset();
+    }
+
+    template <class T>
+    void Driver<T>::start() {
+        tinyfsm::Fsm<Driver>::start();
+    }
 
     template <class T>
     IridiumSBD Driver<T>::m_modem(IridiumSerial, -1, RING_INDICATOR_PIN);

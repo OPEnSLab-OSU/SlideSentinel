@@ -3,6 +3,7 @@
 #include "tinyfsm.h"
 #include "CircularBuffer.h"
 #include "CircularHeap.h"
+#include "GlobalEvents.h"
 
 template<template<class> class... Sources>
 class EventQueue {
@@ -18,11 +19,16 @@ private:
 
     static CircularHeap<2048> m_ev_buffer;
     static CircularBuffer<DispatchPtr, 32> m_dis_buffer;
+    static bool m_did_panic;
 
 public:
     template<typename E>
     static void dispatch(E const& event) {
-        if (m_dis_buffer.full())
+        if (std::is_same<E, Panic>::value) {
+            m_did_panic = true;
+            return;
+        }
+        if (m_dis_buffer.full() || m_did_panic)
             return;
         // copy the event into our "heap"
         if (!m_ev_buffer.allocate_push_back<E>(event))
@@ -31,16 +37,23 @@ public:
         m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base<E>));
     }
 
-    static void next() {
-        if (!m_ev_buffer.empty()) {
-            DispatchPtr disptr = m_dis_buffer.front();
-            // get the function pointer, which contains the event type to dispatch for
-            // and call it
-            disptr(m_ev_buffer.get_front());
-            // destroy the pointer, deallocating the size of the event stored with the dispatch pointer
-            m_ev_buffer.deallocate_pop_front();
-            m_dis_buffer.destroy_front();
+    static bool next() {
+        if (!m_did_panic) {
+            if (!m_ev_buffer.empty()) {
+                DispatchPtr disptr = m_dis_buffer.front();
+                // get the function pointer, which contains the event type to dispatch for
+                // and call it
+                disptr(m_ev_buffer.get_front());
+                // destroy the pointer, deallocating the size of the event stored with the dispatch pointer
+                m_ev_buffer.deallocate_pop_front();
+                m_dis_buffer.destroy_front();
+            }
+            else {
+                const Update update{};
+                dispatch_base<Update>(&update);
+            }
         }
+        return !m_did_panic;
     }
 
     static size_t queued() {
@@ -48,8 +61,14 @@ public:
     }
 
     static void reset() {
+        List::reset();
         m_dis_buffer.reset();
         m_ev_buffer.clear();
+        m_did_panic = false;
+    }
+
+    static void start() {
+        List::start();
     }
 };
 
@@ -58,3 +77,6 @@ CircularHeap<2048> EventQueue<S...>::m_ev_buffer{};
 
 template<template<class> class... S>
 CircularBuffer<void(*)(const void*), 32> EventQueue<S...>::m_dis_buffer{};
+
+template<template<class> class... S>
+bool EventQueue<S...>::m_did_panic = false;
