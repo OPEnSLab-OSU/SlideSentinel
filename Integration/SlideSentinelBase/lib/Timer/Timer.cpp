@@ -14,3 +14,12 @@ bool Timer::timerDone() {
   m_armed = false;
   return true;
 }
+
+void Timer::startStopwatch() {
+  if (!m_armed)
+    m_start = millis();
+}
+
+unsigned long Timer::stopwatch() {
+  return m_armed ? -1 : (millis() - m_start) / 60000;
+}

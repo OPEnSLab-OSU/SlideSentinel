@@ -19,6 +19,7 @@ class SSInterface {
 private:
   HardwareSerial &m_serial;
   uint32_t m_baud;
+  bool m_base;
   uint8_t m_clientId;
   uint8_t m_serverId;
   RH_Serial m_driver;
@@ -29,8 +30,8 @@ private:
   uint8_t m_outFrag;
   uint8_t m_inFrag;
   uint8_t m_type;
-  bool m_base;
   uint8_t m_blen;
+  uint8_t m_from;
 
   char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
   void _clearBuffer();
@@ -57,6 +58,7 @@ public:
   int getRetries();
   int getType();
   int getId();
+  void clearSerial();
 };
 
 #endif // _SSINTERFACE_H_

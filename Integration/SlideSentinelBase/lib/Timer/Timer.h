@@ -14,6 +14,8 @@ public:
   Timer(int timeoutBuffer);
   void startTimer(int wakeTime);
   bool timerDone();
+  void startStopwatch();
+  unsigned long stopwatch();
 };
 
 #endif // _TIMER_H_

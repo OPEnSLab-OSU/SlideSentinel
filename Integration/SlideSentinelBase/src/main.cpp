@@ -1,5 +1,6 @@
 #include "BaseModel.h"
 #include "COMController.h"
+#include "FSController.h"
 #include <Arduino.h>
 
 #define RST 5
@@ -11,6 +12,9 @@
 #define INIT_RETRIES 3
 #define IS_Z9C true
 #define NUM_ROVERS 2
+
+#define SD_CS 10
+#define SD_RST 6
 
 // TODO you updated the properties class and the SSInterface class, make sure to
 // place most recently updated back in the Rover code
@@ -24,6 +28,7 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 Freewave radio(RST, -1, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
+FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
 
 // Model
 BaseModel model(NUM_ROVERS);
@@ -35,63 +40,69 @@ void setup() {
   Serial.begin(115200);
   while (!Serial)
     ;
+
+  // SPI INIT
+  SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV8);
+
   static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
                                       CLIENT_ADDRESS, SERVER_ADDRESS,
                                       INIT_TIMEOUT, INIT_RETRIES);
   comController = &_comController;
   comController->init();
+  fsController.init();
 
-  // NOTE
-  // Initial state of all rovers on the network
-  // props are only updated if the injecting value is not -1.
-  // Rover receives base station copy of props every handshake
-  // invalid data is handled earlier in the pipeline
   StaticJsonDocument<MAX_DATA_LEN> doc;
   JsonArray data = doc.createNestedArray(SS_PROP);
   data.add(2000);
   data.add(3);
   data.add(2);
   data.add(3);
-  data.add(0xff);
+  data.add(0x0f);
   data.add(200000);
   data.add(0);
   serializeJson(doc, test_buf);
   model.setProps(1, test_buf);
+
+  StaticJsonDocument<MAX_DATA_LEN> doc2;
+  JsonArray data2 = doc2.createNestedArray(SS_PROP);
+  data2.add(200);
+  data2.add(4);
+  data2.add(3);
+  data2.add(3);
+  data2.add(0x0f);
+  data2.add(80000);
+  data2.add(3);
+  serializeJson(doc2, test_buf);
+  model.setProps(2, test_buf);
   model.print();
 }
 
-enum State { IDLE, SERVICE, SATCOM };
+enum State { LISTEN, SATCOM };
 
 void loop() {
-  State state = IDLE;
+  State state = LISTEN;
 
   while (1) {
     switch (state) {
-    case IDLE:
-      if (comController->listenReq(model)) {
-        Serial.println("RECEIVED REQUEST FROM ROVER!");
-        if (model.getRoverIMUFlag(model.getRover())) {
+    case LISTEN:
+      if (comController->listen(model)) {
+        if (model.getRoverIMUFlag(model.getRoverAlert())) {
           state = SATCOM;
           Serial.println("IMU FLAG FROM ROVER!");
         }
-        state = SERVICE;
-        break;
-      }
-      break;
-    case SERVICE:
-      if (comController->timeout()) {
-        Serial.println("Service timeout occured");
-        state = IDLE;
-        break;
-      }
-      if (comController->listenUpl(model)) {
-        state = SATCOM;
+        fsController.logDiag(model.getRoverAlert(),
+                             model.getDiag(model.getRoverAlert()));
+        fsController.logProps(model.getRoverAlert(),
+                              model.getProps(model.getRoverAlert()));
         break;
       }
       break;
     case SATCOM:
+      fsController.logData(model.getRoverServe(),
+                           model.getData(model.getRoverServe()));
       Serial.println("SATCOM");
-      state = IDLE;
+      state = LISTEN;
       break;
     }
   }

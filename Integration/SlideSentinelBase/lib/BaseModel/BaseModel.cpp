@@ -38,6 +38,8 @@ void BaseModel::setError(char *err) { m_err = err; }
 
 char *BaseModel::getError() { return m_err; }
 
-void BaseModel::setRover(int rover_id) { m_roverId = rover_id; }
+void BaseModel::setRoverServe(int rover_id) { m_roverServeId = rover_id; }
+void BaseModel::setRoverAlert(int rover_id) { m_roverAlertId = rover_id; }
 
-int BaseModel::getRover() { return m_roverId; }
+int BaseModel::getRoverServe() { return m_roverServeId; }
+int BaseModel::getRoverAlert() { return m_roverAlertId; }

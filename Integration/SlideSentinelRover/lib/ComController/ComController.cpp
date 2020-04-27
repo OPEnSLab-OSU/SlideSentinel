@@ -34,6 +34,9 @@ bool COMController::request(SSModel &model) {
     return false;
   }
 
+  // NOTE case: the base is servicing another rover. The base will take the
+  // diagnostic data because it could be a wake alert, but will not reply if it
+  // is busy servicing another rover
   m_clearBuffer();
   if (!m_interface.receivePacket(m_buf)) {
     m_droppedPkt();

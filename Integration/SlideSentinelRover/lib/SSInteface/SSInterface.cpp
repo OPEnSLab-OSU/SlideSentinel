@@ -4,9 +4,10 @@
 SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
                          uint8_t clientId, uint8_t serverId, uint16_t timeout,
                          uint8_t retries, bool isBase)
-    : m_serial(serial), m_baud(baud), m_clientId(clientId),
-      m_serverId(serverId), m_driver(m_serial), m_manager(m_driver, m_clientId),
-      m_timeout(timeout), m_retries(retries), m_base(isBase),
+    : m_serial(serial), m_baud(baud), m_base(isBase), m_clientId(clientId),
+      m_serverId(serverId), m_driver(m_serial),
+      m_manager(m_driver, (m_base ? m_serverId : m_clientId)),
+      m_timeout(timeout), m_retries(retries),
       m_blen(RH_SERIAL_MAX_MESSAGE_LEN - 1){};
 
 bool SSInterface::sendPacket(const int type, char *packet) {
@@ -44,8 +45,7 @@ bool SSInterface::receivePacket(char *buffer) {
 bool SSInterface::_receive() {
   _clearBuffer();
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
-  uint8_t from;
-  if (m_manager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_timeout, &from))
+  if (m_manager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_timeout, &m_from))
     return true;
   return false;
 }
@@ -68,9 +68,11 @@ void SSInterface::init() {
   m_manager.init();
 }
 
+// The client sends to the server
 bool SSInterface::_send() {
   uint8_t size = strlen(m_buf);
-  if (m_manager.sendtoWait((uint8_t *)m_buf, size, m_clientId))
+  if (m_manager.sendtoWait((uint8_t *)m_buf, size,
+                           m_base ? m_from : m_serverId))
     return true;
   return false;
 }

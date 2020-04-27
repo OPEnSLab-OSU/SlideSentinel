@@ -23,6 +23,15 @@ private:
   SN74LVC2G53 &m_mux;
   Timer m_timer;
 
+  // is the base servicing a rover
+  bool m_isServing;
+  // the rover currently being serviced
+  int m_rover;
+
+  // diagnostics
+  int m_num_uploads;
+  int m_num_requests;
+
   char m_buf[MAX_DATA_LEN];
 
   void m_clear();
@@ -31,14 +40,18 @@ private:
   void m_reset();
   bool m_available();
 
+  bool m_request(int rover_id, BaseModel &model);
+  bool m_upload(int rover_id, BaseModel &model);
+
 public:
   COMController(Freewave &radio, SN74LVC2G53 &mux, HardwareSerial &serial,
                 uint32_t baud, uint8_t clientId, uint8_t serverId,
                 uint16_t timeout, uint8_t retries);
   bool init();
   void resetRadio();
-  bool listenReq(BaseModel &model);
-  bool listenUpl(BaseModel &model);
+  int listen(BaseModel &model);
+  // bool listenReq(BaseModel &model);
+  // bool listenUpl(BaseModel &model);
   bool timeout();
   void status(BaseModel &model);
   void update(BaseModel &model);

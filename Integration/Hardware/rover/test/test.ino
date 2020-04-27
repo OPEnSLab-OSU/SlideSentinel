@@ -320,8 +320,6 @@ void mmaSetupSlideSentinel()
     if (!mma.begin())
     {
         Serial.println("Unable to find MMA8451");
-        while (1)
-            ;
     }
 
     mma.setRange(MMA8451_RANGE_2_G);
