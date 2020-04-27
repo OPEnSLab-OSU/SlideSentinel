@@ -66,7 +66,7 @@ void setup() {
 
   StaticJsonDocument<MAX_DATA_LEN> doc2;
   JsonArray data2 = doc2.createNestedArray(SS_PROP);
-  data2.add(200);
+  data2.add(2000);
   data2.add(4);
   data2.add(3);
   data2.add(3);
@@ -102,6 +102,8 @@ void loop() {
       fsController.logData(model.getRoverServe(),
                            model.getData(model.getRoverServe()));
       Serial.println("SATCOM");
+      Serial.print("Uploading Alert from rover: ");
+      Serial.println(model.getRoverAlert());
       state = LISTEN;
       break;
     }

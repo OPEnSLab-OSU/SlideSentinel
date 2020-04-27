@@ -55,11 +55,11 @@ int COMController::listen(BaseModel &model) {
   int rover_id = m_interface.getId();
   int type = m_interface.getType();
 
-  console.debug("\nMessage from Rover ");
+  console.debug("\n********** Message from Rover ");
   console.debug(rover_id);
   console.debug(": TYPE: ");
   console.debug(type);
-  console.debug("\n");
+  console.debug(" *************");
   model.setRoverAlert(rover_id);
 
   if (type == UPL)
@@ -87,9 +87,12 @@ bool COMController::m_request(int rover_id, BaseModel &model) {
     m_mux.comY1();
     return true;
   }
-
-  if (!m_interface.sendPacket(RES, model.getProps(rover_id)))
+  console.debug(
+      "Received REQ, NOT servicing another rover, sending back Props...\n");
+  if (!m_interface.sendPacket(RES, model.getProps(rover_id))) {
+    console.debug("\nFAILED TO REPLY WITH PROPS!\n");
     return false;
+  }
 
   model.setRoverServe(rover_id);
   console.debug("\nSetting alarm for: ");
@@ -97,7 +100,9 @@ bool COMController::m_request(int rover_id, BaseModel &model) {
   console.debug("\n");
   m_timer.startTimer(model.getRoverWakeTime(rover_id) * 60);
 
+  m_isServing = true;
   m_mux.comY1();
+  console.debug("Props reply complete, beginning to service\n");
   return true;
 }
 
