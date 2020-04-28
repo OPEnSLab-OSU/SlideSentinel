@@ -6,6 +6,9 @@
 #include "Diagnostics.h"
 #include "Properties.h"
 #include "Shadow.h"
+#include <Arduino.h>
+
+#define BASE_DIAG "BDIAG"
 
 using namespace errorMsg;
 
@@ -16,6 +19,13 @@ private:
   int m_roverAlertId;
   Shadow *m_shadow;
   char *m_err;
+
+  unsigned long m_stopwatch;
+  int m_num_uploads;
+  int m_num_requests;
+  float m_sdSpace;
+  char m_buf[MAX_DATA_LEN];
+  void m_clear();
 
 public:
   BaseModel(int numRovers);
@@ -39,6 +49,14 @@ public:
 
   void setError(char *err);
   char *getError();
+
+  // internal diagnostics
+  void setStopwatch(unsigned long stopwatch);
+  void setNumUploads(int num_uploads);
+  void setNumRequests(int num_requests);
+  void setSdSpace(float sdSpace);
+  char *getBaseDiagnostics();
+  char *getRoverShadow();
 };
 
 #endif // _BASEMODEL_H_

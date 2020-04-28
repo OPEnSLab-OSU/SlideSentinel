@@ -43,3 +43,45 @@ void BaseModel::setRoverAlert(int rover_id) { m_roverAlertId = rover_id; }
 
 int BaseModel::getRoverServe() { return m_roverServeId; }
 int BaseModel::getRoverAlert() { return m_roverAlertId; }
+
+// unsigned long m_stopwatch;
+// int m_num_uploads;
+// int m_num_requests;
+// float m_sdSpace;
+// char m_buf[MAX_DATA_LEN];
+
+void BaseModel::m_clear() { memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN); }
+void BaseModel::setStopwatch(unsigned long stopwatch) {
+  m_stopwatch = stopwatch;
+}
+void BaseModel::setNumUploads(int num_uploads) { m_num_uploads = num_uploads; }
+void BaseModel::setNumRequests(int num_requests) {
+  m_num_requests = num_requests;
+}
+void BaseModel::setSdSpace(float sdSpace) { m_sdSpace = sdSpace; }
+
+char *BaseModel::getBaseDiagnostics() {
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  JsonArray data = doc.createNestedArray(BASE_DIAG);
+  data.add(m_stopwatch);
+  data.add(m_num_uploads);
+  data.add(m_num_requests);
+  data.add(m_sdSpace);
+  m_clear();
+  serializeJson(doc, m_buf);
+  return m_buf;
+}
+
+char *BaseModel::getRoverShadow() {
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  char buf[255];
+  for (int i = 0; i < m_numRovers; i++) {
+    itoa(i, buf, 10);
+    JsonArray data = doc.createNestedArray(buf);
+    data.add(m_shadow[i].toDiag());
+    data.add(m_shadow[i].toProps());
+  }
+  m_clear();
+  serializeJson(doc, m_buf);
+  return m_buf;
+}

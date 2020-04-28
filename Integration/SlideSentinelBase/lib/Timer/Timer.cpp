@@ -8,6 +8,8 @@ void Timer::startTimer(int wakeTime) {
   m_armed = true;
 }
 
+void Timer::stopTimer() { m_armed = false; }
+
 bool Timer::timerDone() {
   if (!(m_armed && ((millis() - m_start) > m_timeout)))
     return false;
@@ -21,5 +23,5 @@ void Timer::startStopwatch() {
 }
 
 unsigned long Timer::stopwatch() {
-  return m_armed ? -1 : (millis() - m_start) / 60000;
+  return m_armed ? 0 : (millis() - m_start) / 60000;
 }

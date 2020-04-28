@@ -63,7 +63,7 @@ bool FSController::m_setFile(int rover_num, const char *file) {
 }
 
 bool FSController::m_log(int rover_num, const char *msg, const char *file) {
-  if (!(m_setFile(rover_num-1, file) && m_write((char *)msg))) {
+  if (!(m_setFile(rover_num - 1, file) && m_write((char *)msg))) {
     m_file.close();
     return false;
   }
@@ -87,16 +87,18 @@ void FSController::logProps(int rover_num, char *props) {
 }
 
 void FSController::m_SDspace() {
-  float cardSize = m_sd.card()->cardSize() * 0.000512;
-  m_spaceMB = cardSize - m_sd.vol()->freeClusterCount() *
-                             m_sd.vol()->blocksPerCluster() * 0.000512;
+  uint32_t cardSize = m_sd.card()->cardSize() * 0.000512;
+  uint32_t volFree = m_sd.vol()->freeClusterCount();
+  m_spaceMB = 0.000512 * volFree * m_sd.vol()->blocksPerCluster();
+  m_spaceMB = ((cardSize- m_spaceMB) / cardSize) * 100;
 
-  // Serial.printf(F(" Size: %d.%02d MB"), (unsigned int)cardSize,
-  //               (unsigned int)(cardSize * 100.0) % 100);
-
-  // Serial.printfn(F(" (Used: %d.%02d MB)."), (unsigned int)used,
-  //                (unsigned int)(used * 100.0) % 100);
+  Serial.println("Used: ");
+  Serial.println(m_spaceMB);
 }
 
-void FSController::status(BaseModel &model) {}
+void FSController::status(BaseModel &model) {
+  m_SDspace();
+  model.setSdSpace(m_spaceMB);
+}
+
 void FSController::update(BaseModel &model) {}

@@ -42,6 +42,7 @@ int COMController::listen(BaseModel &model) {
     console.debug(model.getRoverServe());
     console.debug(": Timeout occured terminating service.");
     m_isServing = false;
+    m_timer.startStopwatch();
     m_reset();
   }
 
@@ -123,6 +124,7 @@ bool COMController::m_upload(int rover_id, BaseModel &model) {
   console.debug("\nReceived UPL from rover being serviced\n");
   m_isServing = false;
   m_reset();
+  m_timer.stopTimer();
   m_timer.startStopwatch();
 }
 
@@ -138,6 +140,10 @@ void COMController::m_setRetries(uint16_t retries) {
 
 bool COMController::timeout() { return m_timer.timerDone(); }
 
-void COMController::status(BaseModel &model) {}
+void COMController::status(BaseModel &model) {
+  model.setNumRequests(m_num_requests);
+  model.setNumUploads(m_num_uploads);
+  model.setStopwatch(m_timer.stopwatch());
+}
 
 void COMController::update(BaseModel &model) {}
