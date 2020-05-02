@@ -91,9 +91,6 @@ void FSController::m_SDspace() {
   uint32_t volFree = m_sd.vol()->freeClusterCount();
   m_spaceMB = 0.000512 * volFree * m_sd.vol()->blocksPerCluster();
   m_spaceMB = ((cardSize- m_spaceMB) / cardSize) * 100;
-
-  Serial.println("Used: ");
-  Serial.println(m_spaceMB);
 }
 
 void FSController::status(BaseModel &model) {

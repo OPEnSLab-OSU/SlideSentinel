@@ -117,6 +117,10 @@ void loop() {
         fsController.status(model);
         Serial.println(model.getBaseDiagnostics());
       }
+      if(cmd == '3'){
+        Serial.println("\n------- ROVER STATUS --------");
+        model.print();
+      }
     }
 
 
