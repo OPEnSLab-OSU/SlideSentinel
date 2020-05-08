@@ -176,6 +176,8 @@ namespace SatComm {
 
     template<class EventBus>
     void Controller<EventBus>::reset() {
+        m_incoming.reset();
+        m_outgoing.reset();
         tinyfsm::StateList<Wait, Idle, TXRX>::reset();
     }
 

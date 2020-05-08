@@ -22,7 +22,7 @@ void start() {
 
     // cycle until available or 5 seconds
     const auto start = millis();
-    while (!Controller::connected() && millis() - start < 5000) {
+    while (!Controller::connected() && millis() - start < 360000) {
         if (!Machine::next())
             TEST_FAIL_MESSAGE("Panicked!");
     }
@@ -50,7 +50,7 @@ void DangerousTestSendData() {
     Controller::send_now();
     // cycle until done or 5 seconds
     const auto start = millis();
-    while (Controller::send_pending() && millis() - start < 5000) {
+    while (Controller::send_pending() && millis() - start < 360000) {
         if (!Machine::next())
             TEST_FAIL_MESSAGE("Panicked!");
     }
@@ -65,7 +65,7 @@ void DangerousTestReceiveData() {
 
     // cycle until done or 5 seconds
     const auto start = millis();
-    while (millis() - start < 5000) {
+    while (millis() - start < 360000) {
         if (!Machine::next())
             TEST_FAIL_MESSAGE("Panicked!");
     }
@@ -77,9 +77,20 @@ void process() {
     UNITY_BEGIN();
     RUN_TEST(TestPowerUpIntegration);
     // RUN_TEST(DangerousTestTransmit);
-    // RUN_TEST(DangerousTestRecieve);
+    RUN_TEST(DangerousTestReceiveData);
     UNITY_END();
 }
+
+void ISBDConsoleCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+
+void ISBDDiagsCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+
 
 #include "../test_common/TestMain.h"
 

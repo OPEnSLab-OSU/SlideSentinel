@@ -24,6 +24,9 @@ private:
 public:
     template<typename E>
     static void dispatch(E const& event) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "DebugEventBus Dispatch Event: %s", typeid(E).name());
+        UnityMessage(buf, 0);
         // copy the event and store it into a vector so we can check it later
         EventPtr temp = EventPtr(new E(event));
         m_event_list.emplace_back(std::move(temp), typeid(E));
@@ -48,6 +51,10 @@ public:
         EventPtr temp = std::move(m_event_list.front().first);
         m_event_list.pop_front();
         return E(*static_cast<const E*>(temp.get()));
+    }
+
+    static size_t count() {
+        return m_event_list.size();
     }
 
     static bool empty() {
