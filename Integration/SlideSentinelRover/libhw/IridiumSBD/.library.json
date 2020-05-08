@@ -1,0 +1,41 @@
+{
+    "name": "IridiumSBD", 
+    "version": "2.0", 
+    "keywords": [
+        "iridium", 
+        "satellite", 
+        "9602", 
+        "9603", 
+        "rockblock"
+    ], 
+    "description": "A driver for controlling Iridium 9602/9603 satellite modems for Short Burst Data transmissions", 
+    "repository": {
+        "type": "git", 
+        "url": "https://github.com/mikalhart/IridiumSBD.git"
+    }, 
+    "authors": [
+        {
+            "email": "mhcom@sundial.com", 
+            "url": "http://arduiniana.org", 
+            "maintainer": true, 
+            "name": "Mikal Hart"
+        }
+    ], 
+    "frameworks": [
+        "arduino"
+    ], 
+    "platforms": [
+        "atmelavr", 
+        "atmelsam", 
+        "espressif32", 
+        "espressif8266", 
+        "intel_arc32", 
+        "microchippic32", 
+        "nordicnrf51", 
+        "nordicnrf52", 
+        "ststm32", 
+        "teensy", 
+        "timsp430"
+    ], 
+    "id": 5727
+}
