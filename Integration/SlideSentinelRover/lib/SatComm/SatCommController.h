@@ -160,8 +160,11 @@ namespace SatComm {
 
             void react(Success const&) override {
                 // succeed, but did not transmit or receive
-                // in this case we assume that we started a receive cycle
-                TXRX::template transit<Idle>();
+                // in this case a packet may have queued, so check if we need to transmit
+                if (!m_outgoing.empty())
+                    TXRX::template transit<TXRX>();
+                else
+                    TXRX::template transit<Idle>();
             }
         };
 

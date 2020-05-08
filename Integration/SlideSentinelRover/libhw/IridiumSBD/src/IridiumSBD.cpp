@@ -359,7 +359,9 @@ int IridiumSBD::internalSendReceiveSBD(const char *txTxtMessage, const uint8_t *
 #if true // use long string implementation
       if (txTxtMessage == NULL) // It's ok to have a NULL txtTxtMessage if the transaction is RX only
       {
-         send(F("AT+SBDWT=\r"));
+         // This has been replaced with AT+SBDD, which clears the TX buffer
+         // send(F("AT+SBDWT=\r"));
+         send(F("AT+SBDD0\r"));
          if (!waitForATResponse())
             return cancelled() ? ISBD_CANCELLED : ISBD_PROTOCOL_ERROR;
       }

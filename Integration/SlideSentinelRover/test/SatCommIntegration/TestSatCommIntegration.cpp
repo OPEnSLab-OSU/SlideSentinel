@@ -26,6 +26,7 @@ void start() {
         if (!Machine::next())
             TEST_FAIL_MESSAGE("Panicked!");
     }
+    TEST_MESSAGE("Connected!");
     // test that we powered up
     TEST_ASSERT_TRUE(Controller::connected());
 }
@@ -76,7 +77,7 @@ void DangerousTestReceiveData() {
 void process() {
     UNITY_BEGIN();
     RUN_TEST(TestPowerUpIntegration);
-    // RUN_TEST(DangerousTestTransmit);
+    RUN_TEST(DangerousTestSendData);
     RUN_TEST(DangerousTestReceiveData);
     UNITY_END();
 }
