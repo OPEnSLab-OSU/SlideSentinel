@@ -4,21 +4,28 @@ SatCommController
 skinparam defaultFontName Verdana
 hide empty description
 
-[*] -right-> Wait
-Wait --> Connected : DriverReady
-Connected --> Wait : SignalLost
+[*] --> WaitToTX
+state WaitToIdle
 state Connected {
+    WaitToTX -left-> TXRX : DriverReady
     state CheckQueue <<choice>>
-    [*] --> TXRX
     CheckQueue --> TXRX : [else]
     TXRX --> CheckQueue : Any Success
-    Idle -up-> TXRX : RingAlert
+    Idle --> TXRX : RingAlert
+    Idle -right-> WaitToIdle : SignalLost
+    WaitToIdle -left-> Idle : DriverReady
     CheckQueue --> Idle : QueueEmpty
+    TXRX --> WaitToTX : SignalLost
+    WaitToIdle -up-> WaitToTX : RingAlert
 }
 
 TXRX : entry / StartRecieve or StartSendReceive
 
-note left of Connected 
+note right of Connected
+Connected will evaluate to true here
+end note
+
+note right of WaitToIdle
 Contains a Queue for both
 inbound and outbound packets,
 the decision checks to see

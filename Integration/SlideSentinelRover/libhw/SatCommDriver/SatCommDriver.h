@@ -148,8 +148,8 @@ namespace SatComm {
         public:
 
             static void handleRing() {
-                m_did_ring.store(true);
                 detachInterrupt(RING_INDICATOR_PIN);
+                m_did_ring.store(true);
             }
 
             void entry() override {
@@ -170,10 +170,10 @@ namespace SatComm {
             void react(const Update&) override {
                 // if we got a ring alert interrupt, follow it
                 if (m_did_ring.load()) {
-                    if (Parent::m_modem->hasRingAsserted() || Parent::m_modem->getWaitingMessageCount() > 0)
-                        EventBus::dispatch(RingAlert{});
+                    EventBus::dispatch(RingAlert{});
                     m_did_ring.store(false);
-                    attachInterrupt(RING_INDICATOR_PIN, handleRing, LOW);
+                    // make sure that we don't trigger ourselved again from the same interrupt
+                    attachInterrupt(RING_INDICATOR_PIN, handleRing, FALLING);
                 }
                 // if signal is lost, transit out of ready
                 else if (!digitalRead(NET_AV_PIN))
@@ -200,10 +200,11 @@ namespace SatComm {
                 }
                 // if we received any data, copy it and indicate need for further data
                 if (bufmax > 0) {
+                    buf.length = bufmax;
                     // get the number of messages pending reception
                     err = Parent::m_modem->getWaitingMessageCount();
                     if (err < 0) {
-                        // I guess we lost the signal>
+                        // I guess we lost the signal
                         return Parent::template transit<Wait>();
                     }
                     // send a success event!

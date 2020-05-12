@@ -34,9 +34,52 @@ void TestNoPackets() {
 	Controller::dispatch(SatComm::Success{});
 	Controller::dispatch(SatComm::SendImmediate{});
 
-	// should attempt to receive once on startup, then nothing else
+
+}
+
+void TestSignalCycle() {
+    using Controller = SatComm::Controller <DebugEventBus>;
+
+    // test that if there is no packets, there is only one attempt to recieve
+    DebugEventBus::reset();
+    Controller::reset();
+    Controller::start();
+    Controller::dispatch(SatComm::SignalLost{});
+    Controller::dispatch(SatComm::DriverReady{});
+    Controller::dispatch(SatComm::Success{});
+    Controller::dispatch(SatComm::SignalLost{});
+    TEST_ASSERT_FALSE(Controller::connected());
+    Controller::dispatch(SatComm::DriverReady{});
+
+    // should attempt to receive once on startup, then nothing else
     DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
-	TEST_ASSERT_TRUE(DebugEventBus::empty());
+    TEST_ASSERT_TRUE(DebugEventBus::empty());
+    TEST_ASSERT_TRUE(Controller::connected());
+    TEST_ASSERT_EQUAL(0, Controller::available());
+}
+
+void TestSignalCycleRingAlert() {
+    using Controller = SatComm::Controller <DebugEventBus>;
+
+    // test that if a ring alert is received during signallost the device
+    // will attempt to receive when signal is found
+    DebugEventBus::reset();
+    Controller::reset();
+    Controller::start();
+    Controller::dispatch(SatComm::SignalLost{});
+    Controller::dispatch(SatComm::DriverReady{});
+    Controller::dispatch(SatComm::Success{});
+    Controller::dispatch(SatComm::SignalLost{});
+    TEST_ASSERT_FALSE(Controller::connected());
+
+    Controller::dispatch(SatComm::RingAlert{});
+    Controller::dispatch(SatComm::DriverReady{});
+    Controller::dispatch(SatComm::Success{});
+
+    // should attempt to receive twice: once on startup, then once again when signal is found
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
+    DEBUG_BUS_POP_EVENT(DebugEventBus, SatComm::StartReceive);
+    TEST_ASSERT_TRUE(DebugEventBus::empty());
     TEST_ASSERT_TRUE(Controller::connected());
     TEST_ASSERT_EQUAL(0, Controller::available());
 }
@@ -331,6 +374,8 @@ void process() {
 	UNITY_BEGIN();
 	RUN_TEST(TestNoSignal);
     RUN_TEST(TestNoPackets);
+    RUN_TEST(TestSignalCycle);
+    RUN_TEST(TestSignalCycleRingAlert);
     RUN_TEST(TestTransmitNoRx);
     RUN_TEST(TestTransmitNoRxBadSignal);
     RUN_TEST(TestTransmitRx);

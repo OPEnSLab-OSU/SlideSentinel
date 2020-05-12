@@ -46,7 +46,7 @@ namespace SatComm {
 
         // SatCommController Inbound
         void react(QueueMessage const&);
-        void react(SignalLost const&);
+        virtual void react(SignalLost const&) { }
         virtual void react(SendImmediate const&) { }
         // SatCommController Driver Inbound
         virtual void react(RingAlert const&) { }
@@ -80,7 +80,8 @@ namespace SatComm {
         static CircularBuffer<Packet, IncomingQueueMax> m_incoming;
 
         // forward declarations
-        class Wait;
+        class WaitToTX;
+        class WaitToIdle;
         class Idle;
         class TXRX;
         using Parent = Controller<EventBus>;
@@ -89,12 +90,30 @@ namespace SatComm {
         // State: Wait For Signal (Initial State)
         // Desc: Waits for the satellite modem to send the Ready event.
         //
-        class Wait
-            : public Controller<EventBus>
+        class WaitToTX
+            : public Parent
         {
             void react(DriverReady const& e) override {
                 // ready to receive!
-                Wait::template transit<TXRX>();
+                WaitToTX::template transit<TXRX>();
+            }
+        };
+
+        // ----------------------------------------------------------------------------
+        // State: Wait For Signal (Initial State)
+        // Desc: Waits for the satellite modem to send the Ready event.
+        //
+        class WaitToIdle
+                : public Parent
+        {
+            void react(DriverReady const&) override {
+                // ready to receive!
+                WaitToIdle::template transit<Idle>();
+            }
+
+            void react(RingAlert const&) override {
+                // queue receiving
+                WaitToIdle::template transit<WaitToTX>();
             }
         };
 
@@ -114,6 +133,10 @@ namespace SatComm {
 
             void react(RingAlert const& e) override {
                 Idle::template transit<TXRX>();
+            }
+
+            void react(SignalLost const& e) override {
+                Idle::template transit<WaitToIdle>();
             }
         };
 
@@ -166,10 +189,15 @@ namespace SatComm {
                 else
                     TXRX::template transit<Idle>();
             }
+
+            void react(SignalLost const&) override {
+                // whoops! wait for the signal to come back
+                TXRX::template transit<WaitToTX>();
+            }
         };
 
     public:
-        using InitialState = Wait;
+        using InitialState = WaitToTX;
     };
 
     template<class EventBus>
@@ -181,7 +209,7 @@ namespace SatComm {
     void Controller<EventBus>::reset() {
         m_incoming.reset();
         m_outgoing.reset();
-        tinyfsm::StateList<Wait, Idle, TXRX>::reset();
+        tinyfsm::StateList<WaitToTX, WaitToIdle, Idle, TXRX>::reset();
     }
 
     template<class EventBus>
@@ -209,12 +237,6 @@ namespace SatComm {
             else
                 break;
         }
-    }
-
-    template<class EventBus>
-    void Controller<EventBus>::react(SignalLost const&) {
-        // transit to wait from any state
-        Controller<EventBus>::template transit<Wait>();
     }
 
     template<class EventBus>

@@ -58,27 +58,34 @@ void DangerousTestSendData() {
     TEST_ASSERT_EQUAL(0, Controller::send_pending());
 }
 
-void DangerousTestReceiveData() {
+void DangerousTestRingAlert() {
+    // this test must be performed manually
     using Machine = EventQueue<SatComm::Controller, SatComm::Driver>;
     using Controller = SatComm::Controller<Machine>;
+    const SatComm::Packet recv{ { 'A', 'l', 's', 'o', ' ', 'h', 'e', 'r', 'e', '!', '\0' }, 11 };
 
     start();
 
     // cycle until done or 5 seconds
     const auto start = millis();
-    while (millis() - start < 360000) {
+    while (!Controller::available() && millis() - start < 360000) {
         if (!Machine::next())
             TEST_FAIL_MESSAGE("Panicked!");
     }
-    // not really much to test, so see if we're connected
-    TEST_ASSERT_TRUE(Controller::connected());
+    // check the packet
+    TEST_ASSERT_EQUAL(1, Controller::available());
+    SatComm::Packet packet;
+    Controller::receive(packet);
+    TEST_ASSERT_EQUAL(0, Controller::available());
+    TEST_ASSERT_EQUAL(recv.length, packet.length);
+    TEST_ASSERT_TRUE(recv.bytes == packet.bytes);
 }
 
 void process() {
     UNITY_BEGIN();
     RUN_TEST(TestPowerUpIntegration);
     RUN_TEST(DangerousTestSendData);
-    RUN_TEST(DangerousTestReceiveData);
+    RUN_TEST(DangerousTestRingAlert);
     UNITY_END();
 }
 
