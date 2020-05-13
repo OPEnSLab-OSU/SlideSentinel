@@ -14,6 +14,7 @@
 #include "RH_Serial.h"
 #include "SN74LVC2G53.h"
 #include "SSInterface.h"
+#include "Timer.h"
 
 class COMController : public Controller {
 private:
@@ -21,17 +22,19 @@ private:
   Freewave &m_radio;
   MAX3243 &m_max3243;
   SN74LVC2G53 &m_mux;
+  
+  HardwareSerial &m_serial;
+  Timer m_timer; 
 
-  uint16_t m_dropped_pkts; // diagnostic
-  uint8_t m_threshold;     // state
+  int m_dropped_pkts;  // diagnostic
+  uint8_t m_threshold; // state
   char m_buf[MAX_DATA_LEN];
 
-  bool m_send(char msg[]);
-  bool m_receive(char buf[]);
   void m_clearBuffer();
 
   void m_setTimeout(uint16_t timeout);
   void m_setRetries(uint16_t retries);
+  void m_setThreshold(uint8_t threshold);
   void m_droppedPkt();
 
 public:
@@ -44,7 +47,7 @@ public:
   void status(SSModel &model);
   void update(SSModel &model);
   void resetRadio();
-  bool channelBusy();
+  bool channelBusy(SSModel &model);
 };
 
 #endif // _COMCONTROLLER_H_

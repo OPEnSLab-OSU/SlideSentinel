@@ -9,8 +9,8 @@
 #define MAIN "data"
 #define SD_SIZE 16 // GB
 
-// TODO consider deep copying over the timestamp so we dont depend on a string not
-// within the FSController class
+// TODO consider deep copying over the timestamp so we dont depend on a string
+// not within the FSController class
 class FSController : public Controller {
 private:
   SdFat m_sd;
@@ -24,8 +24,8 @@ private:
   char *m_curDir;
 
   // TODO add error count diagnostic info
-  float m_spaceMB;  // diagnostic
-  uint16_t m_cycle; // diagnostic
+  float m_spaceMB; // diagnostic
+  int m_cycle;     // diagnostic
   void m_cycles();
   void m_SDspace();
 

@@ -17,6 +17,7 @@
         "type_traits": "cpp",
         "iostream": "cpp",
         "memory": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "tuple": "cpp"
     }
 }

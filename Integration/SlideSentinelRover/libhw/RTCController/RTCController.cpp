@@ -6,7 +6,8 @@ volatile bool RTCController::m_flag = false;
 
 RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
                              uint16_t sleepTime)
-    : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime) {
+    : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime),
+      m_backoffCounter(1) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -49,6 +50,7 @@ bool RTCController::init() {
 }
 
 void RTCController::m_setAlarm(int time) {
+  m_setFlag();
   m_clearAlarm();
   m_setDate();
   uint8_t min = (m_date.minute() + time) % 60;
@@ -56,6 +58,12 @@ void RTCController::m_setAlarm(int time) {
   m_RTC.setAlarm(ALM1_MATCH_HOURS, min, hr, 0);
   m_RTC.alarmInterrupt(1, true);
   attachInterrupt(digitalPinToInterrupt(m_pin), RTC_ISR, FALLING);
+
+  console.debug("\nCurrent Time: ");
+  console.debug(m_date.hour());
+  console.debug(":");
+  console.debug(m_date.minute());
+  console.debug("\n");
 
   console.debug("Setting alarm for ");
   console.debug(hr);
@@ -72,25 +80,35 @@ char *RTCController::getTimestamp() {
   return m_timestamp;
 }
 
-void RTCController::setPollAlarm() { m_setAlarm(m_wakeTime); }
+void RTCController::setPollAlarm() {
+  // reset the backoff counter if no collision occured
+  m_backoffCounter = 1;
+  m_setAlarm(m_wakeTime);
+}
 
-void RTCController::setWakeAlarm() { m_setAlarm(m_sleepTime); }
+void RTCController::setWakeAlarm() {
+  m_setAlarm(m_sleepTime * m_backoffCounter);
+}
+
+// need access to unconnected analog in for seeding
+// random number generator
+void RTCController::incrementBackoff() {
+  if (m_backoffCounter < 3)
+    m_backoffCounter++;
+}
 
 bool RTCController::alarmDone() {
   if (!m_getFlag())
     return false;
   m_clearAlarm();
-  m_setFlag();
   return true;
 }
 
 void RTCController::m_setDate() { m_date = m_RTC.now(); }
 
-void RTCController::m_setWakeTime(uint16_t wakeTime) { m_wakeTime = wakeTime; }
+void RTCController::m_setWakeTime(int wakeTime) { m_wakeTime = wakeTime; }
 
-void RTCController::m_setSleepTime(uint16_t sleepTime) {
-  m_sleepTime = sleepTime;
-}
+void RTCController::m_setSleepTime(int sleepTime) { m_sleepTime = sleepTime; }
 
 void RTCController::status(SSModel &model) {
   model.setProp(WAKE_TIME, m_wakeTime);
@@ -98,8 +116,6 @@ void RTCController::status(SSModel &model) {
 }
 
 void RTCController::update(SSModel &model) {
-  if (model.validProp(WAKE_TIME))
-    m_setWakeTime(model.getProp(WAKE_TIME));
-  if (model.validProp(SLEEP_TIME))
-    m_setSleepTime(model.getProp(SLEEP_TIME));
+  m_setWakeTime(model.getProp(WAKE_TIME));
+  m_setSleepTime(model.getProp(SLEEP_TIME));
 }

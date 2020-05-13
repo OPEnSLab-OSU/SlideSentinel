@@ -262,10 +262,39 @@ uint8_t GNSSController::poll(SSModel &model) {
            // check if the current reading is better than the running best
            if (m_compare()) m_setBest();
 
+           // // log the current reading
            // update internal varibales of SSModel
-           model.setPos_llh(m_pos_llh); model.setBaseline_ned(m_baseline_ned);
-           model.setMsg_vel_ned_t(m_vel_ned); model.setMsg_dops_t(m_dops);
-           model.setMsg_gps_time_t(m_gps_time); model.setMode(m_mode);
+           //  model.setPos_llh(pos_llh);
+           //  model.setBaseline_ned(baseline_ned);
+           //  model.setMsg_vel_ned_t(vel_ned);
+           //  model.setMsg_dops_t(dops);
+           //  model.setMsg_gps_time_t(gps_time);
+           //  model.setMode(m_getMode());
+           //  model.setProp(LOG_FREQ, m_logFreq);
+
+           // test data
+           msg_pos_llh_t test_pos_llh; test_pos_llh.lat = 123.45678910;
+           test_pos_llh.lon = 89.12345678; test_pos_llh.height = 12.34;
+           test_pos_llh.n_sats = 10;
+
+           msg_baseline_ned_t test_baseline_ned; test_baseline_ned.n = 10;
+           test_baseline_ned.e = 11; test_baseline_ned.d = 12;
+
+           msg_vel_ned_t test_vel_ned; test_vel_ned.n = 13; test_vel_ned.e = 14;
+           test_vel_ned.d = 15;
+
+           msg_dops_t test_dops; test_dops.gdop = 1.1; test_dops.hdop = 1.2;
+           test_dops.pdop = 1.3; test_dops.tdop = 1.4; test_dops.vdop = 1.5;
+
+           msg_gps_time_t test_gps_time; test_gps_time.wn = 99;
+           test_gps_time.tow = 88;
+
+           uint8_t test_mode = 4;
+
+           model.setPos_llh(test_pos_llh);
+           model.setBaseline_ned(test_baseline_ned);
+           model.setMsg_vel_ned_t(test_vel_ned); model.setMsg_dops_t(test_dops);
+           model.setMsg_gps_time_t(test_gps_time); model.setMode(test_mode);
            model.setProp(LOG_FREQ, m_logFreq);
 
            // check if we acheived an RTK fix, reset internal variables
@@ -310,11 +339,16 @@ void GNSSController::status(SSModel &model) {
 }
 
 void GNSSController::update(SSModel &model) {
-  if (model.validProp(LOG_FREQ))
-    m_setLogFreq(model.getProp(LOG_FREQ));
+  m_setLogFreq(model.getProp(LOG_FREQ));
 }
 
-void GNSSController::flush() { m_serial.flush(); }
+// clear any serial data in the pipe and reinit best
+void GNSSController::reset() {
+  while (m_serial.available())
+    uint8_t c = m_serial.read();
+  m_reset();
+  m_setBest();
+}
 
 // #define MAX_POS_STR 200
 // #define MAX_POS_FIELD 30

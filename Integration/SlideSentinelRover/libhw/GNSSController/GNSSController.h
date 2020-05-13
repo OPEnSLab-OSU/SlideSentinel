@@ -42,7 +42,7 @@ public:
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);
-  void flush();
+  void reset();
 };
 
 #endif // _GNSSCONTROLLER_H_

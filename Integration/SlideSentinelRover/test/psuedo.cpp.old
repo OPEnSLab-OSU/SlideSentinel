@@ -1,4 +1,6 @@
 /*
+- barrel power connector 
+- ground copper exposed on drill holes in each corner
 - round corners of PCB
 - mount Piksi directly to PCB
 - mount ZED-F9P directly to PCB, FTDI for uploading firmware
