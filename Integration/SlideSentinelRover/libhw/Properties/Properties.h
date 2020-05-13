@@ -1,7 +1,6 @@
 #ifndef _PROPERTIES_H_
 #define _PROPERTIES_H_
 
-#include <Arduino.h>
 #include "ArduinoJson.h"
 
 #define SS_PROP "PROP"

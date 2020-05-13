@@ -1,7 +1,6 @@
 #ifndef _DIAGNOSTICS_H_
 #define _DIAGNOSTICS_H_
 
-#include <Arduino.h>
 #include "ArduinoJson.h"
 
 #define SS_DIAG "DIAG"
