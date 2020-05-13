@@ -40,6 +40,7 @@
 
 #ifndef TINYFSM_NOSTDLIB
 #include <type_traits>
+#include <typeinfo>
 #endif
 
 // #include <iostream>
@@ -51,7 +52,7 @@ namespace tinyfsm
 
   // --------------------------------------------------------------------------
 
-  struct Event { };
+  struct Event {};
 
   // --------------------------------------------------------------------------
 
@@ -78,6 +79,19 @@ namespace tinyfsm
 
   template<typename S>
   typename _state_instance<S>::value_type _state_instance<S>::value;
+
+  template <typename T, typename... Args>
+  class _has_react
+  {
+      template <typename C,
+          typename = decltype(std::declval<C>().react(std::declval<Args>()...))>
+          static std::true_type test(int);
+      template <typename C>
+      static std::false_type test(...);
+
+  public:
+      static constexpr bool value = decltype(test<T>(0))::value;
+  };
 
   // --------------------------------------------------------------------------
 
@@ -108,7 +122,9 @@ namespace tinyfsm
   public:
 
     // explicitely specialized in FSM_INITIAL_STATE macro
-    static void set_initial_state();
+    static void set_initial_state() {
+      current_state_ptr = &_state_instance< typename F::InitialState >::value;
+    }
 
     static void reset() { };
 
@@ -121,11 +137,19 @@ namespace tinyfsm
       enter();
     }
 
-    template<typename E>
-    static void dispatch(E const & event) {
-      current_state_ptr->react(event);
-    }
+    // only dispatch if the correct overload function is present
+    //template<typename E>
+    //static typename std::enable_if<!_has_react<F, E>::value>::type dispatch(E const&) {}
 
+    //template<typename E>
+    //static typename std::enable_if<_has_react<F, E>::value>::type dispatch(E const& event) {
+    //     current_state_ptr->react(event);
+    //}
+
+     template<typename E>
+     static void dispatch(E const& event) {
+          current_state_ptr->react(event);
+     }
 
   /// state transition functions
   protected:
