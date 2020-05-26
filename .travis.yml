@@ -22,7 +22,6 @@
 language: python
 python:
   - "3.6"
-sudo: false
 cache:
   directories:
     - "~/.platformio"
@@ -31,30 +30,41 @@ install:
   - pip install -U platformio
   - platformio update
 
-env:
-  - USER_PIO_DIR=Integration/SlideSentinelRover
-  - USER_PIO_DIR=Integration/SlideSentinelBase
-
-before_script:
-    # TODO: Monorepo? Split into another repository?
-    - cd $USER_PIO_DIR
-
 jobs:
   include:
     # Build stage: ensure that all three varients build
     - stage: "Build"
-      name: "Embedded w/ Bootloader"
+      name: "Rover Embedded w/ Bootloader"
       script:
-        - ls -lah
+        - cd Integration/SlideSentinelRover
         - platformio run -e adafruit_feather_m0
-    - name: "Embedded w/o Bootloader"
+    - name: "Rover Embedded w/o Bootloader"
       script:
+        - cd Integration/SlideSentinelRover
+        - platformio run -e adafruit_feather_m0_debug  
+    - name: "Base Embedded w/o Bootloader"
+      script:
+        - Integration/SlideSentinelBase
+        - platformio run -e adafruit_feather_m0_debug  
+    - name: "Rover Embedded w/o Bootloader"
+      script:
+        - Integration/SlideSentinelBase
         - platformio run -e adafruit_feather_m0_debug  
     # Test stage: ensure that all tests pass on native and embedded
     - stage: "Test"
-      name: "Native"
+      name: "Rover Native"
       script:
+        - cd Integration/SlideSentinelRover
         - platformio test -e native
-    - name: "Embedded w/o Bootloader"
+    - name: "Rover Embedded w/o Bootloader"
       script:
+        - cd Integration/SlideSentinelRover
+        - platformio remote test -e adafruit_feather_m0_debug --force-remote
+    - name: "Base Native"
+      script:
+        - cd Integration/SlideSentinelBase
+        - platformio test -e native
+    - name: "Base Embedded w/o Bootloader"
+      script:
+        - cd Integration/SlideSentinelBase
         - platformio remote test -e adafruit_feather_m0_debug --force-remote
