@@ -44,11 +44,11 @@ jobs:
         - platformio run -e adafruit_feather_m0_debug
     - name: "Base Embedded w/ Bootloader"
       script:
-        - Integration/SlideSentinelBase
+        - cd Integration/SlideSentinelBase
         - platformio run -e adafruit_feather_m0
     - name: "Base Embedded w/o Bootloader"
       script:
-        - Integration/SlideSentinelBase
+        - cd Integration/SlideSentinelBase
         - platformio run -e adafruit_feather_m0_debug  
     # Test stage: ensure that all tests pass on native and embedded
     - stage: "Test"
