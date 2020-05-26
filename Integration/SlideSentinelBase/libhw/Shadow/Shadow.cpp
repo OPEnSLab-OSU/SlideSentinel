@@ -1,5 +1,5 @@
 #include "Shadow.h"
-#include "Console.h"
+#include <Plog.h>
 
 Shadow::Shadow() { m_props.init(); }
 
@@ -35,8 +35,7 @@ void Shadow::m_serializePkt(JsonDocument &doc) {
 void Shadow::print() {
   m_props.print();
   m_diag.print();
-  console.debug("\n");
-  console.debug(m_data);
+  LOGD << m_data;
 }
 
 void Shadow::setProps(char *buf) { m_props.read(buf); }

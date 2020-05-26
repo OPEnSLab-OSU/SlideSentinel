@@ -1,5 +1,5 @@
 #include "BaseModel.h"
-#include "Console.h"
+#include <Plog.h>
 
 BaseModel::BaseModel(int numRovers) : m_numRovers(numRovers) {
   m_shadow = new Shadow[numRovers];
@@ -27,9 +27,7 @@ void BaseModel::setData(int id, char *buf) { m_shadow[id - 1].setData(buf); }
 
 void BaseModel::print() {
   for (int i = 0; i < m_numRovers; i++) {
-    console.debug("\n\nRover ");
-    console.debug(i);
-    console.debug(":\n");
+    LOGD << "Rover " << i << " basemodel: ";
     m_shadow[i].print();
   }
 }

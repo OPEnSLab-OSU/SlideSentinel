@@ -1,5 +1,5 @@
 #include "Diagnostics.h"
-#include "Console.h"
+#include <Plog.h>
 
 Diagnostics::Diagnostics() { clear(); }
 
@@ -29,20 +29,13 @@ void Diagnostics::read(char *buf) {
 }
 
 void Diagnostics::print() {
-  console.debug("\n\n**** DIAGNOSTICS ****\n");
-  console.debug("IMU Flag: ");
-  console.debug(imu());
-  console.debug("\nBattery Voltage: ");
-  console.debug(bat());
-  console.debug("\nSD Space: ");
-  console.debug(space());
-  console.debug("\nWake Cycles: ");
-  console.debug(cycles());
-  console.debug("\nDropped Packets: ");
-  console.debug(droppedPkts());
-  console.debug("\nError Count: ");
-  console.debug(errCount());
-  console.debug("\n*************************\n\n");
+  LOGD << "**** DIAGNOSTICS ****\n\tIMU Flag: " << imu()
+   << "\n\tBattery Voltage: " << bat()
+   << "\n\tSD Space: " << space()
+   << "\n\tWake Cycles: " << cycles()
+   << "\n\tDropped Packets: " << droppedPkts()
+   << "\n\tError Count: " << errCount()
+   << "\n*************************";
 }
 
 // getters

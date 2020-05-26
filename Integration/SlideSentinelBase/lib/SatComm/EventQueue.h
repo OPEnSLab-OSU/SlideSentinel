@@ -4,6 +4,9 @@
 #include "CircularBuffer.h"
 #include "CircularHeap.h"
 #include "GlobalEvents.h"
+#include "LogMacros.h"
+#include <typeinfo>
+#include <cstdio>
 
 template<template<class> class... Sources>
 class EventQueue {
@@ -42,8 +45,15 @@ public:
             m_did_panic = true;
             return;
         }
-        if (m_dis_buffer.full() || m_did_panic)
+        if (m_did_panic)
             return;
+        if (m_dis_buffer.full()) {
+          char buf[128];
+          snprintf(buf, sizeof buf, "Discarding event %s due to full buffer", typeid(E).name());
+          MSG_WARN(buf);
+        }
+        else
+          MSG_INFO(typeid(E).name());
         // if the event is empty, just copy the dispatch pointer
         if (std::is_empty<E>::value)
             m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base_empty<E>), true);

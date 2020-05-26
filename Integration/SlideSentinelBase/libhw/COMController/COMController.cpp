@@ -1,5 +1,5 @@
 #include "COMController.h"
-#include "Console.h"
+#include <Plog.h>
 
 // TODO add error logging
 // TODO make timer buffer external in config file for the base station
@@ -18,7 +18,7 @@ COMController::COMController(Freewave &radio, SN74LVC2G53 &mux,
 bool COMController::init() {
   m_interface.init();
   m_reset();
-  console.debug("COMController initialized.\n");
+  LOGD << "COMController initialized";
   m_timer.startStopwatch();
   return true;
 }
@@ -38,9 +38,7 @@ int COMController::listen(BaseModel &model) {
 
   // check the timer has expired
   if (timeout()) {
-    console.debug("\nServing ");
-    console.debug(model.getRoverServe());
-    console.debug(": Timeout occured terminating service.");
+    LOGD << "Serving " << model.getRoverServe() << ": Timeout occured terminating service.";
     m_isServing = false;
     m_timer.startStopwatch();
     m_reset();
@@ -56,11 +54,7 @@ int COMController::listen(BaseModel &model) {
   int rover_id = m_interface.getId();
   int type = m_interface.getType();
 
-  console.debug("\n********** Message from Rover ");
-  console.debug(rover_id);
-  console.debug(": TYPE: ");
-  console.debug(type);
-  console.debug(" *************");
+  LOGD << "********** Message from Rover " << rover_id << ": TYPE: " << type << " *************";
   model.setRoverAlert(rover_id);
 
   if (type == UPL)
@@ -74,54 +68,46 @@ bool COMController::m_request(int rover_id, BaseModel &model) {
   model.setDiag(rover_id, m_buf);
 
   // accept diagnostic info regardless of the base's servicing state
-  console.debug("\nRequest Received, Diagnostics and Props: \n");
-  console.debug(model.getDiag(rover_id));
-  console.debug("\n");
-  console.debug(model.getProps(rover_id));
-  console.debug("\n");
+  LOGD << "Request Received, Diagnostics: " << model.getDiag(rover_id);
+  LOGD << "Props: " << model.getProps(rover_id);
 
   // receive a request, if we are already servicing another rover
   // flix mux back to servicing state, do not reply so rover will go back to
   // sleep
   if (m_isServing) {
-    console.debug("\nReceived REQ while already servicing another rover\n");
+    LOGD << "Received REQ while already servicing another rover";
     m_mux.comY1();
     return true;
   }
-  console.debug(
-      "Received REQ, NOT servicing another rover, sending back Props...\n");
+  LOGD << "Received REQ, NOT servicing another rover, sending back Props...";
   if (!m_interface.sendPacket(RES, model.getProps(rover_id))) {
-    console.debug("\nFAILED TO REPLY WITH PROPS!\n");
+    LOGW << "FAILED TO REPLY WITH PROPS!";
     return false;
   }
 
   model.setRoverServe(rover_id);
-  console.debug("\nSetting alarm for: ");
-  console.debug(model.getRoverWakeTime(rover_id));
-  console.debug("\n");
+  LOGD << "Setting alarm for: " << model.getRoverWakeTime(rover_id);
   m_timer.startTimer(model.getRoverWakeTime(rover_id) * 60);
 
   m_isServing = true;
   m_mux.comY1();
-  console.debug("Props reply complete, beginning to service\n");
+  LOGD << "Props reply complete, beginning to service";
   return true;
 }
 
 bool COMController::m_upload(int rover_id, BaseModel &model) {
   m_num_uploads++;
-  console.debug("\nReceived Upload: \n");
-  console.debug(m_buf);
-  console.debug("\n");
+  LOGD << "Received Upload: " << m_buf;
   model.setData(rover_id, m_buf);
 
   // if we are serving, check that the upload is from the rover being serviced
   if (m_isServing && (model.getRoverServe() != rover_id)) {
-    console.debug("\nReceived UPL while servicing a different rover\n");
+    LOGD << "Received UPL while servicing a different rover";
     m_mux.comY1();
     return true;
   }
 
-  console.debug("\nReceived UPL from rover being serviced\n");
+  LOGD << "Received UPL from rover being serviced";
   m_isServing = false;
   m_reset();
   m_timer.stopTimer();

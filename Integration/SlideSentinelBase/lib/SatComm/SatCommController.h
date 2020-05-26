@@ -7,6 +7,7 @@
 #include "GlobalEvents.h"
 #include "SatCommDriverEvents.h"
 #include "CircularBuffer.h"
+#include "LogMacros.h"
 
 namespace SatComm {
     // Settings
@@ -95,7 +96,7 @@ namespace SatComm {
         {
             void react(DriverReady const& e) override {
                 // ready to receive!
-                WaitToTX::template transit<TXRX>();
+                TRANSIT(WaitToTX, TXRX);
             }
         };
 
@@ -108,12 +109,12 @@ namespace SatComm {
         {
             void react(DriverReady const&) override {
                 // ready to receive!
-                WaitToIdle::template transit<Idle>();
+                TRANSIT(WaitToIdle, Idle);
             }
 
             void react(RingAlert const&) override {
                 // queue receiving
-                WaitToIdle::template transit<WaitToTX>();
+                TRANSIT(WaitToIdle, WaitToTX);
             }
         };
 
@@ -128,15 +129,15 @@ namespace SatComm {
             
             void react(SendImmediate const& e) override {
                 if (!Parent::m_outgoing.empty() && !Parent::m_incoming.full())
-                    Idle::template transit<TXRX>();
+                    TRANSIT(Idle, TXRX);
             }
 
             void react(RingAlert const& e) override {
-                Idle::template transit<TXRX>();
+                TRANSIT(Idle, TXRX);
             }
 
             void react(SignalLost const& e) override {
-                Idle::template transit<WaitToIdle>();
+                TRANSIT(Idle, WaitToIdle);
             }
         };
 
@@ -154,9 +155,9 @@ namespace SatComm {
                 // next, continue to TX only if we have a packet
                 // or the device has indicated that there are more packets to receive
                 if ((!Parent::m_outgoing.empty() && !Parent::m_incoming.full()) || more_packets)
-                    TXRX::template transit<TXRX>();
+                    TRANSIT(TXRX, TXRX);
                 else
-                    TXRX::template transit<Idle>();
+                    TRANSIT(TXRX, Idle);
             }
             
             void entry() override {
@@ -185,14 +186,14 @@ namespace SatComm {
                 // succeed, but did not transmit or receive
                 // in this case a packet may have queued, so check if we need to transmit
                 if (!m_outgoing.empty())
-                    TXRX::template transit<TXRX>();
+                    TRANSIT(TXRX, TXRX);
                 else
-                    TXRX::template transit<Idle>();
+                    TRANSIT(TXRX, Idle);
             }
 
             void react(SignalLost const&) override {
                 // whoops! wait for the signal to come back
-                TXRX::template transit<WaitToTX>();
+                TRANSIT(TXRX, WaitToTX);
             }
         };
 
