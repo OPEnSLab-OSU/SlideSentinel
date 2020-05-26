@@ -31,9 +31,13 @@ install:
   - pip install -U platformio
   - platformio update
 
+env:
+  - USER_PIO_DIR=Integration/SlideSentinelRover
+  - USER_PIO_DIR=Integration/SlideSentinelBase
+
 before_script:
     # TODO: Monorepo? Split into another repository?
-    - cd Integration/SlideSentinelRover
+    - cd $USER_PIO_DIR
 
 jobs:
   include:
