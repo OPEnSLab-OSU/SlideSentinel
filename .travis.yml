@@ -41,12 +41,12 @@ jobs:
     - name: "Rover Embedded w/o Bootloader"
       script:
         - cd Integration/SlideSentinelRover
-        - platformio run -e adafruit_feather_m0_debug  
-    - name: "Base Embedded w/o Bootloader"
+        - platformio run -e adafruit_feather_m0_debug
+    - name: "Base Embedded w/ Bootloader"
       script:
         - Integration/SlideSentinelBase
-        - platformio run -e adafruit_feather_m0_debug  
-    - name: "Rover Embedded w/o Bootloader"
+        - platformio run -e adafruit_feather_m0
+    - name: "Base Embedded w/o Bootloader"
       script:
         - Integration/SlideSentinelBase
         - platformio run -e adafruit_feather_m0_debug  
