@@ -1,7 +1,13 @@
 #include "BaseModel.h"
 #include "COMController.h"
 #include "FSController.h"
+#include <Plog.h>
+#include <Appenders/RollingFileAppender.h>
+#include <Appenders/SerialAppender.h>
 #include <Arduino.h>
+#include <FeatherTrace.h>
+
+FEATHERTRACE_BIND_ALL()
 
 #define RST 5
 #define SPDT_SEL 14 // A0
@@ -13,7 +19,7 @@
 #define IS_Z9C true
 #define NUM_ROVERS 2
 
-#define SD_CS 10
+#define SD_CS 10 // TODO: Change back to 10
 #define SD_RST 6
 
 // TODO you updated the properties class and the SSInterface class, make sure to
@@ -21,17 +27,22 @@
 // TODO Priority upload on IMU WAKE condition
 // TODO log the state of the system when errors are thrown, log rover ID when
 // erros are thrown
+// TODO: Test if the base can recover from removing the SDcard (does FSController need to be re-inited?)
 
 // COMController
 RH_Serial driver(Serial1);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
-Freewave radio(RST, -1, IS_Z9C);
+Freewave radio(RST, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
 FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
 
 // Model
 BaseModel model(NUM_ROVERS);
+
+// Global logging initializers
+static plog::SerialAppender<plog::TxtFormatter> serialAppender(Serial);
+static plog::RollingFileAppender<plog::TxtFormatter> fa("ss_logs.txt");
 
 // needs to be global so as to be referencable
 char test_buf[50];
@@ -44,21 +55,65 @@ void useRelay(uint8_t pin) {
   digitalWrite(pin, LOW);
 }
 
+void printFault(const FeatherTrace::FaultData& data) {
+  // Load the fault data from flash
+  // print it the printer
+  LOGF << "Fault! Caused: " << FeatherTrace::GetCauseString(data.cause);
+  LOGF << "\tFault during recording: " << (data.is_corrupted ? "Yes" : "No");
+  if (!data.is_corrupted) {
+    LOGF << "\tAt: " << data.file << ':' << data.line;
+  }
+  LOGF << "\tInterrupt type: " << data.interrupt_type;
+  LOGF << "\tStacktrace:";
+  for (size_t i = 0; ; i++) {
+    LOGF.printf("\t\t0x%08lx", data.stacktrace[i]);
+    if (i + 1 >= MAX_STRACE || data.stacktrace[i + 1] == 0)
+      break;
+  }
+  if (data.interrupt_type != 0) {
+    LOGF << "\tRegisters:";
+    for (unsigned int i = 0; i < 13; i++)
+      LOGF.printf("\t\tR%u: 0x%08lx", i, data.regs[i]);
+    LOGF.printf("\t\tSP: 0x%08lx", data.regs[13]);
+    LOGF.printf("\t\tLR: 0x%08lx", data.regs[14]);
+    LOGF.printf("\t\tPC: 0x%08lx", data.regs[15]);
+    LOGF.printf("\t\txPSR: 0x%08lx", data.xpsr);
+  }
+  LOGF << "\tFailures since upload: " << data.failnum;
+
+  fa.sync();
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial)
-    ;
+    yield();
 
   // SPI INIT
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
+  // PLOG init
+  // TODO: get time from GNSS to sync PLOG
+  plog::TimeSync(DateTime(__DATE__, __TIME__), -7);
+  plog::init(plog::debug, &serialAppender).addAppender(&fa);
+
+  // filesystem init
+  if (!fsController.init()) {
+    // TODO: What happens here? Panic?
+    LOGF << "FS Controller failed to initialize!";
+  }
+
+  // TODO: send fault data over GNSS
+  if (FeatherTrace::DidFault())
+    printFault(FeatherTrace::GetFault());
+
   pinMode(GNSS_ON_PIN, OUTPUT);
   pinMode(GNSS_OFF_PIN, OUTPUT);
-  Serial.println("gnss off");
+  LOGI << "gnss off";
   useRelay(GNSS_OFF_PIN);
   delay(1000);
-  Serial.println("gnss on");
+  LOGI << "gnss on";
   useRelay(GNSS_ON_PIN);
 
   static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
@@ -66,7 +121,6 @@ void setup() {
                                       INIT_TIMEOUT, INIT_RETRIES);
   comController = &_comController;
   comController->init();
-  fsController.init();
 
   StaticJsonDocument<MAX_DATA_LEN> doc;
   JsonArray data = doc.createNestedArray(SS_PROP);
@@ -92,6 +146,8 @@ void setup() {
   serializeJson(doc2, test_buf);
   model.setProps(2, test_buf);
   model.print();
+
+  fa.sync();
 }
 
 enum State { LISTEN, SATCOM };
@@ -99,53 +155,55 @@ enum State { LISTEN, SATCOM };
 // collect string of all diagnostics and props for each rover
 // collect string of Base station diagnostics: stopwatch, num_uploads, num_requests, SD card memory
 
+static State state = LISTEN;
+
 void loop() {
-  State state = LISTEN;
-
-  while (1) {
-
-
-    if(Serial.available()){
-      char cmd = Serial.read();
-      if(cmd == '1'){
-        Serial.println("\n------- BASE STATUS --------");
-        Serial.println(model.getRoverShadow());
-      }
-      if(cmd == '2'){
-        Serial.println("\n------- BASE DIAGNOSTICS --------");
-        comController->status(model);
-        fsController.status(model);
-        Serial.println(model.getBaseDiagnostics());
-      }
-      if(cmd == '3'){
-        Serial.println("\n------- ROVER STATUS --------");
-        model.print();
-      }
+  fsController.checkSD();
+  // parse serial commands
+  if(Serial.available()){
+    char cmd = Serial.read();
+    if(cmd == '1'){
+      LOGD << "------- BASE STATUS --------";
+      LOGD << model.getRoverShadow();
     }
-
-
-    switch (state) {
-    case LISTEN:
-      if (comController->listen(model)) {
-        if (model.getRoverIMUFlag(model.getRoverAlert())) {
-          state = SATCOM;
-          Serial.println("IMU FLAG FROM ROVER!");
-        }
-        fsController.logDiag(model.getRoverAlert(),
-                             model.getDiag(model.getRoverAlert()));
-        fsController.logProps(model.getRoverAlert(),
-                              model.getProps(model.getRoverAlert()));
-        break;
-      }
-      break;
-    case SATCOM:
-      fsController.logData(model.getRoverServe(),
-                           model.getData(model.getRoverServe()));
-      Serial.println("SATCOM");
-      Serial.print("Uploading Alert from rover: ");
-      Serial.println(model.getRoverAlert());
-      state = LISTEN;
-      break;
+    if(cmd == '2'){
+      comController->status(model);
+      fsController.status(model);
+      LOGD << "------- BASE DIAGNOSTICS --------";
+      LOGD << model.getBaseDiagnostics();
+    }
+    if(cmd == '3'){
+      LOGD << "------- ROVER STATUS --------";
+      model.print();
     }
   }
+
+  fa.sync();
+
+  // handle state transitions
+  switch (state) {
+  case LISTEN:
+    if (comController->listen(model)) {
+      if (model.getRoverIMUFlag(model.getRoverAlert())) {
+        LOGD << "LISTEN -> SATCOM";
+        state = SATCOM;
+      }
+      fsController.logDiag(model.getRoverAlert(),
+                           model.getDiag(model.getRoverAlert()));
+      fsController.logProps(model.getRoverAlert(),
+                            model.getProps(model.getRoverAlert()));
+      break;
+    }
+    break;
+  case SATCOM:
+    fsController.logData(model.getRoverServe(),
+                         model.getData(model.getRoverServe()));
+    LOGD << "SATCOM";
+    LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
+    LOGD << "SATCOM -> LISTEN";
+    state = LISTEN;
+    break;
+  }
+
+  fa.sync();
 }

@@ -1,21 +1,23 @@
 #include "FSController.h"
-#include "Console.h"
+#include "Plog.h"
 
 FSController::FSController(uint8_t cs, uint8_t rst, int num_rovers)
-    : m_cs(cs), m_rst(rst), m_num_rovers(num_rovers) {}
+    : m_cs(cs), m_rst(rst), m_num_rovers(num_rovers), m_last_sd_error(0) {}
 
 bool FSController::init() {
   pinMode(m_cs, OUTPUT);
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(50)) || !m_root.open("/"))
+  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/")) {
+    LOGE << "Failed to initialize SD";
     return false;
+  }
 
   if (!m_sd.exists(MAIN) && !m_sd.mkdir(MAIN)) {
-    console.debug("failed to create");
+    LOGE << "Failed to find/make root directory";
     return false;
   }
 
   m_setup();
-  console.debug("FSController initialized.\n");
+  LOGD << "FSController initialized.";
   return true;
 }
 
@@ -26,8 +28,7 @@ bool FSController::m_setup() {
   for (int i = 0; i < m_num_rovers; i++) {
     m_clear();
     sprintf(m_buf, "ROVER%d", i);
-    console.debug("\n");
-    console.debug(m_buf);
+    LOGD << m_buf;
     m_curDir = m_buf;
 
     // make data.json, diag.json, props.json for each rover
@@ -96,6 +97,17 @@ void FSController::m_SDspace() {
 void FSController::status(BaseModel &model) {
   m_SDspace();
   model.setSdSpace(m_spaceMB);
+  model.setSdError(m_last_sd_error);
+}
+
+void FSController::checkSD() {
+  if (m_sd.cardErrorCode()) {
+    if (m_sd.cardErrorCode() != m_last_sd_error) {
+      m_last_sd_error = m_sd.cardErrorCode();
+      PLOGE << "Card error: " << (int)m_last_sd_error << " Data: " << m_sd.cardErrorData();
+    }
+    m_sd.begin(m_cs, SD_SCK_MHZ(10));
+  }
 }
 
 void FSController::update(BaseModel &model) {}

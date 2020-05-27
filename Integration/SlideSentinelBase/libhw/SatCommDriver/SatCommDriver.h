@@ -12,7 +12,7 @@
 #include "tinyfsm.h"
 #include "GlobalEvents.h"
 #include "SatCommDriverEvents.h"
-#include "PanicHandler.h"
+#include "LogMacros.h"
 
 namespace SatComm {
     constexpr auto RING_INDICATOR_PIN = A3;
@@ -89,7 +89,7 @@ namespace SatComm {
                 if (result != ISBD_SUCCESS && result != ISBD_ALREADY_AWAKE) {
                     char message[64];
                     snprintf(message, sizeof(message), "Modem failed to begin with error: %d", result);
-                    PANIC(message);
+                    MSG_PANIC(message);
                     EventBus::dispatch(Panic{});
                     return;
                 }
@@ -102,13 +102,12 @@ namespace SatComm {
                 if (result != ISBD_SUCCESS) {
                     char message[64];
                     snprintf(message, sizeof(message), "Modem version failed with error: %d", result);
-                    PANIC(message);
+                    MSG_PANIC(message);
                     EventBus::dispatch(Panic{});
                 }
-                // Serial.print("Firmware version: ");
-                // Serial.println(version);
+                MSG_INFO(version);
                 // we've successfully powered on!
-                Parent::template transit<Wait>();
+                TRANSIT(Off, Wait);
             }
         };
 
@@ -129,11 +128,10 @@ namespace SatComm {
                     if (err != ISBD_SUCCESS) {
                         char message[128];
                         snprintf(message, sizeof(message), "Signal quality failed with error: %d", err);
-                        PANIC(message);
-                        EventBus::dispatch(Panic{});
+                        MSG_WARN(message);
                     }
-                    if (sigqual > 0)
-                        Parent::template transit<Ready>();
+                    else if (sigqual > 0)
+                        TRANSIT(Wait, Ready);
                 }
             }
         };
@@ -177,14 +175,15 @@ namespace SatComm {
                 }
                 // if signal is lost, transit out of ready
                 else if (!digitalRead(NET_AV_PIN))
-                    Parent::template transit<Wait>();
+                    TRANSIT(Ready, Wait);
             }
 
             // trigger a transmission!
             void react(const StartSendReceive& e) override {
                 // check signal
                 if (!digitalRead(NET_AV_PIN))
-                    return Parent::template transit<Wait>();
+                    return TRANSIT(Ready, Wait);
+
                 // good to go! send/receive the packet
                 Packet buf{ {}, 0 };
                 size_t bufmax = buf.bytes.max_size(); // NOTE: this is also an output parameter
@@ -196,7 +195,11 @@ namespace SatComm {
                 // check error
                 if (err != ISBD_SUCCESS) {
                     // TODO: Panic differently for different errors?
-                    return Parent::template transit<Wait>();
+                    char buf[128];
+                    snprintf(buf, sizeof buf, "Failed to communicate with Iridium with error %d", err);
+                    MSG_WARN(buf);
+                    TRANSIT(Ready, Wait);
+                    return;
                 }
                 // if we received any data, copy it and indicate need for further data
                 if (bufmax > 0) {
@@ -205,7 +208,8 @@ namespace SatComm {
                     err = Parent::m_modem->getWaitingMessageCount();
                     if (err < 0) {
                         // I guess we lost the signal
-                        return Parent::template transit<Wait>();
+                        TRANSIT(Ready, Wait);
+                        return;
                     }
                     // send a success event!
                     EventBus::dispatch(SendReceiveSuccess{ buf, static_cast<size_t>(err) });

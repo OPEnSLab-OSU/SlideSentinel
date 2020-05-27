@@ -1,5 +1,4 @@
 #include "SSInterface.h"
-#include "Console.h"
 
 SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
                          uint8_t clientId, uint8_t serverId, uint16_t timeout,

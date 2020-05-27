@@ -1,5 +1,5 @@
 #include "Properties.h"
-#include "Console.h"
+#include <Plog.h>
 
 Properties::Properties() {}
 
@@ -42,20 +42,13 @@ void Properties::read(char *buf) {
 }
 
 void Properties::print() {
-  console.debug("******* PROPERTIES ********");
-  console.debug("\nTimeout: ");
-  console.debug(get(TIMEOUT));
-  console.debug("\nRetries: ");
-  console.debug(get(RETRIES));
-  console.debug("\nWake Time: ");
-  console.debug(get(WAKE_TIME));
-  console.debug("\nSleep Time: ");
-  console.debug(get(SLEEP_TIME));
-  console.debug("\nSensitivity: ");
-  console.debug(get(SENSITIVITY));
-  console.debug("\nLog Frequency: ");
-  console.debug(get(LOG_FREQ));
-  console.debug("\nThreshold: ");
-  console.debug(get(THRESHOLD));
-  console.debug("\n**************************\n");
+  LOGD << "******* PROPERTIES ********";
+  LOGD << "\tTimeout: " <<  get(TIMEOUT);
+  LOGD << "\tRetries: " << get(RETRIES);
+  LOGD << "\tWake Time: " << get(WAKE_TIME);
+  LOGD << "\tSleep Time: " << get(SLEEP_TIME);
+  LOGD << "\tSensitivity: " << get(SENSITIVITY);
+  LOGD << "\tLog Frequency: " << get(LOG_FREQ);
+  LOGD << "\tThreshold: " << get(THRESHOLD);
+  LOGD << "**************************";
 }

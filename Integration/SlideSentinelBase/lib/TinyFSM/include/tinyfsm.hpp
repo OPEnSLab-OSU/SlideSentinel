@@ -40,7 +40,6 @@
 
 #ifndef TINYFSM_NOSTDLIB
 #include <type_traits>
-#include <typeinfo>
 #endif
 
 // #include <iostream>
