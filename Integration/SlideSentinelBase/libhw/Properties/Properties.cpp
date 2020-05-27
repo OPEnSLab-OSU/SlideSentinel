@@ -42,12 +42,13 @@ void Properties::read(char *buf) {
 }
 
 void Properties::print() {
-  LOGD << "******* PROPERTIES ********\n\tTimeout: " << get(TIMEOUT)
-    << "\n\tRetries: " << get(RETRIES)
-    << "\n\tWake Time: " << get(WAKE_TIME)
-    << "\n\tSleep Time: " << get(SLEEP_TIME)
-    << "\n\tSensitivity: " << get(SENSITIVITY)
-    << "\n\tLog Frequency: " << get(LOG_FREQ)
-    << "\n\tThreshold: " << get(THRESHOLD)
-    << "\n**************************";
+  LOGD << "******* PROPERTIES ********";
+  LOGD << "\tTimeout: " <<  get(TIMEOUT);
+  LOGD << "\tRetries: " << get(RETRIES);
+  LOGD << "\tWake Time: " << get(WAKE_TIME);
+  LOGD << "\tSleep Time: " << get(SLEEP_TIME);
+  LOGD << "\tSensitivity: " << get(SENSITIVITY);
+  LOGD << "\tLog Frequency: " << get(LOG_FREQ);
+  LOGD << "\tThreshold: " << get(THRESHOLD);
+  LOGD << "**************************";
 }

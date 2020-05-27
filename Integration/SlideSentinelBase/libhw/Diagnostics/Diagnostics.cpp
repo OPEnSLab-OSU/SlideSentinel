@@ -29,13 +29,14 @@ void Diagnostics::read(char *buf) {
 }
 
 void Diagnostics::print() {
-  LOGD << "**** DIAGNOSTICS ****\n\tIMU Flag: " << imu()
-   << "\n\tBattery Voltage: " << bat()
-   << "\n\tSD Space: " << space()
-   << "\n\tWake Cycles: " << cycles()
-   << "\n\tDropped Packets: " << droppedPkts()
-   << "\n\tError Count: " << errCount()
-   << "\n*************************";
+  LOGD << "**** DIAGNOSTICS ****";
+  LOGD << "\tIMU Flag: " << imu();
+  LOGD << "\tBattery Voltage: " << bat();
+  LOGD << "\tSD Space: " << space();
+  LOGD << "\tWake Cycles: " << cycles();
+  LOGD << "\tDropped Packets: " << droppedPkts();
+  LOGD << "\tError Count: " << errCount();
+  LOGD << "*************************";
 }
 
 // getters

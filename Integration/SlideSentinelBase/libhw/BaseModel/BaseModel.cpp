@@ -57,6 +57,7 @@ void BaseModel::setNumRequests(int num_requests) {
   m_num_requests = num_requests;
 }
 void BaseModel::setSdSpace(float sdSpace) { m_sdSpace = sdSpace; }
+void BaseModel::setSdError(uint8_t sderror) { m_lastSdError = sderror; }
 
 char *BaseModel::getBaseDiagnostics() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
@@ -65,6 +66,7 @@ char *BaseModel::getBaseDiagnostics() {
   data.add(m_num_uploads);
   data.add(m_num_requests);
   data.add(m_sdSpace);
+  data.add(m_lastSdError);
   m_clear();
   serializeJson(doc, m_buf);
   return m_buf;

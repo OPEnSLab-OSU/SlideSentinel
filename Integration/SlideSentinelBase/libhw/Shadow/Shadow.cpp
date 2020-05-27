@@ -1,7 +1,7 @@
 #include "Shadow.h"
 #include <Plog.h>
 
-Shadow::Shadow() { m_props.init(); }
+Shadow::Shadow() : m_data{ 0 } { m_props.init(); }
 
 void Shadow::m_clear() { memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN); }
 

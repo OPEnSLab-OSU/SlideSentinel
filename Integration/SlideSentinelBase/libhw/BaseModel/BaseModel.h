@@ -24,6 +24,7 @@ private:
   int m_num_uploads;
   int m_num_requests;
   float m_sdSpace;
+  uint8_t m_lastSdError;
   char m_buf[MAX_DATA_LEN];
   void m_clear();
 
@@ -55,6 +56,7 @@ public:
   void setNumUploads(int num_uploads);
   void setNumRequests(int num_requests);
   void setSdSpace(float sdSpace);
+  void setSdError(uint8_t sderror);
   char *getBaseDiagnostics();
   char *getRoverShadow();
 };

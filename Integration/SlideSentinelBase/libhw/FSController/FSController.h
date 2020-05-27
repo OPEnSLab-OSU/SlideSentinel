@@ -26,11 +26,13 @@ private:
   SdFile m_file;
   SdFile m_root;
 
-  uint8_t m_cs;
-  uint8_t m_rst;
-  int m_num_rovers;
+  const uint8_t m_cs;
+  const uint8_t m_rst;
+  const int m_num_rovers;
+  uint8_t m_last_sd_error;
   float m_spaceMB; // diagnostic
   char m_buf[BUF_SIZE];
+
 
   char *m_curDir;
 
@@ -56,6 +58,7 @@ public:
   bool init();
   void status(BaseModel &model);
   void update(BaseModel &model);
+  void checkSD();
 };
 
 #endif // _FSCONTROLLER_H_

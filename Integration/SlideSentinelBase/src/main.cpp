@@ -5,6 +5,9 @@
 #include <Appenders/RollingFileAppender.h>
 #include <Appenders/SerialAppender.h>
 #include <Arduino.h>
+#include <FeatherTrace.h>
+
+FEATHERTRACE_BIND_ALL()
 
 #define RST 5
 #define SPDT_SEL 14 // A0
@@ -16,7 +19,7 @@
 #define IS_Z9C true
 #define NUM_ROVERS 2
 
-#define SD_CS 10
+#define SD_CS 10 // TODO: Change back to 10
 #define SD_RST 6
 
 // TODO you updated the properties class and the SSInterface class, make sure to
@@ -24,11 +27,12 @@
 // TODO Priority upload on IMU WAKE condition
 // TODO log the state of the system when errors are thrown, log rover ID when
 // erros are thrown
+// TODO: Test if the base can recover from removing the SDcard (does FSController need to be re-inited?)
 
 // COMController
 RH_Serial driver(Serial1);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
-Freewave radio(RST, -1, IS_Z9C);
+Freewave radio(RST, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
 FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
@@ -38,7 +42,7 @@ BaseModel model(NUM_ROVERS);
 
 // Global logging initializers
 static plog::SerialAppender<plog::TxtFormatter> serialAppender(Serial);
-static plog::RollingFileAppender<plog::TxtFormatter> fa("ss-logs.txt");
+static plog::RollingFileAppender<plog::TxtFormatter> fa("ss_logs.txt");
 
 // needs to be global so as to be referencable
 char test_buf[50];
@@ -51,6 +55,35 @@ void useRelay(uint8_t pin) {
   digitalWrite(pin, LOW);
 }
 
+
+
+void printFault(const FeatherTrace::FaultData& data) {
+  // Load the fault data from flash
+  // print it the printer
+  LOGF << "Fault! Caused: " << FeatherTrace::GetCauseString(data.cause);
+  LOGF << "\tFault during recording: " << (data.is_corrupted ? "Yes" : "No");
+  if (!data.is_corrupted) {
+    LOGF << "\tAt: " << data.file << ':' << data.line;
+  }
+  LOGF << "\tInterrupt type: " << data.interrupt_type;
+  LOGF << "\tStacktrace:";
+  for (size_t i = 0; ; i++) {
+    LOGF.printf("\t\t0x%08lx", data.stacktrace[i]);
+    if (i + 1 >= MAX_STRACE || data.stacktrace[i + 1] == 0)
+      break;
+  }
+  if (data.interrupt_type != 0) {
+    LOGF << "\tRegisters:";
+    for (unsigned int i = 0; i < 13; i++)
+      LOGF.printf("\t\tR%u: 0x%08lx", i, data.regs[i]);
+    LOGF.printf("\t\tSP: 0x%08lx", data.regs[13]);
+    LOGF.printf("\t\tLR: 0x%08lx", data.regs[14]);
+    LOGF.printf("\t\tPC: 0x%08lx", data.regs[15]);
+    LOGF.printf("\t\txPSR: 0x%08lx", data.xpsr);
+  }
+  LOGF << "\tFailures since upload: " << data.failnum;
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial)
@@ -60,13 +93,20 @@ void setup() {
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
-  // filesystem init
-  fsController.init();
-
   // PLOG init
   // TODO: get time from GNSS to sync PLOG
   plog::TimeSync(DateTime(__DATE__, __TIME__), -7);
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
+
+  // filesystem init
+  if (!fsController.init()) {
+    // TODO: What happens here? Panic?
+    LOGF << "FS Controller failed to initialize!";
+  }
+
+  // TODO: send fault data over GNSS
+  if (FeatherTrace::DidFault())
+    printFault(FeatherTrace::GetFault());
 
   pinMode(GNSS_ON_PIN, OUTPUT);
   pinMode(GNSS_OFF_PIN, OUTPUT);
@@ -116,19 +156,22 @@ enum State { LISTEN, SATCOM };
 static State state = LISTEN;
 
 void loop() {
+  fsController.checkSD();
   // parse serial commands
   if(Serial.available()){
     char cmd = Serial.read();
     if(cmd == '1'){
-      LOGD << "------- BASE STATUS --------\n" << model.getRoverShadow();
+      LOGD << "------- BASE STATUS --------";
+      LOGD << model.getRoverShadow();
     }
     if(cmd == '2'){
       comController->status(model);
       fsController.status(model);
-      LOGD << "\n------- BASE DIAGNOSTICS --------\n" << model.getBaseDiagnostics();
+      LOGD << "------- BASE DIAGNOSTICS --------";
+      LOGD << model.getBaseDiagnostics();
     }
     if(cmd == '3'){
-      LOGD << "------- ROVER STATUS --------\n";
+      LOGD << "------- ROVER STATUS --------";
       model.print();
     }
   }

@@ -5,11 +5,11 @@
 
 class SN74LVC2G53 {
 private:
-  uint8_t m_sel;
-  uint8_t m_inh;
+  const int m_sel;
+  const int m_inh;
 
 public:
-  SN74LVC2G53(uint8_t sel, uint8_t inh);
+  SN74LVC2G53(int sel, int inh);
   void comY1();
   void comY2();
   void disable();
