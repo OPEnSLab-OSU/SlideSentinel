@@ -6,7 +6,7 @@ FSController::FSController(uint8_t cs, uint8_t rst, int num_rovers)
 
 bool FSController::init() {
   pinMode(m_cs, OUTPUT);
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(1)) || !m_root.open("/")) {
+  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/")) {
     LOGE << "Failed to initialize SD";
     return false;
   }
@@ -106,7 +106,7 @@ void FSController::checkSD() {
       m_last_sd_error = m_sd.cardErrorCode();
       PLOGE << "Card error: " << (int)m_last_sd_error << " Data: " << m_sd.cardErrorData();
     }
-    m_sd.begin(m_cs, SD_SCK_MHZ(1));
+    m_sd.begin(m_cs, SD_SCK_MHZ(10));
   }
 }
 

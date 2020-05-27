@@ -80,6 +80,8 @@ void printFault(const FeatherTrace::FaultData& data) {
     LOGF.printf("\t\txPSR: 0x%08lx", data.xpsr);
   }
   LOGF << "\tFailures since upload: " << data.failnum;
+
+  fa.sync();
 }
 
 void setup() {
@@ -144,6 +146,8 @@ void setup() {
   serializeJson(doc2, test_buf);
   model.setProps(2, test_buf);
   model.print();
+
+  fa.sync();
 }
 
 enum State { LISTEN, SATCOM };
@@ -174,6 +178,8 @@ void loop() {
     }
   }
 
+  fa.sync();
+
   // handle state transitions
   switch (state) {
   case LISTEN:
@@ -198,4 +204,6 @@ void loop() {
     state = LISTEN;
     break;
   }
+
+  fa.sync();
 }
