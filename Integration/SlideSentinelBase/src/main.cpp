@@ -55,8 +55,6 @@ void useRelay(uint8_t pin) {
   digitalWrite(pin, LOW);
 }
 
-
-
 void printFault(const FeatherTrace::FaultData& data) {
   // Load the fault data from flash
   // print it the printer

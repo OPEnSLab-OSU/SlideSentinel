@@ -7,14 +7,12 @@
 
 #ifdef UNIT_TEST
 #include "unity.h"
-#include <cstdio>
-#include <typeinfo>
 
 #define MSG_PANIC(msg) TEST_FAIL_MESSAGE(msg)
 #define MSG_WARN(msg) TEST_MESSAGE(msg)
 #define MSG_INFO(msg) TEST_MESSAGE(msg)
 
-#define TRANSIT(_class, _state) ({ char buf[256]; snprintf(buf, sizeof buf, "%s -> %s", typeid(_class).name(), typeid(_state).name()); MSG_INFO(buf); _class::template transit<_state>(); })
+#define TRANSIT(state_from, state_to) ({ const char* msg = #state_from " -> " #state_to; MSG_INFO(msg); state_from::template transit<state_to>(); })
 
 #else // UNIT_TEST
 
@@ -23,7 +21,7 @@
 #define MSG_WARN(msg) ({ LOGW << msg; })
 #define MSG_INFO(msg) ({ LOGD << msg; })
 
-#define TRANSIT(_class, _state) ({ LOGD << typeid(_class).name() << "->" << typeid(_state).name(); _class::template transit<_state>(); })
+#define TRANSIT(state_from, state_to) ({ LOGD << #state_from << " -> " << #state_to; state_from::template transit<state_to>(); })
 
 #endif // UNIT_TEST
 #endif //SLIDESENTINELROVER_PANICHANDLER_H
