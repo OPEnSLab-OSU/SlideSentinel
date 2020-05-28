@@ -88,6 +88,10 @@ void printFault(const FeatherTrace::FaultData& data) {
 }
 
 void setup() {
+  // LED init
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
   Serial.begin(115200);
   while (!Serial)
     yield();
@@ -102,10 +106,15 @@ void setup() {
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
 
   // filesystem init
-  if (!fsController.init()) {
+  while (!fsController.init()) {
     // TODO: What happens here? Panic?
     LOGF << "FS Controller failed to initialize!";
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000);
   }
+  digitalWrite(LED_BUILTIN, LOW);
 
   // TODO: send fault data over GNSS
   if (FeatherTrace::DidFault())
@@ -185,7 +194,6 @@ void loop() {
   // sync logs
   fa.sync();
   // handle SatComm state
-  /*
   if (!SatCommStateMachine::next()) {
     // TODO: panic behavior?
     LOGF << "SatComm panicked!";
@@ -193,7 +201,6 @@ void loop() {
     SatCommStateMachine::start();
     SatCommStateMachine::dispatch(PowerUp{});
   }
-  */
   // TODO: Time-based trigger?
   // handle outgoing data from rovers
   if (comController->listen(model)) {
@@ -240,4 +247,5 @@ void loop() {
   fa.sync();
 
   // TODO: Low battery behavior
+
 }
