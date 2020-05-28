@@ -42,6 +42,7 @@
 #include <type_traits>
 #endif
 
+#undef SS
 // #include <iostream>
 // #define DBG(str) do { std::cerr << str << std::endl; } while( false )
 // DBG("*** dbg_example *** " << __PRETTY_FUNCTION__);

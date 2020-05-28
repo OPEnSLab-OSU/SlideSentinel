@@ -12,17 +12,6 @@ template<template<class> class... Sources>
 class EventQueue {
 private:
     using List = tinyfsm::FsmList<Sources<EventQueue>...>;
-
-    template<class E>
-    static void dispatch_base(const void* event) {
-        List::dispatch(*static_cast<const E*>(event));
-    }
-
-    template<typename E>
-    static void dispatch_base_empty(const void *) {
-        List::dispatch(E{});
-    }
-
     using DispatchPtr = void(*)(const void*);
 
     struct DispatchStruct {
@@ -34,36 +23,58 @@ private:
         bool is_empty;
     };
 
+        template<class E>
+    static void dispatch_base(const void* event) {
+        List::dispatch(*static_cast<const E*>(event));
+    }
+
+    template<typename E>
+    static void dispatch_base_empty(const void *) {
+        List::dispatch(E{});
+    }
+
     static CircularHeap<2048> m_ev_buffer;
     static CircularBuffer<DispatchStruct, 32> m_dis_buffer;
     static bool m_did_panic;
 
 public:
     template<typename E>
-    static void dispatch(E const& event) {
-        if (std::is_same<E, Panic>::value) {
-            m_did_panic = true;
-            return;
-        }
+    static typename std::enable_if<!std::is_empty<E>::value && !std::is_same<E, Panic>::value>::type dispatch(E const& event) {
         if (m_did_panic)
             return;
         if (m_dis_buffer.full()) {
-          char buf[128];
-          snprintf(buf, sizeof buf, "Discarding event %s due to full buffer", ctti::nameof<E>().begin());
-          MSG_WARN(buf);
-          return;
+            char buf[128];
+            snprintf(buf, sizeof buf, "Discarding event %s due to full buffer", ctti::nameof<E>().begin());
+            MSG_WARN(buf);
+            return;
         }
         MSG_INFO(ctti::nameof<E>().begin());
-        // if the event is empty, just copy the dispatch pointer
-        if (std::is_empty<E>::value)
-            m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base_empty<E>), true);
-        else {
-            // copy the event into our "heap"
-            if (!m_ev_buffer.allocate_push_back<E>(event))
-                return;
-            // and store both the size of the event and the pointer to dispatch it
-            m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base<E>), false);
+        // copy the event into our "heap"
+        if (!m_ev_buffer.allocate_push_back<E>(event))
+            return;
+        // and store both the size of the event and the pointer to dispatch it
+        m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base<E>), false);
+    }
+
+    template<typename E>
+    static typename std::enable_if<std::is_empty<E>::value && !std::is_same<E, Panic>::value>::type dispatch(E const& event) {
+      if (m_did_panic)
+            return;
+        if (m_dis_buffer.full()) {
+            char buf[128];
+            snprintf(buf, sizeof buf, "Discarding event %s due to full buffer", ctti::nameof<E>().begin());
+            MSG_WARN(buf);
+            return;
         }
+        MSG_INFO(ctti::nameof<E>().begin());
+        // store just the dispatch pointer
+        m_dis_buffer.emplace_back(&(EventQueue::template dispatch_base_empty<E>), true);
+    }
+
+    template<typename E>
+    static typename std::enable_if<std::is_same<E, Panic>::value>::type dispatch(const E& event) {
+        m_did_panic = true;
+        return;
     }
 
     static bool next() {
