@@ -57,7 +57,8 @@
  * Where TinyFSM recursions indefinitely, run-to-completion queues the event
  * and waits for each call to `react` to complete, preventing a stack overflow.
  * Our design (SatComm) required the use of circular dependencies, and as a result
- * we could not use TinyFSM's built in event system.
+ * we could not use TinyFSM's built in event system. EventQueue add the missing
+ * components of a run-to-completion event system to TinyFSM.
  *
  * EventQueue is implemented in terms of two components: a FIFO CircularHeap to serve
  * as type-agnostic temporary event storage, and CircularBuffer to store type-agnostic
