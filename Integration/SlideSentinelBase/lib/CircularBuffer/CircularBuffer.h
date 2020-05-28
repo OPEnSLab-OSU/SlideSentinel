@@ -1,12 +1,6 @@
 #pragma once
 #include <stdlib.h>
 
-/**
- * Templated implementation of a fixed-size deque
- * To be used as a stack in Loom Network
- *
- */
-
 template<size_t Len, size_t Align>
 struct aligned_storage {
 	struct type {
@@ -25,7 +19,14 @@ inline void  operator delete[](void*, void*) throw() {}
 #else
 #include <new>
 #endif
-
+/**
+ * Simple fixed-size ringbuffer implementation with no heap allocation.
+ * Useful for implementing a queue or deque without creating heap
+ * fragmentation. For more information on ring buffers, please see
+ * https://en.wikipedia.org/wiki/Circular_buffer.
+ * @tparam T The type to populate the ringbuffer with
+ * @tparam max_size The maximum number of elements allowed in the buffer.
+ */
 template<typename T, size_t max_size>
 class CircularBuffer {
 public:
@@ -45,6 +46,7 @@ public:
 		for (const auto& elem : rhs) add_back(elem);
 	}
 
+  /** Destroy all items and reset the size to zero */
 	void reset() { for (auto& item : *this) item.~T(); m_length = 0; m_start = 0; }
 
 	~CircularBuffer<T, max_size>() {
@@ -53,28 +55,55 @@ public:
 
 	CircularBuffer& operator=(CircularBuffer& rhs) = delete;
 
-	/** misc functions */
+	/**
+	 * Get a raw pointer to the underlying array storage
+	 * @warning This pointer may or may not be aligned!
+	 */
 	const array_t* get_raw() const { return m_array; }
+  /** @see CircularBuffer::get_raw */
 	array_t* get_raw() { return m_array; }
 
+  /** Returns the number of elements currently in the buffer */
 	size_t size() const { return m_length; }
+  /** Returns the maximum number of elements this buffer can hold */
 	size_t allocated() const { return max_size; }
 
+  /** Returns true if size() == allocated() */
 	bool full() const { return m_length == max_size; }
+  /** Returns true if size() == 0 */
 	bool empty() const { return m_length == 0; }
 
+  /**
+   * Returns a reference to the element at the start of
+   * the buffer. If the buffer is empty, the behavior
+   * of this function is undefined.
+   */
 	const T& front() const { return operator[](0); }
+  /** @see CircularBufffer::front */
 	T& front() { return operator[](0); }
 
+  /**
+   * Returns a reference to the element at the end of
+   * the buffer. If the buffer is empty, the behavior
+   * of this function is undefined.
+   */
 	const T& back() const { return operator[](m_length - 1); }
+  /** @see CircularBuffer::back */
 	T& back() { return operator[](m_length - 1); }
 
-	/** manipulation */
-
+  /**
+   * Array access of the buffer. This function performs no bounds checking.
+   * @param index The element number to access, must be < size
+   * @return A reference to the index element, or undefined if the index is invalid.
+   */
 	const T& operator[](const size_t index) const { return *reinterpret_cast<const T*>(&m_array[m_get_true_index(index, m_start)]); }
+  /** @see CircularBuffer::operator[] */
 	T& operator[](const size_t index) { return *reinterpret_cast<T*>(&m_array[m_get_true_index(index, m_start)]); }
 
-	/** pop/push */
+	/**
+	 * Remove the element on the end of the buffer.
+	 * @return False if the buffer is empty, true otherwise.
+	 */
 	bool destroy_back() {
 		if (m_length == 0) return false;
 		// call the dtor of the item we're deleting
@@ -84,6 +113,12 @@ public:
 		return true;
 	}
 
+  /**
+   * Construct an element at the end of the buffer. This
+   * function works similar to std::vector::emplace_back.
+   * @param args Constructor arguments for T
+   * @return false if the buffer is full, true otherwise.
+   */
 	template<typename ...Args>
 	bool emplace_back(Args&& ... args) {
 		// if the length is already maxed out, break
@@ -97,6 +132,11 @@ public:
 		return true;
 	}
 
+  /**
+   * Copy an element to the end of the buffer.
+   * @param obj The object to copy.
+   * @return False if the buffer is full, true otherwise.
+   */
 	bool add_back(const T& obj) {
 		// if the length is already maxed out, break
 		if (m_length == max_size) {
@@ -109,6 +149,10 @@ public:
 		return true;
 	}
 
+  /**
+   * Remove the element at the start of the buffer.
+   * @return False if the buffer is empty, true otherwise.
+   */
 	bool destroy_front() {
 		if (m_length == 0) return false;
 		// Destroy the object in the first position
@@ -121,6 +165,12 @@ public:
 		return true;
 	}
 
+  /**
+   * Construct an element at the start of the buffer. This
+   * function works similar to std::vector::emplace.
+   * @param args Constructor arguments for T
+   * @return false if the buffer is full, true otherwise.
+   */
 	template<typename ...Args>
 	bool emplace_front(Args&& ... args) {
 		// if the length is already maxed out, break
@@ -137,6 +187,11 @@ public:
 		return true;
 	}
 
+  /**
+   * Copy an element to the start of the buffer.
+   * @param obj The object to copy.
+   * @return False if the buffer is full, true otherwise.
+   */
 	bool add_front(const T& obj) {
 		// if the length is already maxed out, break
 		if (m_length == max_size) {
@@ -152,7 +207,6 @@ public:
 		return true;
 	}
 
-	/** Iterators */
 	class Iterator {
 		array_t* m_data;
 		size_t m_position;
@@ -195,7 +249,13 @@ public:
 
 	const CircularBuffer<T, max_size>& crange() const noexcept { return *this; }
 
-	/** destroy at index */
+	/**
+	 * Destroy an element at a given index. This function
+	 * is based off of vector::remove, and requires an
+	 * iterator as an index.
+	 * @param iter The iterator representing the element to remove.
+	 * This iterator is invalid after this function is called.
+	 */
 	void remove(const CircularBuffer<T, max_size>::ConstIterator& iter) {
 		// destroy the element
 		(*iter).~T();
@@ -219,7 +279,7 @@ public:
 		m_length--;
 	}
 
-	/** destroy at index */
+	/** @see CircularBuffer::remove */
 	void remove(CircularBuffer<T, max_size>::Iterator& iter) {
 		// destroy the element
 		(*iter).~T();

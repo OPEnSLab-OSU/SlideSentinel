@@ -197,6 +197,10 @@ void loop() {
   if (!SatCommStateMachine::next()) {
     // TODO: panic behavior?
     LOGF << "SatComm panicked!";
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000);
     SatCommStateMachine::reset();
     SatCommStateMachine::start();
     SatCommStateMachine::dispatch(PowerUp{});
