@@ -20,6 +20,9 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
+#include "FeatherTrace.h"
+
+FEATHERTRACE_BIND_ALL()
 
 // NOTE 3.5mm pins on swift breakout are open if RS232 jumper not applied!
 // TODO libraries from Eagle in the github updated
@@ -58,7 +61,58 @@ GNSSController *gnssController;
 RTC_DS3231 RTC_DS;
 RTCController rtcController(RTC_DS, RTC_INT, INIT_WAKETIME, INIT_SLEEPTIME);
 
+void save_fault(const FeatherTrace::FaultData& data) {
+    // initialize SDCard temporarily
+    if (fsController.init()) {
+        char fname[32];
+        snprintf(fname, sizeof(fname), "/fault_%lu.txt", data.failnum);
+        ofstream str(fname, ios::out | ios::trunc);
+        if (str.is_open()) {
+            str << "Fault! Caused: " << FeatherTrace::GetCauseString(data.cause) << '\n';
+            str << "\tFault during recording: " << (data.is_corrupted ? "Yes" : "No") << '\n';
+            if (!data.is_corrupted) {
+                str << "\tAt: " << data.file << ':' << data.line << '\n';
+            }
+            str << "\tInterrupt type: " << data.interrupt_type << '\n';
+            str << "\tStacktrace:\n";
+            for (size_t i = 0; ; i++) {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "\t\t0x%08lx\n", data.stacktrace[i]);
+                str << buf;
+                if (i + 1 >= MAX_STRACE || data.stacktrace[i + 1] == 0)
+                    break;
+            }
+            if (data.interrupt_type != 0) {
+                str << "\tRegisters:\n";
+                char buf[32];
+                for (unsigned int i = 0; i < 13; i++) {
+                    snprintf(buf, sizeof(buf), "\t\tR%u: 0x%08lx\n", i, data.regs[i]);
+                    str << buf;
+                }
+                snprintf(buf, sizeof(buf), "\t\tSP: 0x%08lx\n", data.regs[13]);
+                str << buf;
+                snprintf(buf, sizeof(buf), "\t\tLR: 0x%08lx\n", data.regs[14]);
+                str << buf;
+                snprintf(buf, sizeof(buf), "\t\tPC: 0x%08lx\n", data.regs[15]);
+                str << buf;
+                snprintf(buf, sizeof(buf), "\t\txPSR: 0x%08lx\n", data.xpsr);
+                str << buf;
+            }
+            str << "\tFailures since upload: " << data.failnum << '\n';
+            str.close();
+        }
+    }
+}
+
 void setup() {
+  // Hypnos nonsense
+  /*
+  pinMode(5, OUTPUT);
+  digitalWrite(5, LOW); // Sets pin 5, the pin with the 3.3V rail, to output and enables the rail
+  pinMode(6, OUTPUT);
+  digitalWrite(6, HIGH); // Sets pin 6, the pin with the 5V rail, to output and enables the rail
+  */
+
   Serial.begin(115200);
   while (!Serial)
     yield();
@@ -66,6 +120,12 @@ void setup() {
   // SPI INIT
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
+
+  // FeatherTrace init
+  if (FeatherTrace::DidFault()) {
+      FeatherTrace::PrintFault(Serial);
+      save_fault(FeatherTrace::GetFault());
+  }
 
   // Place instatiation here, Serial1 is not in the same compilation unit
   static COMController _comController(radio, max3243, mux, Serial1, RADIO_BAUD,
@@ -79,10 +139,20 @@ void setup() {
   manager.add(&_comController);
   manager.add(&_gnssController);
   manager.add(&fsController);
-  manager.add(&imuController);
-  manager.add(&pmController);
   manager.add(&rtcController);
-  manager.init();
+  // manager.add(&imuController);
+  // manager.add(&pmController);
+  if (!manager.init()) {
+    Serial.println("Fatal: initialization failed!");
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000);
+    FeatherTrace::Fault(FeatherTrace::FaultCause::FAULT_USER);
+  }
 
   // // NOTE Serial passthrough
   // mux.comY1();
@@ -112,11 +182,12 @@ void wait();
 
 void loop() { execute(); }
 
-void execute() {
-  State state = WAKE;
-  while (1) {
-    switch (state) {
+static State state = WAKE;
 
+void execute() {
+    test();
+
+    switch (state) {
     case WAKE:
       // create new directory for the wake cycle
       fsController.setupWakeCycle(rtcController.getTimestamp(),
@@ -225,7 +296,6 @@ void execute() {
       state = WAKE;
       break;
     }
-  }
 }
 
 void wait() {
@@ -454,6 +524,9 @@ void test() {
         Serial.print((char)Serial1.read());
       }
     }
+    break;
+  case 'f':
+    __builtin_trap();
     break;
   }
 }

@@ -207,6 +207,7 @@ void loop() {
   }
   // TODO: Time-based trigger?
   // handle outgoing data from rovers
+  //
   if (comController->listen(model)) {
     fsController.logDiag(model.getRoverAlert(),
                          model.getDiag(model.getRoverAlert()));
@@ -218,6 +219,7 @@ void loop() {
       LOGD << "SATCOM";
       LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
       // TODO: what to send here
+      // model.getData(model.getRoverAlert());
     }
   }
 
@@ -246,6 +248,10 @@ void loop() {
     // read data to figure out what to do
     // TODO: protocol?
     // Possible actions: send diagnostics, restart device, log immediately
+    // model.setProps();
+    // COMController timeout
+    // Base/rover diagnostics
+    //
   }
 
   fa.sync();

@@ -2,18 +2,21 @@
 #include "Console.h"
 
 FSController::FSController(uint8_t cs, uint8_t rst)
-    : m_cs(cs), m_rst(rst), m_DATA("data.json"), m_DIAG("diag.json"),
+    : m_cs(cs), m_rst(rst), m_did_begin(false), m_DATA("data.json"), m_DIAG("diag.json"),
       m_cycle(0) {}
 
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
 bool FSController::init() {
+  if (m_did_begin)
+    return true;
   pinMode(m_cs, OUTPUT);
   // set clock rate, open root directory, check if MAIN exists, if not create it
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(50)) || !m_root.open("/") ||
+  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
       (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
     return false;
   console.debug("FSController initialized.\n");
+  m_did_begin = true;
   return true;
 }
 

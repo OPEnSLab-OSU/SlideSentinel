@@ -3,16 +3,18 @@
 #ifdef UNIT_TEST
 #ifdef ARDUINO
 #include <Arduino.h>
-#include <FeatherFault.h>
+#include "FeatherTrace.h"
 #include "unity.h"
+
+FEATHERTRACE_BIND_ALL()
 
 void setup() {
     Serial.begin(115200);
     while(!Serial)
         yield();
 
-    if (FeatherFault::DidFault()) {
-        FeatherFault::PrintFault(Serial);
+    if (FeatherTrace::DidFault()) {
+        FeatherTrace::PrintFault(Serial);
         while(true)
             yield();
     }
