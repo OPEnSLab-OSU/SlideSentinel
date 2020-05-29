@@ -1,5 +1,6 @@
 #include "COMController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 COMController::COMController(Freewave &radio, MAX3243 &max3243,
                              SN74LVC2G53 &mux, HardwareSerial &serial,
@@ -9,11 +10,11 @@ COMController::COMController(Freewave &radio, MAX3243 &max3243,
       m_radio(radio), m_max3243(max3243), m_mux(mux), m_serial(serial),
       m_timer(0), m_dropped_pkts(0), m_threshold(4) {}
 
-bool COMController::init() {
+bool COMController::init() { MARK;
   m_interface.init();
   m_max3243.disable();
   m_mux.comY1();
-  console.debug("COMController initialized.\n");
+  console.debug("COMController initialized.\n"); MARK;
   return true;
 }
 
@@ -21,29 +22,32 @@ void COMController::m_clearBuffer() {
   memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN);
 }
 
-bool COMController::request(SSModel &model) {
+bool COMController::request(SSModel &model) { MARK;
   m_mux.comY1();
   if (m_radio.getZ9C())
     m_max3243.enable();
 
-  if (!m_interface.sendPacket(REQ, model.toDiag())) {
+  if (!m_interface.sendPacket(REQ, model.toDiag())) { MARK;
     console.debug("Failed to make request.\n");
     m_droppedPkt();
     m_max3243.disable();
     model.setError(ACK_ERR);
     return false;
   }
+  MARK;
 
   // NOTE case: the base is servicing another rover. The base will take the
   // diagnostic data because it could be a wake alert, but will not reply if it
   // is busy servicing another rover
   m_clearBuffer();
-  if (!m_interface.receivePacket(m_buf)) {
+  MARK;
+  if (!m_interface.receivePacket(m_buf)) { MARK;
     m_droppedPkt();
     m_max3243.disable();
     model.setError(REPLY_ERR);
     return false;
   }
+  MARK;
 
   console.debug("\nsuccessfully received config, RADIO ----> GNSS.\n");
   m_mux.comY2();
@@ -62,12 +66,14 @@ bool COMController::upload(SSModel &model) {
 
   console.debug("Data from wake cycle: \n");
   console.debug(model.toData(m_threshold));
-  if (!m_interface.sendPacket(UPL, model.toData(m_threshold))) {
+  MARK;
+  if (!m_interface.sendPacket(UPL, model.toData(m_threshold))) { MARK;
     console.debug("\nFailed to upload packet.\n");
     m_droppedPkt();
     model.setError(ACK_ERR);
     return false;
   }
+  MARK;
 
   if (m_radio.getZ9C())
     m_max3243.disable();
@@ -76,12 +82,13 @@ bool COMController::upload(SSModel &model) {
   return true;
 }
 
-void COMController::resetRadio() { m_radio.reset(); }
+void COMController::resetRadio() { MARK; m_radio.reset(); }
 
 bool COMController::channelBusy(SSModel &model) {
   m_interface.clearSerial();
   m_timer.startTimer(5);
-  while (!m_timer.timerDone()) {
+  MARK;
+  while (!m_timer.timerDone()) { MARK;
     if (m_serial.available()) {
       model.setError(CHNNL_ERR);
       return true;

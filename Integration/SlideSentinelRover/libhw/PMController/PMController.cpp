@@ -1,5 +1,6 @@
 #include "PMController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 PMController::PMController(MAX4280 &max4280, PoluluVoltageReg &vcc2,
                            Battery &bat, bool GNSSrail2, bool radioRail2)
@@ -10,7 +11,7 @@ PMController::PMController(MAX4280 &max4280, PoluluVoltageReg &vcc2,
   asm(".global _printf_float");
 }
 
-bool PMController::init() {
+bool PMController::init() { MARK;
   // Set the XOSC32K to run in standby, external 32 KHz clock must be used for
   // interrupt detection in order to catch falling edges
   SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
@@ -26,28 +27,28 @@ bool PMController::init() {
   return true;
 }
 
-void PMController::enableGNSS() {
+void PMController::enableGNSS() { MARK;
   if (m_GNSSRail2)
     m_vcc2.enable();
   m_max4280.assertRail(2);
   console.debug("GNSS on\n");
 }
 
-void PMController::disableGNSS() {
+void PMController::disableGNSS() { MARK;
   if (m_GNSSRail2 && !m_RadioRail2)
     m_vcc2.disable();
   m_max4280.assertRail(3);
   console.debug("GNSS off\n");
 }
 
-void PMController::enableRadio() {
+void PMController::enableRadio() { MARK;
   if (m_RadioRail2)
     m_vcc2.enable();
   m_max4280.assertRail(0);
 
   // delay for radio to initialize
   console.debug("Initializing radio...\n");
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 20; i++) { MARK;
     console.debug(i);
     console.debug(" ");
     delay(1000);
@@ -55,7 +56,7 @@ void PMController::enableRadio() {
   console.debug("\nRadio on\n");
 }
 
-void PMController::disableRadio() {
+void PMController::disableRadio() { MARK;
   if (m_RadioRail2)
     m_vcc2.disable();
   m_max4280.assertRail(1);
@@ -70,7 +71,7 @@ char *PMController::readBatStr() {
   return m_volt;
 }
 
-void PMController::sleep() {
+void PMController::sleep() { MARK;
   console.debug("Going to sleep...");
   // Disable USB
   USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;

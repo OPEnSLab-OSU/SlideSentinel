@@ -106,6 +106,7 @@ void save_fault(const FeatherTrace::FaultData& data) {
 
 void setup() {
   // Hypnos nonsense
+  // FIXME: remove
   /*
   pinMode(5, OUTPUT);
   digitalWrite(5, LOW); // Sets pin 5, the pin with the 3.3V rail, to output and enables the rail
@@ -121,28 +122,32 @@ void setup() {
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
+  FeatherTrace::StartWDT(FeatherTrace::WDTTimeout::WDT_8S);
+
   // FeatherTrace init
   if (FeatherTrace::DidFault()) {
-      FeatherTrace::PrintFault(Serial);
-      save_fault(FeatherTrace::GetFault());
+      FeatherTrace::PrintFault(Serial); MARK;
+      save_fault(FeatherTrace::GetFault()); MARK;
   }
 
   // Place instatiation here, Serial1 is not in the same compilation unit
+  // FIXME: Should not use a pointer to a static variable in a function
   static COMController _comController(radio, max3243, mux, Serial1, RADIO_BAUD,
                                       CLIENT_ADDR, SERVER_ADDR, INIT_TIMEOUT,
-                                      INIT_RETRIES);
-  comController = &_comController;
+                                      INIT_RETRIES); MARK;
+  comController = &_comController; MARK;
+  // FIXME: Should not use a pointer to a static variable in a function
   static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
-                                        INIT_LOG_FREQ);
-  gnssController = &_gnssController;
+                                        INIT_LOG_FREQ); MARK;
+  gnssController = &_gnssController; MARK;
 
-  manager.add(&_comController);
-  manager.add(&_gnssController);
-  manager.add(&fsController);
-  manager.add(&rtcController);
-  // manager.add(&imuController);
-  // manager.add(&pmController);
-  if (!manager.init()) {
+  manager.add(&_comController); MARK;
+  manager.add(&_gnssController); MARK;
+  manager.add(&fsController); MARK;
+  manager.add(&rtcController); MARK;
+  manager.add(&imuController);
+  manager.add(&pmController);
+  if (!manager.init()) { MARK;
     Serial.println("Fatal: initialization failed!");
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -150,6 +155,7 @@ void setup() {
     digitalWrite(LED_BUILTIN, LOW);
     delay(500);
     digitalWrite(LED_BUILTIN, HIGH);
+    MARK;
     delay(5000);
     FeatherTrace::Fault(FeatherTrace::FaultCause::FAULT_USER);
   }
@@ -180,15 +186,13 @@ void execute();
 void test();
 void wait();
 
-void loop() { execute(); }
+void loop() { MARK; execute(); }
 
 static State state = WAKE;
 
-void execute() {
-    test();
-
+void execute() { MARK;
     switch (state) {
-    case WAKE:
+    case WAKE: MARK;
       // create new directory for the wake cycle
       fsController.setupWakeCycle(rtcController.getTimestamp(),
                                   gnssController->getFormat());
@@ -200,7 +204,7 @@ void execute() {
       state = HANDSHAKE; // EDIT!
       break;
 
-    case HANDSHAKE:
+    case HANDSHAKE: MARK;
       // collect system status
       manager.status(model);
 
@@ -222,7 +226,7 @@ void execute() {
       state = UPDATE;
       break;
 
-    case UPDATE:
+    case UPDATE: MARK;
       // update the systems properties
       manager.update(model);
 
@@ -245,7 +249,7 @@ void execute() {
       state = POLL;
       break;
 
-    case POLL:
+    case POLL: MARK;
       // check for data from the GNSS receiver
       if (gnssController->poll(model))
         fsController.logData(model.toData(model.getProp(THRESHOLD)));
@@ -257,7 +261,7 @@ void execute() {
       }
       break;
 
-    case UPLOAD:
+    case UPLOAD: MARK;
       // disable the GNSS receiver
       pmController.disableGNSS();
 
@@ -277,7 +281,7 @@ void execute() {
       state = SLEEP;
       break;
 
-    case SLEEP:
+    case SLEEP: MARK;
       // flush pending GNSS data
       gnssController->reset();
 
@@ -287,10 +291,17 @@ void execute() {
       // set the wake alarm
       rtcController.setWakeAlarm();
 
+      // disable WDT
+      FeatherTrace::StopWDT();
+
       // enter low power mode
       pmController.sleep();
-      pmController.enableGNSS();
-      delay(200);
+
+      // re-enable WDT
+      FeatherTrace::StartWDT(FeatherTrace::WDTTimeout::WDT_8S);
+      // enable GNSS
+      pmController.enableGNSS(); MARK;
+      delay(200); MARK;
       pmController.disableGNSS();
       Serial.println("Transitioning to WAKE...");
       state = WAKE;
@@ -300,14 +311,13 @@ void execute() {
 
 void wait() {
   Serial.println("waiting for input");
-  while (!Serial.available())
-    ;
+  while (!Serial.available()) MARK;
   while (Serial.available()) {
     Serial.read();
   }
 }
 
-void test() {
+void test() { MARK;
   char cmd = '\0';
   int count = 0;
   char test[] = "{\"TYPE\":\"ACK\",\"STATE\":[3000,-1,3,4,10,200000]}";
@@ -316,74 +326,74 @@ void test() {
     cmd = Serial.read();
 
   switch (cmd) {
-  case '1': // PMController
-    Serial.println("\n\nTesting PMCOntroller");
-    delay(2000);
+  case '1': MARK;// PMController
+    Serial.println("\n\nTesting PMCOntroller"); MARK;
+    delay(2000); MARK;
     Serial.println("Toggling GNSS");
-    pmController.enableGNSS();
-    delay(2000);
+    pmController.enableGNSS(); MARK;
+    delay(2000); MARK;
     pmController.disableGNSS();
     Serial.println("Toggling RADIO");
-    pmController.enableRadio();
-    delay(2000);
+    pmController.enableRadio(); MARK;
+    delay(2000); MARK;
     pmController.disableRadio();
     Serial.print("Battery Voltage: ");
-    Serial.println(pmController.readBatStr());
-    delay(2000);
-    Serial.print("Sleeping Tap Device to wake.....:\n");
+    Serial.println(pmController.readBatStr()); MARK;
+    delay(2000); MARK;
+    Serial.print("Sleeping Tap Device to wake.....:\n"); MARK;
     pmController.sleep();
     // ...
-    delay(2000);
-    Serial.println("Awake from sleep!");
-    delay(2000);
+    delay(2000); MARK;
+    Serial.println("Awake from sleep!"); MARK;
+    delay(2000); MARK;
     Serial.println("Collecting Status");
-    pmController.status(model);
-    delay(2000);
+    pmController.status(model); MARK;
+    delay(2000); MARK;
     model.print();
     model.clear();
     break;
 
-  case '2':
-    Serial.println("\n\nTesting IMUCOntroller");
-    delay(2000);
+  case '2': MARK;
+    Serial.println("\n\nTesting IMUCOntroller"); MARK;
+    delay(2000); MARK;
     Serial.print("Collecting Status");
     imuController.status(model);
     model.print();
     model.clear();
     break;
 
-  case '3':
-    Serial.println("\n\nTesting RTCCOntroller");
-    delay(2000);
+  case '3': MARK;
+    Serial.println("\n\nTesting RTCCOntroller"); MARK;
+    delay(2000); MARK;
     Serial.print("Timestamp: ");
     Serial.println(rtcController.getTimestamp());
     Serial.println("Setting 1 min wake alarm");
     // internal testing method
     count = 0;
     rtcController.setWakeAlarm();
-    while (1) {
-      delay(1000);
+    while (1) { MARK;
+      delay(1000); MARK;
       Serial.print(count);
       Serial.println(" seconds");
       count++;
       if (rtcController.alarmDone())
         break;
     }
-    Serial.println("Wake alarm triggered!");
-    delay(2000);
+    Serial.println("Wake alarm triggered!"); MARK;
+    delay(2000); MARK;
     Serial.println("Setting 1 min poll alarm");
     count = 0;
     rtcController.setPollAlarm();
-    while (1) {
-      delay(1000);
+    while (1) { MARK;
+      delay(1000); MARK;
       Serial.print(count);
       Serial.println(" seconds");
       count++;
       if (rtcController.alarmDone())
         break;
     }
-    Serial.println("Poll alarm triggered!");
-    delay(2000);
+    Serial.println("Poll alarm triggered!"); MARK;
+    delay(2000); MARK;
     Serial.print("Collecting Status");
     rtcController.status(model);
     model.print();
@@ -393,13 +403,13 @@ void test() {
     // TODO update routine so we can dynamically change props and test
     // log frequency not effecting logging rate?
     // model not getting updated
-  case '4':
-    Serial.println("\n\nTesting GNSSController");
-    delay(2000);
+  case '4': MARK;
+    Serial.println("\n\nTesting GNSSController"); MARK;
+    delay(2000); MARK;
     Serial.println("Polling for data");
     pmController.enableGNSS();
     rtcController.setPollAlarm();
-    while (1) {
+    while (1) { MARK;
       if (gnssController->poll(model))
         model.print();
       if (rtcController.alarmDone())
@@ -411,11 +421,11 @@ void test() {
     model.clear();
     break;
 
-  case '5':
-    Serial.println("\n\nTesting FSController");
-    delay(2000);
-    Serial.print("Creating new timestampped directory: ");
-    delay(2000);
+  case '5': MARK;
+    Serial.println("\n\nTesting FSController"); MARK;
+    delay(2000); MARK;
+    Serial.print("Creating new timestampped directory: "); MARK;
+    delay(2000); MARK;
     Serial.println(rtcController.getTimestamp());
     if (fsController.setupWakeCycle(rtcController.getTimestamp(),
                                     gnssController->getFormat()))
@@ -425,20 +435,20 @@ void test() {
       model.setError(WRITE_ERR);
       Serial.println(model.toError());
       fsController.logDiag(model.toError());
-    }
-    delay(2000);
+    } MARK;
+    delay(2000); MARK;
     Serial.println("Simulated Wake...");
     pmController.enableGNSS();
     rtcController.setPollAlarm();
-    while (1) {
+    while (1) { MARK;
       if (gnssController->poll(model))
         fsController.logData(model.toData(0));
       if (rtcController.alarmDone())
         break;
     }
     pmController.disableGNSS();
-    Serial.println("Wake Cycle complete!");
-    delay(2000);
+    Serial.println("Wake Cycle complete!"); MARK;
+    delay(2000); MARK;
     if (fsController.setupWakeCycle(rtcController.getTimestamp(),
                                     gnssController->getFormat()))
       Serial.println("Timestampped directory created!");
@@ -447,86 +457,92 @@ void test() {
       model.setError(WRITE_ERR);
       Serial.println(model.toError());
       fsController.logDiag(model.toError());
-    }
-    delay(2000);
+    } MARK;
+    delay(2000); MARK;
     Serial.println("Throwing random error");
-    delay(2000);
+    delay(2000); MARK;
     model.setError(ACK_ERR);
     Serial.println(model.toError());
     fsController.logDiag(model.toError());
-    Serial.println("Get state of device");
-    delay(2000);
+    Serial.println("Get state of device"); MARK;
+    delay(2000); MARK;
     manager.status(model);
     Serial.println("Status of machine: ");
-    model.print();
-    delay(2000);
+    model.print(); MARK;
+    delay(2000); MARK;
     Serial.println("Created diagnostic and state packet:");
     Serial.println(model.toDiag());
     Serial.println(model.toProp());
-    Serial.println("Writing data to SD...");
-    delay(2000);
+    Serial.println("Writing data to SD..."); MARK;
+    delay(2000); MARK;
     fsController.logDiag(model.toDiag());
     fsController.logDiag(model.toProp());
     Serial.println("Complete");
     break;
 
-  case '6':
-    Serial.println("\n\nTesting COMController");
-    delay(2000);
+  case '6': MARK;
+    Serial.println("\n\nTesting COMController"); MARK;
+    delay(2000); MARK;
     Serial.println("Creating Request packet");
     manager.status(model);
     Serial.println(model.toDiag());
-    comController->request(model);
-    delay(2000);
+    comController->request(model); MARK;
+    delay(2000); MARK;
     Serial.println("Creating Upload Packet");
     Serial.println(model.toData(3));
     comController->upload(model);
     model.clear();
-    Serial.println("Handling response");
-    delay(2000);
+    Serial.println("Handling response"); MARK;
+    delay(2000); MARK;
     model.handleRes(test);
-    Serial.println("Collecting status");
-    delay(2000);
+    Serial.println("Collecting status"); MARK;
+    delay(2000); MARK;
     comController->status(model);
     model.print();
     model.clear();
     break;
 
-  case '7':
+  case '7': MARK;
     Serial.println("\n\nTesting COMController");
     Serial.println("Creating Request packet");
     manager.status(model);
     Serial.println(model.toDiag());
     comController->request(model);
     break;
-  case '8':
+  case '8': MARK;
     Serial.print("CD pin: ");
     if (comController->channelBusy(model))
       Serial.println("BUSY");
     else
       Serial.println("NOT BUSY");
     break;
-  case 'a':
+  case 'a': MARK;
     max3243.enable();
     pmController.enableRadio();
     break;
-  case 'c':
+  case 'c': MARK;
     pmController.disableRadio();
     max3243.disable();
     break;
-  case 'd':
+  case 'd': MARK;
     Serial1.println(" MOOOSE MOOOSE MOOOSE MOOOSE  MOOOSE MOOOSE  MOOOSE "
                     "MOOOSE  MOOOSE MOOOSE  MOOOSE MOOOSE  MOOOSE MOOOSE ");
     break;
-  case 'b':
-    for (int i = 0; i < 2000; i++) {
+  case 'b': MARK;
+    for (int i = 0; i < 2000; i++) { MARK;
       if (Serial1.available()) {
         Serial.print((char)Serial1.read());
       }
     }
     break;
-  case 'f':
+/* Code for testing bad behavior
+  case 'f': MARK;
     __builtin_trap();
     break;
+  case 'h': MARK;
+   while(true);
+   break;
+*/
   }
+  MARK;
 }
