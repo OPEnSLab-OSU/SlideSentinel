@@ -155,6 +155,20 @@ namespace SatComm {
                 m_did_ring.store(false);
                 // register ring alert interrupt
                 attachInterrupt(RING_INDICATOR_PIN, handleRing, LOW);
+                // get the time, and send a SyncTime message
+                size_t try_count = 0;
+                int result = 0;
+                tm time = {};
+                do {
+                    result = Parent::m_modem->getSystemTime(time);
+                } while(result != ISBD_SUCCESS && try_count++ < 5);
+                if (result == ISBD_SUCCESS)
+                    EventBus::dispatch(SyncTime{ time });
+                else {
+                    char message[64];
+                    snprintf(message, sizeof(message), "Modem time failed with error: %d", result);
+                    MSG_WARN(message);
+                }
                 // ready!
                 EventBus::dispatch(DriverReady{});
             }
