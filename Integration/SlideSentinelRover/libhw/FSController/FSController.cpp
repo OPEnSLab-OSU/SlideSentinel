@@ -1,19 +1,24 @@
 #include "FSController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 FSController::FSController(uint8_t cs, uint8_t rst)
-    : m_cs(cs), m_rst(rst), m_DATA("data.json"), m_DIAG("diag.json"),
+    : m_cs(cs), m_rst(rst), m_did_begin(false), m_DATA("data.json"), m_DIAG("diag.json"),
       m_cycle(0) {}
 
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
 bool FSController::init() {
+  if (m_did_begin)
+    return true;
   pinMode(m_cs, OUTPUT);
+  MARK;
   // set clock rate, open root directory, check if MAIN exists, if not create it
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(50)) || !m_root.open("/") ||
+  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
       (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
     return false;
   console.debug("FSController initialized.\n");
+  m_did_begin = true;
   return true;
 }
 
@@ -29,7 +34,7 @@ void FSController::logDiag(char *data) {
 
 // TODO maintian a way to determine if SD failed and reactivley reattempt to
 // reinit()
-bool FSController::setupWakeCycle(char *timestamp, char *format) {
+bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
   console.debug("Creating new wake cycle directory: ");
   console.debug(timestamp);
   console.debug("\n");
@@ -53,22 +58,22 @@ bool FSController::setupWakeCycle(char *timestamp, char *format) {
   return true;
 }
 
-bool FSController::m_mkFile(const char *name) {
+bool FSController::m_mkFile(const char *name) { MARK;
   if (!(m_file.open(name, O_WRONLY | O_CREAT | O_EXCL) && m_file.close()))
     return false;
   return true;
 }
 
-bool FSController::m_setFile(const char *file) {
+bool FSController::m_setFile(const char *file) { MARK;
   if (!m_sd.chdir() && m_sd.chdir(m_curDir) &&
       m_file.open(file, O_WRONLY | O_APPEND))
     return false;
   return true;
 }
 
-bool FSController::m_write(char *msg) { return m_file.println(msg); }
+bool FSController::m_write(char *msg) { MARK; return m_file.println(msg); }
 
-bool FSController::m_logMsg(const char *msg, const char *file) {
+bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
   console.debug("Writing \"");
   console.debug(msg);
   console.debug("\" to file ");
@@ -82,7 +87,7 @@ bool FSController::m_logMsg(const char *msg, const char *file) {
   return true;
 }
 
-void FSController::m_SDspace() {
+void FSController::m_SDspace() { MARK;
   float cardSize = m_sd.card()->cardSize() * 0.000512;
   m_spaceMB = cardSize - m_sd.vol()->freeClusterCount() *
                              m_sd.vol()->blocksPerCluster() * 0.000512;
@@ -92,6 +97,7 @@ void FSController::m_SDspace() {
 
   // Serial.printfn(F(" (Used: %d.%02d MB)."), (unsigned int)used,
   //                (unsigned int)(used * 100.0) % 100);
+  MARK;
 }
 
 void FSController::m_cycles() { m_cycle++; }

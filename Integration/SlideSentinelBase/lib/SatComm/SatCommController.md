@@ -66,3 +66,40 @@ with the RockBlock
 endnote
 @enduml
 ```
+
+COM Controller
+
+```plantuml
+@startuml
+skinparam defaultFontName Verdana
+hide empty description
+
+state TransactionServicing : Do not send sevicing ack
+state Idle : Not servicing rover, doing nothing
+state IdleServicing : Servicing, but no alerts have been recieved
+IdleServicing : entry / GNSSMux
+IdleServicing : exit / FeatherMux
+Transaction : exit && IMU / QueueMessage
+TransactionServicing : exit && IMU / QueueMessage
+
+[*] --> Idle
+Idle --> Transaction : Packet is recievied
+Transaction --> Idle : ACK fail
+Transaction --> IdleServicing : Successful request
+IdleServicing --> TransactionServicing : Servicing interrupted
+IdleServicing --> Idle : Servicing done
+TransactionServicing --> IdleServicing : Done
+```
+
+Multiplexer:
+```plantuml
+@startuml
+skinparam defaultFontName Verdana
+hide empty description
+
+state Feather
+state GNSS
+
+Feather --> GNSS : MuxGNSS
+GNSS --> Feather : MuxFeather
+```

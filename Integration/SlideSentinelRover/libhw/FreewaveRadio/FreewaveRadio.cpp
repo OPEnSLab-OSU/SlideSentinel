@@ -1,4 +1,5 @@
 #include "FreewaveRadio.h"
+#include "FeatherTrace.h"
 
 Freewave::Freewave(uint8_t reset, uint8_t cd, bool is_z9c)
     : m_rst(reset), m_cd(cd), m_z9c(is_z9c) {
@@ -13,6 +14,8 @@ bool Freewave::getZ9C() { return m_z9c; }
 
 void Freewave::reset() {
   digitalWrite(m_rst, LOW);
+  MARK;
   delay(2000);
+  MARK;
   digitalWrite(m_rst, HIGH);
 }

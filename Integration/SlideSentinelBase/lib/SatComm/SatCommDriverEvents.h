@@ -5,7 +5,9 @@
 
 namespace SatComm {
 	// Settings and types
-	constexpr size_t PacketSizeBytes = 50;
+  // Maximum packet size for Iridium is 340 bytes, add one for a null terminator on that
+	constexpr size_t PacketSizeBytes = 341;
+  /** Datatype for a packet going to or from satellite communication. */
 	struct Packet {
 		std::array<char, PacketSizeBytes> bytes;
 		size_t length;

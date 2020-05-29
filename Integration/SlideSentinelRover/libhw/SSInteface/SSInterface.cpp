@@ -1,5 +1,6 @@
 #include "SSInterface.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 SSInterface::SSInterface(HardwareSerial &serial, uint32_t baud,
                          uint8_t clientId, uint8_t serverId, uint16_t timeout,
@@ -45,6 +46,7 @@ bool SSInterface::receivePacket(char *buffer) {
 bool SSInterface::_receive() {
   _clearBuffer();
   uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
+  MARK;
   if (m_manager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_timeout, &m_from))
     return true;
   return false;
@@ -65,12 +67,14 @@ bool SSInterface::_readHeader(char *buf) {
 
 void SSInterface::init() {
   m_serial.begin(m_baud);
+  MARK;
   m_manager.init();
 }
 
 // The client sends to the server
 bool SSInterface::_send() {
   uint8_t size = strlen(m_buf);
+  MARK;
   if (m_manager.sendtoWait((uint8_t *)m_buf, size,
                            m_base ? m_from : m_serverId))
     return true;

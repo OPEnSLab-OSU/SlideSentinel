@@ -18,6 +18,7 @@ private:
   SdFile m_root;
   uint8_t m_cs;
   uint8_t m_rst;
+  bool m_did_begin;
 
   const char *m_DATA;
   const char *m_DIAG;

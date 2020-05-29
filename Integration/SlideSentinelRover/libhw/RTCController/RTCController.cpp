@@ -1,5 +1,6 @@
 #include "RTCController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 uint8_t RTCController::m_pin;
 volatile bool RTCController::m_flag = false;
@@ -13,7 +14,7 @@ RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
   asm(".global _printf_float");
 }
 
-void RTCController::m_clearAlarm() {
+void RTCController::m_clearAlarm() { MARK;
   m_RTC.armAlarm(1, false);
   m_RTC.clearAlarm(1);
   m_RTC.alarmInterrupt(1, false);
@@ -31,12 +32,13 @@ void RTCController::m_setFlag() { m_flag = false; }
 
 bool RTCController::m_getFlag() { return m_flag; }
 
-bool RTCController::init() {
+bool RTCController::init() { MARK;
   pinMode(m_pin, INPUT_PULLUP);
   Wire.begin();
   if (!m_RTC.begin())
     return false;
-  m_RTC.adjust(DateTime(__DATE__, __TIME__));
+  MARK;
+  m_RTC.adjust(DateTime(__DATE__, __TIME__)); // FIXME: this is wrong
 
   // clear any pending alarms
   m_clearAlarm();
@@ -49,7 +51,7 @@ bool RTCController::init() {
   return true;
 }
 
-void RTCController::m_setAlarm(int time) {
+void RTCController::m_setAlarm(int time) { MARK;
   m_setFlag();
   m_clearAlarm();
   m_setDate();
@@ -72,7 +74,7 @@ void RTCController::m_setAlarm(int time) {
   console.debug("\n");
 }
 
-char *RTCController::getTimestamp() {
+char *RTCController::getTimestamp() { MARK;
   memset(m_timestamp, '\0', sizeof(char) * MAX_TIMESTAMP_LEN);
   m_setDate();
   sprintf(m_timestamp, "%.2d.%.2d.%.2d.%.2d.%.2d", m_date.month(), m_date.day(),
@@ -80,13 +82,13 @@ char *RTCController::getTimestamp() {
   return m_timestamp;
 }
 
-void RTCController::setPollAlarm() {
+void RTCController::setPollAlarm() { MARK;
   // reset the backoff counter if no collision occured
   m_backoffCounter = 1;
   m_setAlarm(m_wakeTime);
 }
 
-void RTCController::setWakeAlarm() {
+void RTCController::setWakeAlarm() { MARK;
   m_setAlarm(m_sleepTime * m_backoffCounter);
 }
 
@@ -97,14 +99,14 @@ void RTCController::incrementBackoff() {
     m_backoffCounter++;
 }
 
-bool RTCController::alarmDone() {
+bool RTCController::alarmDone() { MARK;
   if (!m_getFlag())
     return false;
   m_clearAlarm();
   return true;
 }
 
-void RTCController::m_setDate() { m_date = m_RTC.now(); }
+void RTCController::m_setDate() { MARK; m_date = m_RTC.now(); }
 
 void RTCController::m_setWakeTime(int wakeTime) { m_wakeTime = wakeTime; }
 
@@ -115,7 +117,7 @@ void RTCController::status(SSModel &model) {
   model.setProp(SLEEP_TIME, m_sleepTime);
 }
 
-void RTCController::update(SSModel &model) {
+void RTCController::update(SSModel &model) { MARK;
   m_setWakeTime(model.getProp(WAKE_TIME));
   m_setSleepTime(model.getProp(SLEEP_TIME));
 }

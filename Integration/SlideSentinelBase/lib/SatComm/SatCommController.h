@@ -12,7 +12,7 @@
 namespace SatComm {
     // Settings
     // TODO: Somewhere else?
-    constexpr size_t OutgoingQueueMax = 25;
+    constexpr size_t OutgoingQueueMax = 5;
     constexpr size_t IncomingQueueMax = 5;
 
     // ----------------------------------------------------------------------------

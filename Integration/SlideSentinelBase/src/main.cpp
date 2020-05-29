@@ -1,9 +1,10 @@
 #include "BaseModel.h"
 #include "COMController.h"
 #include "FSController.h"
+#include "SatCommDriver.h"
+#include "SatCommController.h"
+#include "EventQueue.h"
 #include <Plog.h>
-#include <Appenders/RollingFileAppender.h>
-#include <Appenders/SerialAppender.h>
 #include <Arduino.h>
 #include <FeatherTrace.h>
 
@@ -36,6 +37,8 @@ Freewave radio(RST, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
 FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
+using SatCommStateMachine = EventQueue<SatComm::Controller, SatComm::Driver>;
+using SatCommController = SatComm::Controller<SatCommStateMachine>;
 
 // Model
 BaseModel model(NUM_ROVERS);
@@ -85,6 +88,10 @@ void printFault(const FeatherTrace::FaultData& data) {
 }
 
 void setup() {
+  // LED init
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
   Serial.begin(115200);
   while (!Serial)
     yield();
@@ -99,10 +106,15 @@ void setup() {
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
 
   // filesystem init
-  if (!fsController.init()) {
+  while (!fsController.init()) {
     // TODO: What happens here? Panic?
     LOGF << "FS Controller failed to initialize!";
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000);
   }
+  digitalWrite(LED_BUILTIN, LOW);
 
   // TODO: send fault data over GNSS
   if (FeatherTrace::DidFault())
@@ -115,6 +127,11 @@ void setup() {
   delay(1000);
   LOGI << "gnss on";
   useRelay(GNSS_ON_PIN);
+
+  // SatComm init
+  SatCommStateMachine::reset();
+  SatCommStateMachine::start();
+  SatCommStateMachine::dispatch(PowerUp{});
 
   static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
                                       CLIENT_ADDRESS, SERVER_ADDRESS,
@@ -150,14 +167,11 @@ void setup() {
   fa.sync();
 }
 
-enum State { LISTEN, SATCOM };
-
 // collect string of all diagnostics and props for each rover
 // collect string of Base station diagnostics: stopwatch, num_uploads, num_requests, SD card memory
 
-static State state = LISTEN;
-
 void loop() {
+  // reinitialize the SD card if needed
   fsController.checkSD();
   // parse serial commands
   if(Serial.available()){
@@ -177,33 +191,71 @@ void loop() {
       model.print();
     }
   }
-
+  // sync logs
   fa.sync();
-
-  // handle state transitions
-  switch (state) {
-  case LISTEN:
-    if (comController->listen(model)) {
-      if (model.getRoverIMUFlag(model.getRoverAlert())) {
-        LOGD << "LISTEN -> SATCOM";
-        state = SATCOM;
-      }
-      fsController.logDiag(model.getRoverAlert(),
-                           model.getDiag(model.getRoverAlert()));
-      fsController.logProps(model.getRoverAlert(),
-                            model.getProps(model.getRoverAlert()));
-      break;
+  // handle SatComm state
+  if (!SatCommStateMachine::next()) {
+    // TODO: panic behavior?
+    LOGF << "SatComm panicked!";
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(5000);
+    SatCommStateMachine::reset();
+    SatCommStateMachine::start();
+    SatCommStateMachine::dispatch(PowerUp{});
+  }
+  // TODO: Time-based trigger?
+  // handle outgoing data from rovers
+  //
+  if (comController->listen(model)) {
+    fsController.logDiag(model.getRoverAlert(),
+                         model.getDiag(model.getRoverAlert()));
+    fsController.logProps(model.getRoverAlert(),
+                          model.getProps(model.getRoverAlert()));
+    if (model.getRoverIMUFlag(model.getRoverAlert())) {
+      fsController.logData(model.getRoverServe(),
+                           model.getData(model.getRoverServe()));
+      LOGD << "SATCOM";
+      LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
+      // TODO: what to send here
+      // model.getData(model.getRoverAlert());
     }
-    break;
-  case SATCOM:
-    fsController.logData(model.getRoverServe(),
-                         model.getData(model.getRoverServe()));
-    LOGD << "SATCOM";
-    LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
-    LOGD << "SATCOM -> LISTEN";
-    state = LISTEN;
-    break;
+  }
+
+  // handle incoming data from SatComm
+  while (SatCommController::available()) {
+    // packets are assumed to a JSON encoded array
+    // packets may or may not be null terminated.
+    SatComm::Packet recv;
+    SatCommController::receive(recv);
+    // if the packet is zero bytes, continue
+    if (recv.length == 0) {
+      LOGW << "Received empty packet?";
+      continue;
+    }
+    // if the packet is not null terminated, add a null terminator
+    if (recv.bytes[recv.length - 1] != '\0')
+        recv.bytes[recv.length++] = '\0';
+    LOGI << "Recieved SatComm packet: " << recv.bytes.data();
+    // use ArduinoJson to deserialize it
+    StaticJsonDocument<MAX_DATA_LEN> doc;
+    DeserializationError err = deserializeJson(doc, recv.bytes.data());
+    if (err != DeserializationError::Ok) {
+      LOGE << "Deserialization failed with error: " << err.c_str();
+      continue;
+    }
+    // read data to figure out what to do
+    // TODO: protocol?
+    // Possible actions: send diagnostics, restart device, log immediately
+    // model.setProps();
+    // COMController timeout
+    // Base/rover diagnostics
+    //
   }
 
   fa.sync();
+
+  // TODO: Low battery behavior
+
 }

@@ -1,5 +1,6 @@
 #include "GNSSController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 /*
  * State of the SBP message parser.
@@ -57,7 +58,9 @@ void sbp_gps_time_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
  */
 void sbp_setup(void) {
   /* SBP parser state must be initialized before sbp_process is called. */
+  MARK;
   sbp_state_init(&sbp_state);
+  MARK;
 
   /* Register a node and callback, and associate them with a specific message
    * ID. */
@@ -151,6 +154,7 @@ bool GNSSController::init() {
   m_serial.begin(m_baud);
   pinPeripheral(m_tx, PIO_SERCOM);
   pinPeripheral(m_rx, PIO_SERCOM);
+  MARK;
   sbp_setup();
   console.debug("GNSSController initialized.\n");
   return true;
@@ -259,7 +263,8 @@ uint8_t GNSSController::poll(SSModel &model) {
     printf("sbp_process error: %d\n", (int)ret);
 
   DO_EVERY(m_logFreq,
-           // check if the current reading is better than the running best
+          MARK;
+            // check if the current reading is better than the running best
            if (m_compare()) m_setBest();
 
            // // log the current reading

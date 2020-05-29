@@ -1,5 +1,6 @@
 #include "IMUController.h"
 #include "Console.h"
+#include "FeatherTrace.h"
 
 // Consult the datasheet for MMA8451 to change these values
 #define CTRL_REG3 0b11000000
@@ -25,7 +26,7 @@ void IMUController::IMU_ISR() {
   attachInterrupt(digitalPinToInterrupt(m_pin), IMU_ISR, FALLING);
 }
 
-bool IMUController::init() {
+bool IMUController::init() { MARK;
   digitalWrite(m_pin, INPUT_PULLUP);
   if (!m_dev.begin()) // calls Wire.begin()
     return false;
@@ -54,7 +55,7 @@ bool IMUController::m_getFlag() { return m_flag; }
 
 void IMUController::m_setFlag() { m_flag = false; }
 
-void IMUController::m_setSensitivity(uint8_t sensitivity) {
+void IMUController::m_setSensitivity(uint8_t sensitivity) { MARK;
   m_sensitivity = sensitivity;
   m_dev.writeRegister8_public(MMA8451_REG_TRANSIENT_THS, m_sensitivity);
 }
