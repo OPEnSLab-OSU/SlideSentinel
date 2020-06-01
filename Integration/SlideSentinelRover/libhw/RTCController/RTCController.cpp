@@ -35,10 +35,21 @@ bool RTCController::m_getFlag() { return m_flag; }
 bool RTCController::init() { MARK;
   pinMode(m_pin, INPUT_PULLUP);
   Wire.begin();
-  if (!m_RTC.begin())
-    return false;
+  if (!m_RTC.begin()) {
+      console.debug("Could not find RTC!");
+      return false;
+  }
   MARK;
-  m_RTC.adjust(DateTime(__DATE__, __TIME__)); // FIXME: this is wrong
+  // the RTC will start at zero after a power off
+  // get the current time, and synchronize it if it's before the compile time
+  // FIXME: This synchronizes to PST/PDT, not UTC like the base
+  const DateTime synctime = DateTime(__DATE__, __TIME__);
+  m_setDate();
+  if (m_date.unixtime() < synctime.unixtime()) {
+      console.debug("Synchronizing to:");
+      console.debug((int)synctime.unixtime());
+      m_RTC.adjust(synctime);
+  }
 
   // clear any pending alarms
   m_clearAlarm();

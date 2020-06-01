@@ -7,6 +7,7 @@
 #include <Plog.h>
 #include <Arduino.h>
 #include <FeatherTrace.h>
+#include "PLOGSynchronizer.h"
 
 FEATHERTRACE_BIND_ALL()
 
@@ -37,7 +38,7 @@ Freewave radio(RST, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
 FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
-using SatCommStateMachine = EventQueue<SatComm::Controller, SatComm::Driver>;
+using SatCommStateMachine = EventQueue<SatComm::Controller, SatComm::Driver, PLOGSynchronizer>;
 using SatCommController = SatComm::Controller<SatCommStateMachine>;
 
 // Model
@@ -100,9 +101,12 @@ void setup() {
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
+  // state machine start
+  // this synchronizes PLOGs time, so it must come before PLOG
+  SatCommStateMachine::reset();
+  SatCommStateMachine::start();
+
   // PLOG init
-  // TODO: get time from GNSS to sync PLOG
-  plog::TimeSync(DateTime(__DATE__, __TIME__), -7);
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
 
   // filesystem init
@@ -129,8 +133,6 @@ void setup() {
   useRelay(GNSS_ON_PIN);
 
   // SatComm init
-  SatCommStateMachine::reset();
-  SatCommStateMachine::start();
   SatCommStateMachine::dispatch(PowerUp{});
 
   static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
@@ -205,7 +207,6 @@ void loop() {
     SatCommStateMachine::start();
     SatCommStateMachine::dispatch(PowerUp{});
   }
-  // TODO: Time-based trigger?
   // handle outgoing data from rovers
   //
   if (comController->listen(model)) {

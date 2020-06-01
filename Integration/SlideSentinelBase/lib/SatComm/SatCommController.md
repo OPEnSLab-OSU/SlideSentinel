@@ -52,6 +52,7 @@ Off : PowerUp / Initialize RockBlock
 Off : Failure / Panic
 Wait : entry / SignalLost
 Wait : Update / Check Signal
+Ready : entry / SyncTime
 Ready : entry / DriverReady
 Ready : entry / Attatch Ring Alert
 Ready : exit / Dettach Ring Alert
