@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tinyfsm.h"
+#include "time.h"
 
 struct Update : tinyfsm::Event { };
 struct PowerUp : tinyfsm::Event { };
