@@ -11,11 +11,53 @@
 #include "unity.h"
 #include "UnitySameType.h"
 
+/**
+ * This macro pops an event off of the internal stack in DebugEventBus.
+ * If the type of the event is not expected_type, this macro calls TEST_FAIL, 
+ * otherwise it returns the popped event.
+ * @returns The event with type expected_type
+ */
 #define DEBUG_BUS_POP_EVENT(bus, expected_type) \
     ({ TEST_ASSERT_FALSE(bus::empty()); \
     TEST_ASSERT_SAME_TYPE(expected_type, bus::peek_front_type()); \
     bus::pop<expected_type>(); })
 
+
+/**
+ * @brief A mock for EventQueue, designed to capture output events from a state machine for testing
+ * 
+ * DebugEventBus is a testing tool that allows a developer to capture
+ * events emitted from a state machine, and verify both the order and
+ * type of events during the test. 
+ * 
+ * Events are stored in a FILO order internally, and can be accessed using
+ * the DEBUG_BUS_POP_EVENT macro. This macro both verifies that the type of
+ * the event is correct, and gets a copy of the event for further verification.
+ * A usage example is as follows:
+ * ```C++
+ * // declare the state machine with DebugEventBus as the output
+ * using TestStateMachine = StateMachine<DebugEventBus>;
+ * 
+ * // reset the DebugEventBus and StateMachine
+ * DebugEventBus::reset();
+ * TestStateMachine::reset();
+ * TestStateMachine::start();
+ * 
+ * // send some input events to the state machine
+ * TestStateMachine::dispatch(...);
+ * ...
+ * 
+ * // Verify that the last event dispatched was of type Event1
+ * DEBUG_BUS_POP_EVENT(DebugEventBus, Event1);
+ * // Verify that the second to last event dispatched was of type Event2
+ * // and that the contents of that event are == 3;
+ * auto event = DEBUG_BUS_POP_EVENT(DebugEventBus, Event2);
+ * TEST_ASSERT_EQUAL(3, event.value);
+ * // Verify that these two events are the only two events dispatched
+ * TEST_ASSERT_TRUE(DebugEventBus::empty());
+ * ```
+ * @note RTTI must be enabled to use this tool.
+ */
 class DebugEventBus {
 private:
     using EventPtr = std::unique_ptr<tinyfsm::Event>;
