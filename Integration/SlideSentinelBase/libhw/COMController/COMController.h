@@ -43,15 +43,16 @@ private:
   bool m_request(int rover_id, BaseModel &model);
   bool m_upload(int rover_id, BaseModel &model);
 
+
+  bool m_transaction();
+
 public:
   COMController(Freewave &radio, SN74LVC2G53 &mux, HardwareSerial &serial,
                 uint32_t baud, uint8_t clientId, uint8_t serverId,
                 uint16_t timeout, uint8_t retries);
   bool init();
   void resetRadio();
-  int listen(BaseModel &model);
-  // bool listenReq(BaseModel &model);
-  // bool listenUpl(BaseModel &model);
+  bool listen(BaseModel &model);
   bool timeout();
   void status(BaseModel &model);
   void update(BaseModel &model);

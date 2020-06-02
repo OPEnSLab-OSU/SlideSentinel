@@ -1,6 +1,7 @@
 #ifndef _DIAGNOSTICS_H_
 #define _DIAGNOSTICS_H_
 
+#include <Arduino.h>
 #include "ArduinoJson.h"
 
 #define SS_DIAG "DIAG"
@@ -12,9 +13,7 @@
 #define DROPPED_PKTS 4
 #define ERR_COUNT 5
 
-// For deserializing during the handshake and chekcing if the IMU flag is
-// asserted
-// FIXME Error count is wonky
+// FIXME Error count is wonky, placed at the end of the Array so it can be easily removed
 class Diagnostics {
 private:
   bool m_imu_flag;

@@ -52,12 +52,12 @@ void SSModel::m_addData(JsonDocument &doc) {
   data.add(m_pos_llh.lon);
   data.add(m_pos_llh.height);
   data.add(m_pos_llh.n_sats);
-  data.add(m_baseline_ned.n);
-  data.add(m_baseline_ned.e);
-  data.add(m_baseline_ned.d);
-  data.add(m_vel_ned.n);
-  data.add(m_vel_ned.e);
-  data.add(m_vel_ned.d);
+  // data.add(m_baseline_ned.n);
+  // data.add(m_baseline_ned.e);
+  // data.add(m_baseline_ned.d);
+  // data.add(m_vel_ned.n);
+  // data.add(m_vel_ned.e);
+  // data.add(m_vel_ned.d);
   data.add(m_dops.gdop);
   data.add(m_dops.hdop);
   data.add(m_dops.pdop);

@@ -145,10 +145,8 @@ GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
                                uint8_t rx, uint8_t tx, int logFreq)
     : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<Week>,<Seconds>,<RTK "
-               "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<Baseline "
-               "North>,<Baselie East>,"
-               "<Baseline Down>,<Velocity North>,<Velocity East>,<Velocity "
-               "Down>,<GDOP>,<HDOP>,<PDOP>,<TDOP>,<VDOP>") {}
+               "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
+               ",<PDOP>,<TDOP>,<VDOP>") {}
 
 bool GNSSController::init() {
   m_serial.begin(m_baud);
@@ -197,6 +195,7 @@ void GNSSController::m_GNSSread() {
 // TODO preemptively terminate the polling cycle if RTK is reached early
 void GNSSController::m_isFixed(uint8_t &flag) { flag = 1; }
 
+// TODO this function needs to be tuned using real data and weighted averages.
 bool GNSSController::m_compare() {
   // first check if the fix mode is better
   if (m_mode > m_getMode())
@@ -262,48 +261,24 @@ uint8_t GNSSController::poll(SSModel &model) {
   if (ret < 0)
     printf("sbp_process error: %d\n", (int)ret);
 
-  DO_EVERY(m_logFreq,
-          MARK;
-            // check if the current reading is better than the running best
-           if (m_compare()) m_setBest();
+  DO_EVERY(m_logFreq, MARK;
+           // check if the current reading is better than the running best
+           if (m_compare()) 
+            m_setBest();
 
-           // // log the current reading
-           // update internal varibales of SSModel
-           //  model.setPos_llh(pos_llh);
-           //  model.setBaseline_ned(baseline_ned);
-           //  model.setMsg_vel_ned_t(vel_ned);
-           //  model.setMsg_dops_t(dops);
-           //  model.setMsg_gps_time_t(gps_time);
-           //  model.setMode(m_getMode());
-           //  model.setProp(LOG_FREQ, m_logFreq);
+            // log the current reading from Swift
+            model.setPos_llh(pos_llh); 
+            model.setBaseline_ned(baseline_ned);
+            model.setMsg_vel_ned_t(vel_ned); 
+            model.setMsg_dops_t(dops);
+            model.setMsg_gps_time_t(gps_time); 
+            model.setMode(m_getMode());
+            model.setProp(LOG_FREQ, m_logFreq);
 
-           // test data
-           msg_pos_llh_t test_pos_llh; test_pos_llh.lat = 123.45678910;
-           test_pos_llh.lon = 89.12345678; test_pos_llh.height = 12.34;
-           test_pos_llh.n_sats = 10;
-
-           msg_baseline_ned_t test_baseline_ned; test_baseline_ned.n = 10;
-           test_baseline_ned.e = 11; test_baseline_ned.d = 12;
-
-           msg_vel_ned_t test_vel_ned; test_vel_ned.n = 13; test_vel_ned.e = 14;
-           test_vel_ned.d = 15;
-
-           msg_dops_t test_dops; test_dops.gdop = 1.1; test_dops.hdop = 1.2;
-           test_dops.pdop = 1.3; test_dops.tdop = 1.4; test_dops.vdop = 1.5;
-
-           msg_gps_time_t test_gps_time; test_gps_time.wn = 99;
-           test_gps_time.tow = 88;
-
-           uint8_t test_mode = 4;
-
-           model.setPos_llh(test_pos_llh);
-           model.setBaseline_ned(test_baseline_ned);
-           model.setMsg_vel_ned_t(test_vel_ned); model.setMsg_dops_t(test_dops);
-           model.setMsg_gps_time_t(test_gps_time); model.setMode(test_mode);
-           model.setProp(LOG_FREQ, m_logFreq);
-
-           // check if we acheived an RTK fix, reset internal variables
-           m_isFixed(datFlag); m_reset(););
+            // check if we acheived an RTK fix, reset internal variables
+            m_isFixed(datFlag); 
+            m_reset();
+          );
 
   return datFlag;
 }
@@ -482,3 +457,30 @@ void GNSSController::reset() {
 //  sprintf(rj, "%4.2f", ((float)dops.vdop / 100));
 //  str_i += sprintf(str + str_i, "%7s", rj);
 //  doc["MSG"] = str;
+
+//  // test data
+//  msg_pos_llh_t test_pos_llh; test_pos_llh.lat = 123.45678910;
+//  test_pos_llh.lon = 89.12345678; test_pos_llh.height = 12.34;
+//  test_pos_llh.n_sats = 10;
+
+//  msg_baseline_ned_t test_baseline_ned; test_baseline_ned.n = 10;
+//  test_baseline_ned.e = 11; test_baseline_ned.d = 12;
+
+//  msg_vel_ned_t test_vel_ned; test_vel_ned.n = 13; test_vel_ned.e = 14;
+//  test_vel_ned.d = 15;
+
+//  msg_dops_t test_dops; test_dops.gdop = 1.1; test_dops.hdop = 1.2;
+//  test_dops.pdop = 1.3; test_dops.tdop = 1.4; test_dops.vdop = 1.5;
+
+//  msg_gps_time_t test_gps_time; test_gps_time.wn = 99;
+//  test_gps_time.tow = 88;
+
+//  uint8_t test_mode = 4;
+
+//  model.setPos_llh(test_pos_llh);
+//  model.setBaseline_ned(test_baseline_ned);
+//  model.setMsg_vel_ned_t(test_vel_ned);
+//  model.setMsg_dops_t(test_dops);
+//  model.setMsg_gps_time_t(test_gps_time);
+//  model.setMode(test_mode);
+//  model.setProp(LOG_FREQ, m_logFreq);

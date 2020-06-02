@@ -48,6 +48,8 @@ int COMController::listen(BaseModel &model) {
     return false;
 
   m_reset();
+
+  // TODO if we are already servicing another rover and timeout occurs we need to flip the mux bak 
   if (!m_interface.receivePacket(m_buf))
     return false;
 
