@@ -6,7 +6,6 @@
 #include "Diagnostics.h"
 #include "Properties.h"
 #include "Shadow.h"
-#include <Arduino.h>
 
 #define BASE_DIAG "BDIAG"
 

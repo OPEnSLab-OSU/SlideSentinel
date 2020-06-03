@@ -7,7 +7,6 @@
 
 #include <atomic>
 #include <IridiumSBD.h>
-#include "Arduino.h"
 #include "wiring_private.h" // pinPeripheral() function
 #include "tinyfsm.h"
 #include "GlobalEvents.h"

@@ -1,12 +1,13 @@
+#include <Arduino.h>
+#include <Plog.h>
+#include <FeatherTrace.h>
 #include "BaseModel.h"
 #include "COMController.h"
 #include "FSController.h"
 #include "SatCommDriver.h"
+#include <Arduino.h>
 #include "SatCommController.h"
 #include "EventQueue.h"
-#include <Plog.h>
-#include <Arduino.h>
-#include <FeatherTrace.h>
 #include "PLOGSynchronizer.h"
 
 FEATHERTRACE_BIND_ALL()
@@ -21,7 +22,7 @@ FEATHERTRACE_BIND_ALL()
 #define IS_Z9C true
 #define NUM_ROVERS 2
 
-#define SD_CS 10 // TODO: Change back to 10
+#define SD_CS 10 
 #define SD_RST 6
 
 // TODO you updated the properties class and the SSInterface class, make sure to
@@ -141,30 +142,32 @@ void setup() {
   comController = &_comController;
   comController->init();
 
-  StaticJsonDocument<MAX_DATA_LEN> doc;
-  JsonArray data = doc.createNestedArray(SS_PROP);
-  data.add(2000);
-  data.add(3);
-  data.add(2);
-  data.add(3);
-  data.add(0x0f);
-  data.add(200000);
-  data.add(0);
-  serializeJson(doc, test_buf);
-  model.setProps(1, test_buf);
+  /***** FIXME remove
+  // StaticJsonDocument<MAX_DATA_LEN> doc;
+  // JsonArray data = doc.createNestedArray(SS_PROP);
+  // data.add(2000);
+  // data.add(3);
+  // data.add(2);
+  // data.add(3);
+  // data.add(0x0f);
+  // data.add(200000);
+  // data.add(0);
+  // serializeJson(doc, test_buf);
+  // model.setProps(1, test_buf);
 
-  StaticJsonDocument<MAX_DATA_LEN> doc2;
-  JsonArray data2 = doc2.createNestedArray(SS_PROP);
-  data2.add(2000);
-  data2.add(4);
-  data2.add(3);
-  data2.add(3);
-  data2.add(0x0f);
-  data2.add(80000);
-  data2.add(3);
-  serializeJson(doc2, test_buf);
-  model.setProps(2, test_buf);
-  model.print();
+  // StaticJsonDocument<MAX_DATA_LEN> doc2;
+  // JsonArray data2 = doc2.createNestedArray(SS_PROP);
+  // data2.add(2000);
+  // data2.add(4);
+  // data2.add(3);
+  // data2.add(3);
+  // data2.add(0x0f);
+  // data2.add(80000);
+  // data2.add(3);
+  // serializeJson(doc2, test_buf);
+  // model.setProps(2, test_buf);
+  // model.print();
+  ****/
 
   fa.sync();
 }
@@ -175,24 +178,27 @@ void setup() {
 void loop() {
   // reinitialize the SD card if needed
   fsController.checkSD();
-  // parse serial commands
-  if(Serial.available()){
-    char cmd = Serial.read();
-    if(cmd == '1'){
-      LOGD << "------- BASE STATUS --------";
-      LOGD << model.getRoverShadow();
-    }
-    if(cmd == '2'){
-      comController->status(model);
-      fsController.status(model);
-      LOGD << "------- BASE DIAGNOSTICS --------";
-      LOGD << model.getBaseDiagnostics();
-    }
-    if(cmd == '3'){
-      LOGD << "------- ROVER STATUS --------";
-      model.print();
-    }
-  }
+ 
+  //*** FIXME remove
+  // if(Serial.available()){
+  //   char cmd = Serial.read();
+  //   if(cmd == '1'){
+  //     LOGD << "------- BASE STATUS --------";
+  //     LOGD << model.getRoverShadow();
+  //   }
+  //   if(cmd == '2'){
+  //     comController->status(model);
+  //     fsController.status(model);
+  //     LOGD << "------- BASE DIAGNOSTICS --------";
+  //     LOGD << model.getBaseDiagnostics();
+  //   }
+  //   if(cmd == '3'){
+  //     LOGD << "------- ROVER STATUS --------";
+  //     model.print();
+  //   }
+  // }
+  //*****
+
   // sync logs
   fa.sync();
   // handle SatComm state
@@ -207,8 +213,8 @@ void loop() {
     SatCommStateMachine::start();
     SatCommStateMachine::dispatch(PowerUp{});
   }
+
   // handle outgoing data from rovers
-  //
   if (comController->listen(model)) {
     fsController.logDiag(model.getRoverAlert(),
                          model.getDiag(model.getRoverAlert()));
@@ -219,8 +225,6 @@ void loop() {
                            model.getData(model.getRoverServe()));
       LOGD << "SATCOM";
       LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
-      // TODO: what to send here
-      // model.getData(model.getRoverAlert());
     }
   }
 

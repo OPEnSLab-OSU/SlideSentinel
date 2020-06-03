@@ -34,7 +34,7 @@ void COMController::m_clear() {
 
 bool COMController::m_available() { return m_interface.available(); }
 
-int COMController::listen(BaseModel &model) {
+bool COMController::listen(BaseModel &model) {
 
   // check the timer has expired
   if (timeout()) {

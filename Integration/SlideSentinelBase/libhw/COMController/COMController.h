@@ -5,6 +5,7 @@
 #define UPL 2
 #define RES 3
 
+#include <Arduino.h>
 #include "BaseModel.h"
 #include "Controller.h"
 #include "FreewaveRadio.h"
@@ -14,7 +15,6 @@
 #include "SN74LVC2G53.h"
 #include "SSInterface.h"
 #include "Timer.h"
-#include <Arduino.h>
 
 class COMController : public Controller {
 private:
@@ -59,3 +59,4 @@ public:
 };
 
 #endif // _COMCONTROLLER_H_
+
