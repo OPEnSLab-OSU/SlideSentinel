@@ -1,5 +1,5 @@
 # SlideSentinel
-[![DOI](https://zenodo.org/badge/136069337.svg)](https://zenodo.org/badge/latestdoi/136069337)
+[![DOI](https://zenodo.org/badge/136069337.svg)](https://zenodo.org/badge/latestdoi/136069337) [![Build Status](https://travis-ci.org/OPEnSLab-OSU/SlideSentinel.svg?branch=master)](https://travis-ci.org/OPEnSLab-OSU/SlideSentinel)
 
 ![AGU Poster](https://github.com/OPEnSLab-OSU/SlideSentinel/blob/feature/photoHosting/Documentation/Photos/Diagrams/AGU%20Slide%20Sentinel%202019%20FINAL%20.png)
 ## How to Setup
