@@ -31,13 +31,13 @@ void Properties::read(char *buf) {
   auto err = deserializeJson(json, buf);
   if (err)
     return;
-  set(TIMEOUT, json[SS_PROP][TIMEOUT]);
-  set(RETRIES, json[SS_PROP][RETRIES]);
-  set(WAKE_TIME, json[SS_PROP][WAKE_TIME]);
-  set(SLEEP_TIME, json[SS_PROP][SLEEP_TIME]);
-  set(SENSITIVITY, json[SS_PROP][SENSITIVITY]);
-  set(LOG_FREQ, json[SS_PROP][LOG_FREQ]);
-  set(THRESHOLD, json[SS_PROP][THRESHOLD]);
+  set(TIMEOUT, json[SS_PROP][TIMEOUT] != INVALID_PROP ? json[SS_PROP][TIMEOUT] : get(TIMEOUT));
+  set(RETRIES, json[SS_PROP][RETRIES] != INVALID_PROP ? json[SS_PROP][RETRIES] : get(RETRIES));
+  set(WAKE_TIME, json[SS_PROP][WAKE_TIME] != INVALID_PROP ? json[SS_PROP][WAKE_TIME] : get(WAKE_TIME));
+  set(SLEEP_TIME, json[SS_PROP][SLEEP_TIME] != INVALID_PROP ? json[SS_PROP][SLEEP_TIME] : get(SLEEP_TIME));
+  set(SENSITIVITY, json[SS_PROP][SENSITIVITY] != INVALID_PROP ? json[SS_PROP][SENSITIVITY] : get(SENSITIVITY));
+  set(LOG_FREQ, json[SS_PROP][LOG_FREQ] != INVALID_PROP ? json[SS_PROP][LOG_FREQ] : get(LOG_FREQ));
+  set(THRESHOLD, json[SS_PROP][THRESHOLD] != INVALID_PROP ? json[SS_PROP][THRESHOLD] : get(THRESHOLD));
   print();
 }
 

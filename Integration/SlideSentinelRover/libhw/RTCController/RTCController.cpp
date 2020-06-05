@@ -3,12 +3,11 @@
 #include "FeatherTrace.h"
 
 uint8_t RTCController::m_pin;
-volatile bool RTCController::m_flag = false;
 
 RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
                              uint16_t sleepTime)
     : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime),
-      m_backoffCounter(1) {
+      m_backoffCounter(1), m_timer(0) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -25,12 +24,8 @@ void RTCController::m_clearAlarm() { MARK;
 
 void RTCController::RTC_ISR() {
   detachInterrupt(digitalPinToInterrupt(m_pin));
-  m_flag = true;
 }
 
-void RTCController::m_setFlag() { m_flag = false; }
-
-bool RTCController::m_getFlag() { return m_flag; }
 
 bool RTCController::init() { MARK;
   pinMode(m_pin, INPUT_PULLUP);
@@ -63,7 +58,6 @@ bool RTCController::init() { MARK;
 }
 
 void RTCController::m_setAlarm(int time) { MARK;
-  m_setFlag();
   m_clearAlarm();
   m_setDate();
   uint8_t min = (m_date.minute() + time) % 60;
@@ -96,7 +90,7 @@ char *RTCController::getTimestamp() { MARK;
 void RTCController::setPollAlarm() { MARK;
   // reset the backoff counter if no collision occured
   m_backoffCounter = 1;
-  m_setAlarm(m_wakeTime);
+  m_timer.startTimer(m_wakeTime*60);
 }
 
 void RTCController::setWakeAlarm() { MARK;
@@ -111,10 +105,7 @@ void RTCController::incrementBackoff() {
 }
 
 bool RTCController::alarmDone() { MARK;
-  if (!m_getFlag())
-    return false;
-  m_clearAlarm();
-  return true;
+  return m_timer.timerDone();
 }
 
 void RTCController::m_setDate() { MARK; m_date = m_RTC.now(); }

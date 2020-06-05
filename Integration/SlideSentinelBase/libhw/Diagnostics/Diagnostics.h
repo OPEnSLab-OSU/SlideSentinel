@@ -12,10 +12,8 @@
 #define CYCLES 3
 #define DROPPED_PKTS 4
 #define ERR_COUNT 5
+#define CONV_TIME 6
 
-// For deserializing during the handshake and chekcing if the IMU flag is
-// asserted
-// FIXME Error count is wonky
 class Diagnostics {
 private:
   bool m_imu_flag;
@@ -24,6 +22,7 @@ private:
   int m_cycles;
   int m_dropped_pkts;
   int m_err_count;
+  float m_convergence_time;
 
 public:
   Diagnostics();
@@ -37,6 +36,7 @@ public:
   int cycles();
   int droppedPkts();
   int errCount();
+  float convergenceTime();
 
   // setters
   void setFlag(bool flag);
@@ -45,6 +45,7 @@ public:
   void setCycles(int cycles);
   void setDroppedPkts(int drop);
   void setErrCount(int errCount);
+  void setConvergenceTime(float conv);
 
   void clear();
   void print();

@@ -3,6 +3,21 @@
 
 BaseModel::BaseModel(int numRovers) : m_numRovers(numRovers) {
   m_shadow = new Shadow[numRovers];
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  JsonArray data = doc.createNestedArray(SS_PROP);
+  char buf[100];
+  data.add(DEF_TIMOUT);
+  data.add(DEF_RETRIES);
+  data.add(DEF_WAKE_TIME);
+  data.add(DEF_SLEEP_TIME);
+  data.add(DEF_SENSITIVITY);
+  data.add(DEF_LOG_FREQ);
+  data.add(DEF_THRESHOLD);
+  for (int i = 0; i < m_numRovers; i++) {
+    serializeJson(doc, buf);
+    setProps(i + 1, buf);
+    m_shadow[i].setId(i + 1);
+  }
 }
 
 char *BaseModel::getDiag(int id) { return m_shadow[id - 1].toDiag(); }
@@ -37,16 +52,10 @@ void BaseModel::setError(char *err) { m_err = err; }
 char *BaseModel::getError() { return m_err; }
 
 void BaseModel::setRoverServe(int rover_id) { m_roverServeId = rover_id; }
-void BaseModel::setRoverAlert(int rover_id) { m_roverAlertId = rover_id; }
+void BaseModel::setRoverRecent(int rover_id) { m_roverRecentId = rover_id; }
 
 int BaseModel::getRoverServe() { return m_roverServeId; }
-int BaseModel::getRoverAlert() { return m_roverAlertId; }
-
-// unsigned long m_stopwatch;
-// int m_num_uploads;
-// int m_num_requests;
-// float m_sdSpace;
-// char m_buf[MAX_DATA_LEN];
+int BaseModel::getRoverRecent() { return m_roverRecentId; }
 
 void BaseModel::m_clear() { memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN); }
 void BaseModel::setStopwatch(unsigned long stopwatch) {
@@ -72,15 +81,32 @@ char *BaseModel::getBaseDiagnostics() {
   return m_buf;
 }
 
-char *BaseModel::getRoverShadow() {
+void BaseModel::m_add(int id, JsonArray &data, uint8_t sel) {
+  if (sel & (1 << ID_FLAG))
+    data.add(m_shadow[id].toId());
+  if (sel & (1 << DIAG_FLAG))
+    data.add(m_shadow[id].toDiag());
+  if (sel & (1 << PROP_FLAG))
+    data.add(m_shadow[id].toData());
+  if (sel & (1 << DATA_FLAG))
+    data.add(m_shadow[id].toProps());
+}
+
+char *BaseModel::toShadow() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
-  char buf[255];
-  for (int i = 0; i < m_numRovers; i++) {
-    itoa(i, buf, 10);
-    JsonArray data = doc.createNestedArray(buf);
-    data.add(m_shadow[i].toDiag());
-    data.add(m_shadow[i].toProps());
-  }
+  doc[NUM_ROVER] = m_numRovers;
+  JsonArray data = doc.createNestedArray(SHADOW);
+  for (int i = 0; i < m_numRovers; i++)
+    m_add(i, data, (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(PROP_FLAG)));
+  m_clear();
+  serializeJson(doc, m_buf);
+  return m_buf;
+}
+
+char *BaseModel::toPacket(int id, uint8_t sel) {
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  JsonArray data = doc.createNestedArray(PACKET);
+  m_add(id - 1, data, sel);
   m_clear();
   serializeJson(doc, m_buf);
   return m_buf;

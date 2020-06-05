@@ -12,8 +12,8 @@
 #define CYCLES 3
 #define DROPPED_PKTS 4
 #define ERR_COUNT 5
+#define CONV_TIME 6
 
-// FIXME Error count is wonky, placed at the end of the Array so it can be easily removed
 class Diagnostics {
 private:
   bool m_imu_flag;
@@ -22,6 +22,7 @@ private:
   int m_cycles;
   int m_dropped_pkts;
   int m_err_count;
+  float m_convergence_time;
 
 public:
   Diagnostics();
@@ -35,6 +36,7 @@ public:
   int cycles();
   int droppedPkts();
   int errCount();
+  float convergenceTime();
 
   // setters
   void setFlag(bool flag);
@@ -43,6 +45,7 @@ public:
   void setCycles(int cycles);
   void setDroppedPkts(int drop);
   void setErrCount(int errCount);
+  void setConvergenceTime(float conv);
 
   void clear();
   void print();

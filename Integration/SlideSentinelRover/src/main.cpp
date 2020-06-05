@@ -114,8 +114,7 @@ void setup() {
   */
 
   Serial.begin(115200);
-  while (!Serial)
-    yield();
+
 
   // SPI INIT
   SPI.begin();
@@ -159,6 +158,9 @@ void setup() {
     FeatherTrace::Fault(FeatherTrace::FaultCause::FAULT_USER);
   }
 
+  pmController.disableGNSS();
+  pmController.disableRadio();
+
 }
 
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
@@ -170,6 +172,15 @@ void loop() { MARK; execute(); }
 static State state = WAKE;
 
 void execute() { MARK;
+
+    if (Serial.available()) {
+      char cmd = Serial.read();
+      if (cmd == '1') {
+        Serial.println("------- ROVER DIAG --------");
+        Serial.println(model.toDiag());
+      }
+    }
+
     switch (state) {
     case WAKE: MARK;
       // create new directory for the wake cycle
@@ -265,8 +276,13 @@ void execute() { MARK;
       // flush pending GNSS data
       gnssController->reset();
 
+
+      // disable the GNSS receiver, called twice in case handshake never works 
+      pmController.disableGNSS();
+
       // disable the radio
       pmController.disableRadio();
+      
 
       // set the wake alarm
       rtcController.setWakeAlarm();
@@ -279,10 +295,7 @@ void execute() { MARK;
 
       // re-enable WDT
       FeatherTrace::StartWDT(FeatherTrace::WDTTimeout::WDT_8S);
-      // enable GNSS
-      pmController.enableGNSS(); MARK;
-      delay(200); MARK;
-      pmController.disableGNSS();
+
       Serial.println("Transitioning to WAKE...");
       state = WAKE;
       break;

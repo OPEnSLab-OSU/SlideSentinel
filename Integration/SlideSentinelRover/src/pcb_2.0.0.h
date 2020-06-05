@@ -16,7 +16,7 @@
 #define SD_RST 16 				// A2
 
 /****** IMUController ******/
-#define INIT_SENSITIVITY 0x1F  	// uint8_t
+#define INIT_SENSITIVITY 0xFF  	// uint8_t
 #define ACCEL_INT A3
 
 /****** GNSSController ******/

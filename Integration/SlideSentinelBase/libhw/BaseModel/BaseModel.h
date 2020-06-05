@@ -6,16 +6,26 @@
 #include "Diagnostics.h"
 #include "Properties.h"
 #include "Shadow.h"
+#include "rover_config.h"
 
 #define BASE_DIAG "BDIAG"
+#define PACKET "PKT"
+#define NUM_ROVER "NUM"
+#define SHADOW "SHDW"
+
+#define ID_FLAG 0
+#define DIAG_FLAG 1
+#define PROP_FLAG 2
+#define DATA_FLAG 3
 
 using namespace errorMsg;
 
+// TODO maintain a timer for the last time each rover checked in with the base station
 class BaseModel {
 private:
   int m_numRovers;
-  int m_roverServeId;
-  int m_roverAlertId;
+  int m_roverServeId;       // Id of the rover being serviced, the base expects an upload from this rover
+  int m_roverRecentId;      // Id of the rover which most recently made contact with the base
   Shadow *m_shadow;
   char *m_err;
 
@@ -27,9 +37,16 @@ private:
   char m_buf[MAX_DATA_LEN];
   void m_clear();
 
+  void m_add(int id, JsonArray &data, uint8_t sel);
+
 public:
   BaseModel(int numRovers);
-  bool dataReady();
+  
+  // produces uploadable packet consisting of diagnostics and positional data
+  char *toPacket(int id, uint8_t sel);
+  char *toShadow();
+  char *getBaseDiagnostics();
+  
   char *getDiag(int id);
   bool getRoverIMUFlag(int id);
   int getRoverWakeTime(int id);
@@ -43,9 +60,9 @@ public:
 
   // id of the currently serviced rover
   void setRoverServe(int rover_id);
-  void setRoverAlert(int rover_id);
+  void setRoverRecent(int rover_id);
   int getRoverServe();
-  int getRoverAlert();
+  int getRoverRecent();
 
   void setError(char *err);
   char *getError();
@@ -56,8 +73,6 @@ public:
   void setNumRequests(int num_requests);
   void setSdSpace(float sdSpace);
   void setSdError(uint8_t sderror);
-  char *getBaseDiagnostics();
-  char *getRoverShadow();
 };
 
 #endif // _BASEMODEL_H_

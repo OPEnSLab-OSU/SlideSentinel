@@ -36,6 +36,7 @@ private:
 public:
   SSModel();
 
+  // props
   int getProp(int prop);
   void setProp(int prop, int val);
 
@@ -46,12 +47,14 @@ public:
   void setMsg_gps_time_t(msg_gps_time_t gps_time);
   void setMode(uint8_t mode);
 
+  // diagnostic
   void setDroppedPkts(uint16_t dropped_pkts);
   void setIMUflag(bool imu_flag);
   void setBat(float bat);
   void setSpace(uint32_t space);
   void setCycles(uint16_t cycles);
   void setError(const char *err);
+  void setConv(float conv);
 
   // handles response data from the base station COMController::request()
   void handleRes(char *buf);

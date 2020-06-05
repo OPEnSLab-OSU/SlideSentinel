@@ -39,6 +39,11 @@ bool COMController::request(SSModel &model) { MARK;
   // NOTE case: the base is servicing another rover. The base will take the
   // diagnostic data because it could be a wake alert, but will not reply if it
   // is busy servicing another rover
+
+  // // FIXME VERY IMPORTANT! This needs to be changed, the rover should get 
+  // the props stored in the base back but should not poll.
+  // This should terminate because their could be new data sent
+  // that needs to hit the rover on its next wake cycle
   m_clearBuffer();
   MARK;
   if (!m_interface.receivePacket(m_buf)) { MARK;

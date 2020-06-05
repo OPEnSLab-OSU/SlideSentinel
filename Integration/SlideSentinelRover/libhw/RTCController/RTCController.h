@@ -2,10 +2,11 @@
 #define _RTCCONTROLLER_H_
 #define MAX_TIMESTAMP_LEN 15
 
-#include "Controller.h"
-#include "RTClibExtended.h"
 #include <Arduino.h>
 #include <Wire.h>
+#include "Controller.h"
+#include "RTClibExtended.h"
+#include "Timer.h"
 
 class RTCController : public Controller {
 private:
@@ -13,15 +14,13 @@ private:
   static uint8_t m_pin;
   int m_wakeTime;  // state
   int m_sleepTime; // state
-  static volatile bool m_flag;
   DateTime m_date;
   char m_timestamp[MAX_TIMESTAMP_LEN];
   int m_backoffCounter;
+  Timer m_timer; 
 
   void m_setDate();
   void m_clearAlarm();
-  void m_setFlag();
-  bool m_getFlag();
   void m_setAlarm(int time);
   void m_setWakeTime(int wakeTime);
   void m_setSleepTime(int sleepTime);

@@ -272,4 +272,15 @@ void SERCOM1_Handler()
     SatComm::IridiumSerial.IrqHandler();
 }
 
+
+void ISBDConsoleCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+
+void ISBDDiagsCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+
 #endif //SLIDESENTINELROVER_SATCOMMDRIVER_H

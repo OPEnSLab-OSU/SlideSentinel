@@ -34,9 +34,17 @@ void COMController::m_clear() {
 
 bool COMController::m_available() { return m_interface.available(); }
 
-bool COMController::listen(BaseModel &model) {
 
-  // check the timer has expired
+
+
+
+
+
+// FIXME listen(), request() and upload() all need to be fixed, 
+// the base station has large amounts of asynchronous behavior an RTOS would be ideal
+int COMController::listen(BaseModel &model) {
+
+  // check the timer has expired, update the timer
   if (timeout()) {
     LOGD << "Serving " << model.getRoverServe() << ": Timeout occured terminating service.";
     m_isServing = false;
@@ -44,36 +52,46 @@ bool COMController::listen(BaseModel &model) {
     m_reset();
   }
 
+  // check if data is available
   if (!m_available())
-    return false;
+    return -1;
 
+  // reset the mux, if the rover is servicing another rover 
+  // we want to grab incoming data Freewave --> Feather
   m_reset();
 
-  // TODO if we are already servicing another rover and timeout occurs we need to flip the mux bak 
-  if (!m_interface.receivePacket(m_buf))
-    return false;
+  // receive the data, if the base is servicing another 
+  // rover and this fails return the mux to GNSS --> Freewave
+  if (!m_interface.receivePacket(m_buf)){
+    if(m_isServing)
+      m_mux.comY1();
+    return -1;
+  }
 
+  // grab the rover ID and message type 
   int rover_id = m_interface.getId();
   int type = m_interface.getType();
 
+  // update the RoverRecent to the ID of the most recent rover to check in with the base
   LOGD << "********** Message from Rover " << rover_id << ": TYPE: " << type << " *************";
-  model.setRoverAlert(rover_id);
+  model.setRoverRecent(rover_id);
 
-  if (type == UPL)
-    return m_upload(rover_id, model);
-  else if (type == REQ)
-    return m_request(rover_id, model);
+  if (type == REQ)
+    return 1;
+  else if (type == UPL)
+    return 2; 
 }
 
-bool COMController::m_request(int rover_id, BaseModel &model) {
+// Entering this function the RADIO --> Feather
+bool COMController::request(int rover_id, BaseModel &model) {
+  // set the diagnostics of the rover in the shadow
   m_num_requests++;
   model.setDiag(rover_id, m_buf);
 
-  // accept diagnostic info regardless of the base's servicing state
   LOGD << "Request Received, Diagnostics: " << model.getDiag(rover_id);
   LOGD << "Props: " << model.getProps(rover_id);
 
-  // receive a request, if we are already servicing another rover
+  // If we are already servicing another rover
   // flix mux back to servicing state, do not reply so rover will go back to
   // sleep
   if (m_isServing) {
@@ -81,12 +99,16 @@ bool COMController::m_request(int rover_id, BaseModel &model) {
     m_mux.comY1();
     return true;
   }
+
+  // reply to the rover with the props in the shadow
   LOGD << "Received REQ, NOT servicing another rover, sending back Props...";
   if (!m_interface.sendPacket(RES, model.getProps(rover_id))) {
     LOGW << "FAILED TO REPLY WITH PROPS!";
     return false;
   }
 
+  // Set the ID of the rover to RoverServe and start the timer using the 
+  // the rover's wake time 
   model.setRoverServe(rover_id);
   LOGD << "Setting alarm for: " << model.getRoverWakeTime(rover_id);
   m_timer.startTimer(model.getRoverWakeTime(rover_id) * 60);
@@ -97,16 +119,25 @@ bool COMController::m_request(int rover_id, BaseModel &model) {
   return true;
 }
 
-bool COMController::m_upload(int rover_id, BaseModel &model) {
+
+// Entering this function the RADIO --> Feather
+bool COMController::upload(int rover_id, BaseModel &model) {
+  // set the data from the rover in the shadow
   m_num_uploads++;
   LOGD << "Received Upload: " << m_buf;
   model.setData(rover_id, m_buf);
 
-  // if we are serving, check that the upload is from the rover being serviced
-  if (m_isServing && (model.getRoverServe() != rover_id)) {
+  if(!m_isServing){
+    LOGD << "Received UPL while not in servicing state";
+    return false;
+  }
+
+  // If we are serving, check that the upload is from the rover being serviced
+  // This condition should, in theory, never occur
+  if ((model.getRoverServe() != rover_id)) {
     LOGD << "Received UPL while servicing a different rover";
     m_mux.comY1();
-    return true;
+    return false;
   }
 
   LOGD << "Received UPL from rover being serviced";
@@ -114,7 +145,13 @@ bool COMController::m_upload(int rover_id, BaseModel &model) {
   m_reset();
   m_timer.stopTimer();
   m_timer.startStopwatch();
+  return true;
 }
+
+
+
+
+
 
 void COMController::resetRadio() { m_radio.reset(); }
 

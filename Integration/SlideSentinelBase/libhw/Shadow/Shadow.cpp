@@ -1,11 +1,15 @@
 #include "Shadow.h"
 #include <Plog.h>
 
-Shadow::Shadow() : m_data{ 0 } { m_props.init(); }
+Shadow::Shadow() : m_data{0} { m_props.init(); }
 
 void Shadow::m_clear() { memset(m_buf, '\0', sizeof(char) * MAX_DATA_LEN); }
 
 int Shadow::getId() { return m_id; }
+
+void Shadow::setId(int id) {
+  m_id = id;
+}
 
 char *Shadow::toProps() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
@@ -24,6 +28,17 @@ char *Shadow::toDiag() {
 char *Shadow::toData() {
   m_clear();
   strcpy(m_buf, m_data);
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  JsonArray data = doc.createNestedArray(SS_DATA);
+  data.add(m_buf);
+  m_serializePkt(doc);
+  return m_buf;
+}
+
+char *Shadow::toId() {
+  StaticJsonDocument<MAX_DATA_LEN> doc;
+  doc[SS_ID] = m_id;
+  m_serializePkt(doc);
   return m_buf;
 }
 

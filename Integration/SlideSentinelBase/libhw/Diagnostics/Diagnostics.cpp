@@ -11,6 +11,7 @@ void Diagnostics::write(JsonDocument &doc) {
   data.add(m_cycles);
   data.add(m_dropped_pkts);
   data.add(m_err_count);
+  data.add(m_convergence_time);
 }
 
 void Diagnostics::read(char *buf) {
@@ -26,6 +27,7 @@ void Diagnostics::read(char *buf) {
   setCycles(json[SS_DIAG][CYCLES]);
   setDroppedPkts(json[SS_DIAG][DROPPED_PKTS]);
   setErrCount(json[SS_DIAG][ERR_COUNT]);
+  setConvergenceTime(json[SS_DIAG][CONV_TIME]);
 }
 
 void Diagnostics::print() {
@@ -36,6 +38,7 @@ void Diagnostics::print() {
   LOGD << "\tWake Cycles: " << cycles();
   LOGD << "\tDropped Packets: " << droppedPkts();
   LOGD << "\tError Count: " << errCount();
+  LOGD << "\tConvergence Time: " << convergenceTime();
   LOGD << "*************************";
 }
 
@@ -46,6 +49,7 @@ float Diagnostics::space() { return m_space; }
 int Diagnostics::cycles() { return m_cycles; }
 int Diagnostics::droppedPkts() { return m_dropped_pkts; }
 int Diagnostics::errCount() { return m_err_count; }
+float Diagnostics::convergenceTime() { return m_convergence_time; }
 
 // setters
 void Diagnostics::setFlag(bool flag) { m_imu_flag = flag; }
@@ -54,6 +58,7 @@ void Diagnostics::setSpace(float space) { m_space = space; }
 void Diagnostics::setCycles(int cycles) { m_cycles = cycles; }
 void Diagnostics::setDroppedPkts(int drop) { m_dropped_pkts = drop; }
 void Diagnostics::setErrCount(int errCount) { m_err_count = errCount; }
+void Diagnostics::setConvergenceTime(float conv) { m_convergence_time = conv; }
 
 void Diagnostics::clear() {
   setFlag(false);
@@ -62,4 +67,5 @@ void Diagnostics::clear() {
   setCycles(0);
   setDroppedPkts(0);
   setErrCount(0);
+  setConvergenceTime(0);
 }

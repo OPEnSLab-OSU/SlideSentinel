@@ -40,9 +40,6 @@ private:
   void m_reset();
   bool m_available();
 
-  bool m_request(int rover_id, BaseModel &model);
-  bool m_upload(int rover_id, BaseModel &model);
-
 
   bool m_transaction();
 
@@ -52,7 +49,9 @@ public:
                 uint16_t timeout, uint8_t retries);
   bool init();
   void resetRadio();
-  bool listen(BaseModel &model);
+  int listen(BaseModel &model);
+  bool request(int rover_id, BaseModel &model);
+  bool upload(int rover_id, BaseModel &model);
   bool timeout();
   void status(BaseModel &model);
   void update(BaseModel &model);

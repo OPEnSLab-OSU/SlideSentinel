@@ -146,7 +146,7 @@ GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
     : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<Week>,<Seconds>,<RTK "
                "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
-               ",<PDOP>,<TDOP>,<VDOP>") {}
+               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(0), m_convergenceTime(0), m_pollCycles(0) {}
 
 bool GNSSController::init() {
   m_serial.begin(m_baud);
@@ -275,6 +275,13 @@ uint8_t GNSSController::poll(SSModel &model) {
             model.setMode(m_getMode());
             model.setProp(LOG_FREQ, m_logFreq);
 
+            // check if a fix occured on this wake cycle
+            // calculate the new running average for fix convergence
+            if(m_getMode() == 4 && !m_convFlag){
+              m_convFlag = true; 
+              m_convergenceTime = (m_convergenceTime + m_timer.stopwatch())/m_pollCycles;
+            }
+
             // check if we acheived an RTK fix, reset internal variables
             m_isFixed(datFlag); 
             m_reset();
@@ -316,6 +323,7 @@ void GNSSController::status(SSModel &model) {
   model.setMsg_gps_time_t(m_gps_time);
   model.setMode(m_mode);
   model.setProp(LOG_FREQ, m_logFreq);
+  model.setConv(m_convergenceTime);
 }
 
 void GNSSController::update(SSModel &model) {
@@ -328,6 +336,12 @@ void GNSSController::reset() {
     uint8_t c = m_serial.read();
   m_reset();
   m_setBest();
+  m_convFlag = false; 
+}
+
+void GNSSController::setup(){
+  m_pollCycles++; 
+  m_timer.startStopwatch();
 }
 
 // #define MAX_POS_STR 200

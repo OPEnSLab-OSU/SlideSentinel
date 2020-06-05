@@ -91,11 +91,12 @@ void SSModel::setIMUflag(bool imu_flag) { m_diag.setFlag(imu_flag); }
 void SSModel::setBat(float bat) { m_diag.setBat(bat); }
 void SSModel::setSpace(uint32_t space) { m_diag.setSpace(space); }
 void SSModel::setCycles(uint16_t cycles) { m_diag.setCycles(cycles); }
-
 void SSModel::setError(const char *err) {
   m_diag.setErrCount(m_diag.errCount() + 1);
   m_err = (char *)err;
 }
+void SSModel::setConv(float conv) { m_diag.setConvergenceTime(conv); }
+
 
 void SSModel::print() {
   m_props.print();

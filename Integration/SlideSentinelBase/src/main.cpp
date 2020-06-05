@@ -1,19 +1,19 @@
 #include <Arduino.h>
-#include <Plog.h>
 #include <FeatherTrace.h>
+#include <Plog.h>
+
 #include "BaseModel.h"
 #include "COMController.h"
-#include "FSController.h"
-#include "SatCommDriver.h"
-#include <Arduino.h>
-#include "SatCommController.h"
 #include "EventQueue.h"
+#include "FSController.h"
 #include "PLOGSynchronizer.h"
+#include "SatCommController.h"
+#include "SatCommDriver.h"
 
 FEATHERTRACE_BIND_ALL()
 
 #define RST 5
-#define SPDT_SEL 14 // A0
+#define SPDT_SEL 14// A0
 #define RADIO_BAUD 115200
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 0
@@ -22,8 +22,9 @@ FEATHERTRACE_BIND_ALL()
 #define IS_Z9C true
 #define NUM_ROVERS 2
 
-#define SD_CS 10 
+#define SD_CS 10
 #define SD_RST 6
+#define ENABLE_SATCOM false
 
 // TODO you updated the properties class and the SSInterface class, make sure to
 // place most recently updated back in the Rover code
@@ -43,14 +44,12 @@ using SatCommStateMachine = EventQueue<SatComm::Controller, SatComm::Driver, PLO
 using SatCommController = SatComm::Controller<SatCommStateMachine>;
 
 // Model
+// initialize each rovers shadow to the default settings
 BaseModel model(NUM_ROVERS);
 
 // Global logging initializers
 static plog::SerialAppender<plog::TxtFormatter> serialAppender(Serial);
 static plog::RollingFileAppender<plog::TxtFormatter> fa("ss_logs.txt");
-
-// needs to be global so as to be referencable
-char test_buf[50];
 
 #define GNSS_ON_PIN A2
 #define GNSS_OFF_PIN 12
@@ -60,7 +59,7 @@ void useRelay(uint8_t pin) {
   digitalWrite(pin, LOW);
 }
 
-void printFault(const FeatherTrace::FaultData& data) {
+void printFault(const FeatherTrace::FaultData &data) {
   // Load the fault data from flash
   // print it the printer
   LOGF << "Fault! Caused: " << FeatherTrace::GetCauseString(data.cause);
@@ -70,7 +69,7 @@ void printFault(const FeatherTrace::FaultData& data) {
   }
   LOGF << "\tInterrupt type: " << data.interrupt_type;
   LOGF << "\tStacktrace:";
-  for (size_t i = 0; ; i++) {
+  for (size_t i = 0;; i++) {
     LOGF.printf("\t\t0x%08lx", data.stacktrace[i]);
     if (i + 1 >= MAX_STRACE || data.stacktrace[i + 1] == 0)
       break;
@@ -95,8 +94,7 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
 
   Serial.begin(115200);
-  while (!Serial)
-    yield();
+
 
   // SPI INIT
   SPI.begin();
@@ -142,62 +140,55 @@ void setup() {
   comController = &_comController;
   comController->init();
 
-  /***** FIXME remove
-  // StaticJsonDocument<MAX_DATA_LEN> doc;
-  // JsonArray data = doc.createNestedArray(SS_PROP);
-  // data.add(2000);
-  // data.add(3);
-  // data.add(2);
-  // data.add(3);
-  // data.add(0x0f);
-  // data.add(200000);
-  // data.add(0);
-  // serializeJson(doc, test_buf);
-  // model.setProps(1, test_buf);
-
-  // StaticJsonDocument<MAX_DATA_LEN> doc2;
-  // JsonArray data2 = doc2.createNestedArray(SS_PROP);
-  // data2.add(2000);
-  // data2.add(4);
-  // data2.add(3);
-  // data2.add(3);
-  // data2.add(0x0f);
-  // data2.add(80000);
-  // data2.add(3);
-  // serializeJson(doc2, test_buf);
-  // model.setProps(2, test_buf);
-  // model.print();
-  ****/
-
   fa.sync();
 }
 
-// collect string of all diagnostics and props for each rover
-// collect string of Base station diagnostics: stopwatch, num_uploads, num_requests, SD card memory
-
 void loop() {
+
   // reinitialize the SD card if needed
   fsController.checkSD();
- 
-  //*** FIXME remove
-  // if(Serial.available()){
-  //   char cmd = Serial.read();
-  //   if(cmd == '1'){
-  //     LOGD << "------- BASE STATUS --------";
-  //     LOGD << model.getRoverShadow();
-  //   }
-  //   if(cmd == '2'){
-  //     comController->status(model);
-  //     fsController.status(model);
-  //     LOGD << "------- BASE DIAGNOSTICS --------";
-  //     LOGD << model.getBaseDiagnostics();
-  //   }
-  //   if(cmd == '3'){
-  //     LOGD << "------- ROVER STATUS --------";
-  //     model.print();
-  //   }
-  // }
-  //*****
+
+  if (Serial.available()) {
+    char cmd = Serial.read();
+    if (cmd == '1') {
+      LOGD << "------- ROVER SHADOW'S --------";
+      LOGD << model.toShadow();
+    }
+    if (cmd == '2') {
+      comController->status(model);
+      fsController.status(model);
+      LOGD << "------- BASE DIAGNOSTICS --------";
+      LOGD << model.getBaseDiagnostics();
+    }
+    if (cmd == '3') {
+      LOGD << "------- ROVER STATUS --------";
+      model.print();
+    }
+    if (cmd == '4') {
+      LOGD << "UPDATING SHADOW";
+      // char buffer[100];
+      // StaticJsonDocument<MAX_DATA_LEN> docA;
+      // StaticJsonDocument<MAX_DATA_LEN> doc;
+      // JsonArray data = doc.createNestedArray(SS_PROP);
+      // char buf[100];
+      // data.add(3000);
+      // data.add(-1);
+      // data.add(3);
+      // data.add(-1);
+      // data.add(0xFF);
+      // data.add(-1);
+      // data.add(4);
+      // serializeJson(doc, buffer);
+      // docA["ID"] = 1;
+      // docA["CONF"] = buffer;
+      // char buf2[1000];
+      // serializeJson(docA, buf2);
+      // const char* p = docA["CONF"];
+      // model.setProps(docA["ID"], (char*)p);
+      // EXAMPLE
+      // {"ID":1,"CONF":"{\"PROP\":[3000,-1,3,-1,255,-1,4]}"}
+    }
+  }
 
   // sync logs
   fa.sync();
@@ -214,19 +205,36 @@ void loop() {
     SatCommStateMachine::dispatch(PowerUp{});
   }
 
-  // handle outgoing data from rovers
-  if (comController->listen(model)) {
-    fsController.logDiag(model.getRoverAlert(),
-                         model.getDiag(model.getRoverAlert()));
-    fsController.logProps(model.getRoverAlert(),
-                          model.getProps(model.getRoverAlert()));
-    if (model.getRoverIMUFlag(model.getRoverAlert())) {
-      fsController.logData(model.getRoverServe(),
-                           model.getData(model.getRoverServe()));
-      LOGD << "SATCOM";
-      LOGD << "Uploading Alert from rover: " << model.getRoverAlert();
-    }
+
+  // NOTE all COMController code should be rewritten. This code became a mess due to time
+  // constraints
+  switch (comController->listen(model)) {
+    case -1:
+      break;
+    case 1:
+      if (comController->request(model.getRoverRecent(), model)) {
+        fsController.logDiag(model.getRoverRecent(), model.getDiag(model.getRoverRecent()));
+        if (model.getRoverIMUFlag(model.getRoverRecent())) {
+          LOGD << "Uploading ALERT from rover: " << model.getRoverRecent();
+          LOGD << "Packet: " << model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))) << " Length: "
+               << strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))));
+
+          // SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
+          //                          strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG)))));
+          // SatCommController::send_now();
+        }
+      }
+      break;
+    case 2:
+      if (comController->upload(model.getRoverServe(), model)) {
+        fsController.logData(model.getRoverServe(), model.getData(model.getRoverServe()));
+        LOGD << "Uploading positional data from rover ID: " << model.getRoverServe();
+        // SatCommController::queue(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG))),
+        //                          strlen(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG)))));
+      }
+      break;
   }
+
 
   // handle incoming data from SatComm
   while (SatCommController::available()) {
@@ -241,7 +249,7 @@ void loop() {
     }
     // if the packet is not null terminated, add a null terminator
     if (recv.bytes[recv.length - 1] != '\0')
-        recv.bytes[recv.length++] = '\0';
+      recv.bytes[recv.length++] = '\0';
     LOGI << "Recieved SatComm packet: " << recv.bytes.data();
     // use ArduinoJson to deserialize it
     StaticJsonDocument<MAX_DATA_LEN> doc;
@@ -250,17 +258,22 @@ void loop() {
       LOGE << "Deserialization failed with error: " << err.c_str();
       continue;
     }
-    // read data to figure out what to do
-    // TODO: protocol?
-    // Possible actions: send diagnostics, restart device, log immediately
-    // model.setProps();
-    // COMController timeout
-    // Base/rover diagnostics
+
+    // read in the prop data
     //
+    // **** FORMAT SERIAL ****
+    // {"ID":2,"CONF":"{\"PROP\":[2000,4,1,1,47,80000,3]}"}
+    //
+    // **** FORMAT PRETTTY ****
+    // {
+    //   "ID": 2,
+    //   "CONF": "{\"PROP\":[2000,4,1,1,47,80000,3]}"
+    // }
+    const char *conf = doc["CONF"];
+    model.setProps(doc["ID"], (char *) conf);
   }
 
   fa.sync();
 
   // TODO: Low battery behavior
-
 }

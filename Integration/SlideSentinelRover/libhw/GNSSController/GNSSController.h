@@ -8,6 +8,7 @@
 #include "HardwareSerial.h"
 #include "SwiftPiksi.h"
 #include "wiring_private.h" // Pin peripheral
+#include "Timer.h"
 
 class GNSSController : public Controller {
 
@@ -18,6 +19,13 @@ private:
   uint8_t m_tx;
   int m_logFreq;   // state
   const char *m_FORMAT; // csv format string
+
+  // used for collecting the convergence time
+  Timer m_timer;
+  float m_convergenceTime;
+  bool m_convFlag;
+  int m_pollCycles;
+
   void m_GNSSread();
   uint8_t m_getMode();
   void m_getModeStr(msg_pos_llh_t pos_llh, char rj[]);
@@ -42,7 +50,9 @@ public:
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);
+  void setup();
   void reset();
+  void startTimer();
 };
 
 #endif // _GNSSCONTROLLER_H_
