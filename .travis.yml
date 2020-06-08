@@ -68,3 +68,23 @@ jobs:
       script:
         - cd Integration/SlideSentinelBase
         - platformio remote test -e adafruit_feather_m0_debug --force-remote
+    # Release stage: perform a build and save all build artifacts (ELF, BIN, etc.)
+    # for debugging later
+    - stage: "Release"
+      name: "Release"
+      script: skip
+      before_deploy:
+        - cd Integration/SlideSentinelBase
+        - platformio run -e adafruit_feather_m0_release -t upload
+        - cd ../../Integration/SlideSentinelRover
+        - platformio run -e adafruit_feather_m0_release -t upload
+        - cd ../../
+      deploy:
+        provider: releases
+        api_key: $GITHUB_TOKEN
+        skip_cleanup: true
+        file: 
+          - "Integration/SlideSentinelBase/SSBase.zip"
+          - "Integration/SlideSentinelRover/SSRover.zip"
+        on:
+          tags: true
