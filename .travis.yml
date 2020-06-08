@@ -72,6 +72,7 @@ jobs:
     # for debugging later
     - stage: "Release"
       name: "Release"
+      if: tag is present
       script: skip
       before_deploy:
         - cd Integration/SlideSentinelBase
