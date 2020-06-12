@@ -56,18 +56,21 @@ jobs:
       script:
         - cd Integration/SlideSentinelRover
         - platformio test -e native
-    - name: "Rover Embedded w/o Bootloader"
-      script:
-        - cd Integration/SlideSentinelRover
-        - platformio remote test -e adafruit_feather_m0_debug --force-remote
+    # Requires a platformio remote debugging setup, disabled for now
+    # - name: "Rover Embedded w/o Bootloader"
+    #  script:
+    #    - cd Integration/SlideSentinelRover
+    #    - platformio remote test -e adafruit_feather_m0_debug --force-remote
     - name: "Base Native"
       script:
         - cd Integration/SlideSentinelBase
         - platformio test -e native
-    - name: "Base Embedded w/o Bootloader"
-      script:
-        - cd Integration/SlideSentinelBase
-        - platformio remote test -e adafruit_feather_m0_debug --force-remote
+    # Requires a platformio remote debugging setup, disabled for now
+    # - name: "Base Embedded w/o Bootloader"
+    #  script:
+    #    - cd Integration/SlideSentinelBase
+    #    - platformio remote test -e adafruit_feather_m0_debug --force-remote
+    
     # Release stage: perform a build and save all build artifacts (ELF, BIN, etc.)
     # for debugging later
     - stage: "Release"
