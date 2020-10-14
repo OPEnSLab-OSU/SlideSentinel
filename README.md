@@ -5,8 +5,8 @@
 ## How to Setup
 Install the arduino IDE, follow the adafruit [guide](https://learn.adafruit.com/adafruit-feather-m0-basic-proto/overview), and install LOOM with it dependencies with its guide [here](https://github.com/OPEnSLab-OSU/InternetOfAg/tree/master/Arduino_and_Loom_Setup)
 
-Building the Node and Hub:
-Refer to the schematics in the documentation for building the node and hub. All pins are labeled in the schematic located in Documentation/ProjectSpecifications. A custom printed PCB is used in the hub for interfacing the Rockblock+ with the arduino located in "/Devices/RockBLOCK - SatComm/4) PCB". Building and creating of the hardware is managed by the OPEnS lab members. A full list of materials and parts used for all phases of the project is located in the supplemental documentation in the bill of materials (BOM). The software for the hub and nodes are located in "Integration/Base" and "Integration/Rover" respectivly. Load one of the directories into arduino IDE and attach whichever device you are building them compile and export to the arduino.
+Building the rover and base:
+Refer to the schematics in the documentation for building the rover and base. All pins are labeled in the schematic located in Documentation/ProjectSpecifications. Custom printed PCB schematics are located in Integration/Hardware/Base and /Rover. Building and creating of the hardware is managed by the OPEnS lab members. A full list of materials and parts used for all phases of the project is located in the supplemental documentation in the bill of materials (BOM). The software for the hub and nodes are located in "Integration/Base" and "Integration/Rover" respectivly. Load one of the directories into arduino IDE and attach whichever device you are building them compile and export to the arduino.
 
 The spreadsheet visualizer and parser is located at "Integration/Spreadsheet". A setup guide is included within along with some sample data.
 
