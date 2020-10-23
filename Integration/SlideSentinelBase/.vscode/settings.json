@@ -7,6 +7,10 @@
         "deque": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
-        "initializer_list": "cpp"
+        "initializer_list": "cpp",
+        "cstdlib": "cpp",
+        "queue": "cpp",
+        "streambuf": "cpp",
+        "system_error": "cpp"
     }
 }

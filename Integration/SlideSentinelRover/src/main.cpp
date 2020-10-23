@@ -205,6 +205,7 @@ void execute() { MARK;
       fsController.logDiag(model.toProp());
 
       // make a request, send diagnostics/receive props
+      
       if (!comController->request(model)) {
         fsController.logDiag(model.toError());
         rtcController.incrementBackoff();
@@ -212,7 +213,8 @@ void execute() { MARK;
         state = SLEEP;
         break;
       }
-
+      
+      
       Serial.println("Transitioning to UPDATE...");
       state = UPDATE;
       break;
@@ -237,11 +239,16 @@ void execute() { MARK;
       rtcController.setPollAlarm();
 
       Serial.println("Transitioning to POLL...");
+      gnssController->setup(); //increments poll cycle and starts convergence timer
       state = POLL;
       break;
 
     case POLL: MARK;
       // check for data from the GNSS receiver
+      //gnssController->setup(); //increments poll cycle and starts convergence timer
+      
+      
+
       if (gnssController->poll(model))
         fsController.logData(model.toData(model.getProp(THRESHOLD)));
 
@@ -263,7 +270,7 @@ void execute() { MARK;
       // log system status
       fsController.logDiag(model.toDiag());
       fsController.logDiag(model.toProp());
-      model.print();
+      //model.print();
 
       // make an upload
       if (!comController->upload(model))
@@ -282,7 +289,7 @@ void execute() { MARK;
 
       // disable the radio
       pmController.disableRadio();
-      
+
 
       // set the wake alarm
       rtcController.setWakeAlarm();

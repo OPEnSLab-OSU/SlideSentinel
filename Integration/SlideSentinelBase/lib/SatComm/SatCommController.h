@@ -159,7 +159,7 @@ namespace SatComm {
                 else
                     TRANSIT(TXRX, Idle);
             }
-            
+
             void entry() override {
                 // check if the buffer has any items, if not then just receive
                 if (Parent::m_outgoing.empty())

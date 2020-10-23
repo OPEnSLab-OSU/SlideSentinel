@@ -20,7 +20,7 @@ FEATHERTRACE_BIND_ALL()
 #define INIT_TIMEOUT 2000
 #define INIT_RETRIES 3
 #define IS_Z9C true
-#define NUM_ROVERS 2
+#define NUM_ROVERS 1
 
 #define SD_CS 10
 #define SD_RST 6
@@ -119,7 +119,7 @@ void setup() {
   }
   digitalWrite(LED_BUILTIN, LOW);
 
-  // TODO: send fault data over GNSS
+  // TODO: send fault data over GNSS 
   if (FeatherTrace::DidFault())
     printFault(FeatherTrace::GetFault());
 
@@ -219,9 +219,9 @@ void loop() {
           LOGD << "Packet: " << model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))) << " Length: "
                << strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))));
 
-          // SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
-          //                          strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG)))));
-          // SatCommController::send_now();
+          SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
+                                    strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG)))));
+          SatCommController::send_now();
         }
       }
       break;
@@ -229,8 +229,9 @@ void loop() {
       if (comController->upload(model.getRoverServe(), model)) {
         fsController.logData(model.getRoverServe(), model.getData(model.getRoverServe()));
         LOGD << "Uploading positional data from rover ID: " << model.getRoverServe();
-        // SatCommController::queue(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG))),
-        //                          strlen(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG)))));
+        SatCommController::queue(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG))),
+                                  strlen(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG)))));
+        SatCommController::send_now();
       }
       break;
   }

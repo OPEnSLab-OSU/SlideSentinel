@@ -2,6 +2,9 @@
 
 Timer::Timer(int timeoutBuffer) : m_timeoutBuffer(timeoutBuffer){};
 
+Timer::Timer() : m_armed(false){};
+
+
 void Timer::startTimer(int wakeTime) {
   m_timeout = (wakeTime + m_timeoutBuffer) * 1000;
   m_start = millis();
@@ -18,10 +21,16 @@ bool Timer::timerDone() {
 }
 
 void Timer::startStopwatch() {
-  if (!m_armed)
+  if (!m_armed){
     m_start = millis();
+    Serial.print("Started Convergence Timer for RTK Fix: ");
+    Serial.println(m_start);
+    m_armed = true;
+  }
 }
 
-unsigned long Timer::stopwatch() {
-  return m_armed ? 0 : (millis() - m_start) / 60000;
+float Timer::stopwatch() {
+  float time = float(millis() - m_start) / 60000;
+  Serial.println(time);
+  return time;
 }

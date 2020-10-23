@@ -144,9 +144,9 @@ u8 fifo_full(void) {
 GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
                                uint8_t rx, uint8_t tx, int logFreq)
     : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
-      m_FORMAT("<Week>,<Seconds>,<RTK "
-               "Mode>,<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
-               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(0), m_convergenceTime(0), m_pollCycles(0) {}
+      m_FORMAT("<RTK Mode>,<Week>,<Seconds>,"
+               "<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
+               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(), m_convergenceTime(0), m_pollCycles(0) {}
 
 bool GNSSController::init() {
   m_serial.begin(m_baud);
@@ -198,20 +198,10 @@ void GNSSController::m_isFixed(uint8_t &flag) { flag = 1; }
 // TODO this function needs to be tuned using real data and weighted averages.
 bool GNSSController::m_compare() {
   // first check if the fix mode is better
-  if (m_mode > m_getMode())
+  if ((m_mode > m_getMode()) && (m_getMode() != 6))
     return false;
 
-  // check the gdop X,Y,Z 3D accuracy
-  if (m_dops.gdop > dops.gdop)
-    return false;
 
-  // check the hdop, X,Y 2D accuracy
-  if (m_dops.hdop > dops.hdop)
-    return false;
-
-  // check the number of satellites used to produce the fix
-  if (m_pos_llh.n_sats > pos_llh.n_sats)
-    return false;
 
   return true;
 }
@@ -277,10 +267,17 @@ uint8_t GNSSController::poll(SSModel &model) {
 
             // check if a fix occured on this wake cycle
             // calculate the new running average for fix convergence
+            
             if(m_getMode() == 4 && !m_convFlag){
+              m_pollCycles++;
+              m_convergenceTime *= (m_pollCycles - 1);
+
               m_convFlag = true; 
-              m_convergenceTime = (m_convergenceTime + m_timer.stopwatch())/m_pollCycles;
+              //m_convergenceTime = ((m_convergenceTime + m_timer.stopwatch()) / float(m_pollCycles));
+              m_convergenceTime += m_timer.stopwatch();
+              m_convergenceTime /= m_pollCycles;
             }
+            
 
             // check if we acheived an RTK fix, reset internal variables
             m_isFixed(datFlag); 
@@ -337,10 +334,10 @@ void GNSSController::reset() {
   m_reset();
   m_setBest();
   m_convFlag = false; 
+  m_timer.stopTimer();
 }
 
 void GNSSController::setup(){
-  m_pollCycles++; 
   m_timer.startStopwatch();
 }
 

@@ -52,6 +52,7 @@ bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
         m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
     return false;
 
+  m_file.open(m_DATA, O_WRONLY | O_APPEND);
   m_write(format);     // write the data header
   if (!m_file.close()) // close the ptr
     return false;
@@ -65,8 +66,8 @@ bool FSController::m_mkFile(const char *name) { MARK;
 }
 
 bool FSController::m_setFile(const char *file) { MARK;
-  if (!m_sd.chdir() && m_sd.chdir(m_curDir) &&
-      m_file.open(file, O_WRONLY | O_APPEND))
+  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.chdir(m_curDir) &&
+      m_file.open(file, O_WRONLY | O_APPEND)))
     return false;
   return true;
 }
@@ -88,10 +89,14 @@ bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
 }
 
 void FSController::m_SDspace() { MARK;
-  float cardSize = m_sd.card()->cardSize() * 0.000512;
-  m_spaceMB = cardSize - m_sd.vol()->freeClusterCount() *
-                             m_sd.vol()->blocksPerCluster() * 0.000512;
-
+  
+  //uint32_t freeKB = m_sd.vol()->freeClusterCount();
+  //freeKB *= m_sd.vol()->blocksPerCluster()/2;
+  
+  //float cardSize = m_sd.card()->cardSize();
+  m_spaceMB = (m_sd.vol()->freeClusterCount() *
+                             (m_sd.vol()->blocksPerCluster() / 2)) / 1024;
+  
   // Serial.printf(F(" Size: %d.%02d MB"), (unsigned int)cardSize,
   //               (unsigned int)(cardSize * 100.0) % 100);
 
@@ -103,6 +108,7 @@ void FSController::m_SDspace() { MARK;
 void FSController::m_cycles() { m_cycle++; }
 
 void FSController::status(SSModel &model) {
+  m_SDspace();
   model.setSpace(m_spaceMB);
   model.setCycles(m_cycle);
 }

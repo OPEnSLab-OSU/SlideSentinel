@@ -11,12 +11,13 @@ private:
   bool m_armed;
 
 public:
+  Timer();
   Timer(int timeoutBuffer);
   void startTimer(int wakeTime);
   void stopTimer();
   bool timerDone();
   void startStopwatch();
-  unsigned long stopwatch();
+  float stopwatch();
 };
 
 #endif // _TIMER_H_

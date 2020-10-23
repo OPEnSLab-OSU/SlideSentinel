@@ -75,7 +75,7 @@ int COMController::listen(BaseModel &model) {
   // update the RoverRecent to the ID of the most recent rover to check in with the base
   LOGD << "********** Message from Rover " << rover_id << ": TYPE: " << type << " *************";
   model.setRoverRecent(rover_id);
-
+  
   if (type == REQ)
     return 1;
   else if (type == UPL)

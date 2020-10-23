@@ -82,6 +82,7 @@ char *BaseModel::getBaseDiagnostics() {
 }
 
 void BaseModel::m_add(int id, JsonArray &data, uint8_t sel) {
+  /*
   if (sel & (1 << ID_FLAG))
     data.add(m_shadow[id].toId());
   if (sel & (1 << DIAG_FLAG))
@@ -90,6 +91,10 @@ void BaseModel::m_add(int id, JsonArray &data, uint8_t sel) {
     data.add(m_shadow[id].toData());
   if (sel & (1 << DATA_FLAG))
     data.add(m_shadow[id].toProps());
+*/
+  data.add(m_shadow[id].toId());
+  data.add(m_shadow[id].toDiag());
+  data.add(m_shadow[id].toData());
 }
 
 char *BaseModel::toShadow() {

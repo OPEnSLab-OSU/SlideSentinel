@@ -8,7 +8,7 @@ COMController::COMController(Freewave &radio, MAX3243 &max3243,
                              uint16_t timeout, uint8_t retries)
     : m_interface(serial, baud, clientId, serverId, timeout, retries, false),
       m_radio(radio), m_max3243(max3243), m_mux(mux), m_serial(serial),
-      m_timer(0), m_dropped_pkts(0), m_threshold(4) {}
+      m_timer(0), m_dropped_pkts(0), m_threshold(0) {}
 
 bool COMController::init() { MARK;
   m_interface.init();
