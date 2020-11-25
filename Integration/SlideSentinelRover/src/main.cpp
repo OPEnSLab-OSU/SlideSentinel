@@ -245,10 +245,7 @@ void execute() { MARK;
 
     case POLL: MARK;
       // check for data from the GNSS receiver
-      //gnssController->setup(); //increments poll cycle and starts convergence timer
-      
-      
-
+  
       if (gnssController->poll(model))
         fsController.logData(model.toData(model.getProp(THRESHOLD)));
 

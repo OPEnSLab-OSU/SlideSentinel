@@ -252,13 +252,19 @@ void loop() {
     if (recv.bytes[recv.length - 1] != '\0')
       recv.bytes[recv.length++] = '\0';
     LOGI << "Recieved SatComm packet: " << recv.bytes.data();
+    
     // use ArduinoJson to deserialize it
     StaticJsonDocument<MAX_DATA_LEN> doc;
     DeserializationError err = deserializeJson(doc, recv.bytes.data());
     if (err != DeserializationError::Ok) {
       LOGE << "Deserialization failed with error: " << err.c_str();
       continue;
+
+    
     }
+    SatCommController::queue(model.getBaseDiagnostics(),strlen(model.getBaseDiagnostics()));
+    SatCommController::send_now();
+
 
     // read in the prop data
     //
