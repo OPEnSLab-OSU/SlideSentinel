@@ -141,10 +141,10 @@ void setup() {
 
   manager.add(&_comController); MARK;
   manager.add(&_gnssController); MARK;
-  manager.add(&fsController); MARK;
   manager.add(&rtcController); MARK;
   manager.add(&imuController);
   manager.add(&pmController);
+  manager.add(&fsController); MARK;
   if (!manager.init()) { MARK;
     Serial.println("Fatal: initialization failed!");
     pinMode(LED_BUILTIN, OUTPUT);
@@ -181,11 +181,16 @@ void execute() { MARK;
       }
     }
 
+
     switch (state) {
     case WAKE: MARK;
       // create new directory for the wake cycle
-      fsController.setupWakeCycle(rtcController.getTimestamp(),
-                                  gnssController->getFormat());
+      if (fsController.check_init()) {
+        fsController.setupWakeCycle(rtcController.getTimestamp(),
+                                    gnssController->getFormat());
+      }
+      else {fsController.init();}
+                                  
 
       // enable the radio
       pmController.enableRadio();
@@ -201,14 +206,18 @@ void execute() { MARK;
       model.print();
 
       // log system status
-      fsController.logDiag(model.toDiag());
-      fsController.logDiag(model.toProp());
+      if (fsController.check_init()) {
+        fsController.logDiag(model.toDiag());
+        fsController.logDiag(model.toProp());
+      }
 
       // make a request, send diagnostics/receive props
       
       if (!comController->request(model)) {
-        fsController.logDiag(model.toError());
-        rtcController.incrementBackoff();
+        if (fsController.check_init()) {
+          fsController.logDiag(model.toError()); 
+        }
+        Serial.println(model.toError());
         Serial.println("Transitioning to SLEEP...");
         state = SLEEP;
         break;
@@ -232,8 +241,10 @@ void execute() { MARK;
       model.print();
 
       // log system status
-      fsController.logDiag(model.toDiag());
-      fsController.logDiag(model.toProp());
+      if (fsController.check_init()) {
+        fsController.logDiag(model.toDiag());
+        fsController.logDiag(model.toProp());
+      }
 
       // set the poll alarm
       rtcController.setPollAlarm();
@@ -247,7 +258,10 @@ void execute() { MARK;
       // check for data from the GNSS receiver
   
       if (gnssController->poll(model))
+      
+      if (fsController.check_init()) {
         fsController.logData(model.toData(model.getProp(THRESHOLD)));
+      }
 
       // check ifs the alarm is triggered
       if (rtcController.alarmDone()) {
@@ -265,13 +279,18 @@ void execute() { MARK;
       model.print();
 
       // log system status
-      fsController.logDiag(model.toDiag());
-      fsController.logDiag(model.toProp());
+
+      if (fsController.check_init()) {
+        fsController.logDiag(model.toDiag());
+        fsController.logDiag(model.toProp());
+      }
       //model.print();
 
       // make an upload
       if (!comController->upload(model))
-        fsController.logDiag(model.toError());
+        if (fsController.check_init()) {
+          fsController.logDiag(model.toError());
+        }
       Serial.println("Transitioning to SLEEP...");
       state = SLEEP;
       break;

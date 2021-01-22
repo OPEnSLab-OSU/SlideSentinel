@@ -16,7 +16,6 @@ private:
   int m_sleepTime; // state
   DateTime m_date;
   char m_timestamp[MAX_TIMESTAMP_LEN];
-  int m_backoffCounter;
   Timer m_timer; 
 
   void m_setDate();
@@ -33,7 +32,6 @@ public:
   bool alarmDone();
   static void RTC_ISR();
   char *getTimestamp();
-  void incrementBackoff();
   bool init();
   void status(SSModel &model);
   void update(SSModel &model);

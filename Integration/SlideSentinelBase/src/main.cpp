@@ -40,8 +40,11 @@ Freewave radio(RST, IS_Z9C);
 SN74LVC2G53 mux(SPDT_SEL, -1);
 COMController *comController;
 FSController fsController(SD_CS, SD_RST, NUM_ROVERS);
+
+
 using SatCommStateMachine = EventQueue<SatComm::Controller, SatComm::Driver, PLOGSynchronizer>;
 using SatCommController = SatComm::Controller<SatCommStateMachine>;
+
 
 // Model
 // initialize each rovers shadow to the default settings
@@ -102,8 +105,10 @@ void setup() {
 
   // state machine start
   // this synchronizes PLOGs time, so it must come before PLOG
-  SatCommStateMachine::reset();
-  SatCommStateMachine::start();
+  if(ENABLE_SATCOM) {
+    SatCommStateMachine::reset();
+    SatCommStateMachine::start();
+  }
 
   // PLOG init
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
@@ -132,7 +137,8 @@ void setup() {
   useRelay(GNSS_ON_PIN);
 
   // SatComm init
-  SatCommStateMachine::dispatch(PowerUp{});
+  if (ENABLE_SATCOM)
+    SatCommStateMachine::dispatch(PowerUp{});
 
   static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
                                       CLIENT_ADDRESS, SERVER_ADDRESS,
@@ -193,16 +199,18 @@ void loop() {
   // sync logs
   fa.sync();
   // handle SatComm state
-  if (!SatCommStateMachine::next()) {
-    // TODO: panic behavior?
-    LOGF << "SatComm panicked!";
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(5000);
-    SatCommStateMachine::reset();
-    SatCommStateMachine::start();
-    SatCommStateMachine::dispatch(PowerUp{});
+  if (ENABLE_SATCOM) {
+    if (!SatCommStateMachine::next()) {
+      // TODO: panic behavior?
+      LOGF << "SatComm panicked!";
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(500);
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(5000);
+      SatCommStateMachine::reset();
+      SatCommStateMachine::start();
+      SatCommStateMachine::dispatch(PowerUp{});
+    }
   }
 
 
@@ -219,9 +227,11 @@ void loop() {
           LOGD << "Packet: " << model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))) << " Length: "
                << strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))));
 
-          SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
+          if (ENABLE_SATCOM) {
+            SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
                                     strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG)))));
-          SatCommController::send_now();
+            SatCommController::send_now();
+          }
         }
       }
       break;
@@ -229,15 +239,18 @@ void loop() {
       if (comController->upload(model.getRoverServe(), model)) {
         fsController.logData(model.getRoverServe(), model.getData(model.getRoverServe()));
         LOGD << "Uploading positional data from rover ID: " << model.getRoverServe();
-        SatCommController::queue(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG))),
+        if (ENABLE_SATCOM){
+          SatCommController::queue(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG))),
                                   strlen(model.toPacket(model.getRoverServe(), (_BV(ID_FLAG) | _BV(DIAG_FLAG) | _BV(DATA_FLAG)))));
-        SatCommController::send_now();
+          SatCommController::send_now();
+        }
       }
       break;
   }
 
 
   // handle incoming data from SatComm
+  if (ENABLE_SATCOM) {
   while (SatCommController::available()) {
     // packets are assumed to a JSON encoded array
     // packets may or may not be null terminated.
@@ -278,6 +291,7 @@ void loop() {
     // }
     const char *conf = doc["CONF"];
     model.setProps(doc["ID"], (char *) conf);
+  }
   }
 
   fa.sync();

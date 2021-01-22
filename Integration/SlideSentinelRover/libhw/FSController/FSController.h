@@ -41,6 +41,7 @@ public:
   void logDiag(char *data);
   bool setupWakeCycle(char *timestamp, char *format);
   bool init();
+  bool check_init();
   void status(SSModel &model);
   void update(SSModel &model);
 };

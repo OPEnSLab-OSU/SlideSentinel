@@ -7,7 +7,7 @@ uint8_t RTCController::m_pin;
 RTCController::RTCController(RTC_DS3231 &RTC_DS, uint8_t pin, uint16_t wakeTime,
                              uint16_t sleepTime)
     : m_RTC(RTC_DS), m_wakeTime(wakeTime), m_sleepTime(sleepTime),
-      m_backoffCounter(1), m_timer(0) {
+      m_timer(0) {
   m_pin = pin;
   // Enable sprintf function on SAMD21
   asm(".global _printf_float");
@@ -89,20 +89,13 @@ char *RTCController::getTimestamp() { MARK;
 
 void RTCController::setPollAlarm() { MARK;
   // reset the backoff counter if no collision occured
-  m_backoffCounter = 1;
   m_timer.startTimer(m_wakeTime*60);
 }
 
 void RTCController::setWakeAlarm() { MARK;
-  m_setAlarm(m_sleepTime * m_backoffCounter);
+  m_setAlarm(m_sleepTime);
 }
 
-// need access to unconnected analog in for seeding
-// random number generator
-void RTCController::incrementBackoff() {
-  if (m_backoffCounter < 3)
-    m_backoffCounter++;
-}
 
 bool RTCController::alarmDone() { MARK;
   return m_timer.timerDone();

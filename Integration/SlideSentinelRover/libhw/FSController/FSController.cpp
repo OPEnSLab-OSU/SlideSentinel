@@ -4,7 +4,7 @@
 
 FSController::FSController(uint8_t cs, uint8_t rst)
     : m_cs(cs), m_rst(rst), m_did_begin(false), m_DATA("data.json"), m_DIAG("diag.json"),
-      m_cycle(0) {}
+      m_cycle(0), m_spaceMB(0) {}
 
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
@@ -89,28 +89,22 @@ bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
 }
 
 void FSController::m_SDspace() { MARK;
-  
-  //uint32_t freeKB = m_sd.vol()->freeClusterCount();
-  //freeKB *= m_sd.vol()->blocksPerCluster()/2;
-  
-  //float cardSize = m_sd.card()->cardSize();
   m_spaceMB = (m_sd.vol()->freeClusterCount() *
-                             (m_sd.vol()->blocksPerCluster() / 2)) / 1024;
-  
-  // Serial.printf(F(" Size: %d.%02d MB"), (unsigned int)cardSize,
-  //               (unsigned int)(cardSize * 100.0) % 100);
-
-  // Serial.printfn(F(" (Used: %d.%02d MB)."), (unsigned int)used,
-  //                (unsigned int)(used * 100.0) % 100);
+  (m_sd.vol()->blocksPerCluster() / 2)) / 1024;
   MARK;
 }
 
 void FSController::m_cycles() { m_cycle++; }
 
+bool FSController::check_init() {return m_did_begin; }
+
 void FSController::status(SSModel &model) {
-  m_SDspace();
-  model.setSpace(m_spaceMB);
-  model.setCycles(m_cycle);
+  if (m_did_begin){
+    m_SDspace();
+    model.setSpace(m_spaceMB);
+    model.setCycles(m_cycle);
+  }
+  
 }
 
 void FSController::update(SSModel &model) {}

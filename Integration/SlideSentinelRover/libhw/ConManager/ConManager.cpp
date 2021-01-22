@@ -25,10 +25,14 @@ void ConManager::update(SSModel &model) {
 }
 
 bool ConManager::init() {
-  for (int i = 0; i < m_size; i++) {
+  for (int i = 0; i < m_size - 1; i++) {
     MARK;
     if (!m_controllers[i]->init())
       return false;
   }
+
+  //This is specifically for initializing the FSController. Make sure it stays last in the list
+  //We intend on running the system regardless of whether SD initializes or not.
+  m_controllers[m_size-1]->init();
   return true;
 }
