@@ -24,7 +24,7 @@ FEATHERTRACE_BIND_ALL()
 
 #define SD_CS 10
 #define SD_RST 6
-#define ENABLE_SATCOM false
+#define ENABLE_SATCOM true
 
 // TODO you updated the properties class and the SSInterface class, make sure to
 // place most recently updated back in the Rover code
@@ -227,11 +227,13 @@ void loop() {
           LOGD << "Packet: " << model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))) << " Length: "
                << strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))));
 
+          /* Commented out because uploading packets during a handshake wastes Rockblock+ credits.
           if (ENABLE_SATCOM) {
             SatCommController::queue(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG))),
                                     strlen(model.toPacket(model.getRoverRecent(), (_BV(ID_FLAG) | _BV(DIAG_FLAG)))));
             SatCommController::send_now();
           }
+          */
         }
       }
       break;
