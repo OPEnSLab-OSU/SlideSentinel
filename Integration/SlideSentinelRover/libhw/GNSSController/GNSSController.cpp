@@ -2,20 +2,22 @@
 #include "Console.h"
 #include "FeatherTrace.h"
 
-/*
+/**
  * State of the SBP message parser.
  * Must be statically allocated.
  */
 sbp_state_t sbp_state;
 
-/* SBP structs that messages from Piksi will feed. */
+/** 
+ * SBP structs that messages from Piksi will feed. 
+ */
 msg_pos_llh_t pos_llh;
 msg_baseline_ned_t baseline_ned;
 msg_vel_ned_t vel_ned;
 msg_dops_t dops;
 msg_gps_time_t gps_time;
 
-/*
+/**
  * SBP callback nodes must be statically allocated. Each message ID / callback
  * pair must have a unique sbp_msg_callbacks_node_t associated with it.
  */
@@ -25,7 +27,7 @@ sbp_msg_callbacks_node_t vel_ned_node;
 sbp_msg_callbacks_node_t dops_node;
 sbp_msg_callbacks_node_t gps_time_node;
 
-/*
+/**
  * Callback functions to interpret SBP messages.
  * Every message ID has a callback associated with it to
  * receive and interpret the message payload.
@@ -46,7 +48,7 @@ void sbp_gps_time_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
   gps_time = *(msg_gps_time_t *)msg;
 }
 
-/*
+/**
  * Set up SwiftNav Binary Protocol (SBP) nodes; the sbp_process function will
  * search through these to find the callback for a particular message ID.
  *
@@ -76,7 +78,7 @@ void sbp_setup(void) {
                         &dops_node);
 }
 
-/*
+/**
  * FIFO to hold received UART bytes before libsbp parses them.
  */
 #define FIFO_LEN 512
@@ -84,14 +86,16 @@ char sbp_msg_fifo[FIFO_LEN];
 u16 head = 0;
 u16 tail = 0;
 
-/* Return 1 if true, 0 otherwise. */
+/** 
+ * Return 1 if true, 0 otherwise. 
+ */
 u8 fifo_empty(void) {
   if (head == tail)
     return 1;
   return 0;
 }
 
-/*
+/**
  * Append a character to our SBP message fifo.
  * Returns 1 if char successfully appended to fifo.
  * Returns 0 if fifo is full.
@@ -105,7 +109,7 @@ u8 fifo_write(char c) {
   return 1;
 }
 
-/*
+/**
  * Read 1 char from fifo.
  * Returns 0 if fifo is empty, otherwise 1.
  */
@@ -132,7 +136,9 @@ u32 fifo_read(u8 *buff, u32 n, void *context) {
   return i;
 }
 
-/* Return 1 if true, 0 otherwise. */
+/** 
+ * Return 1 if true, 0 otherwise. 
+ */
 u8 fifo_full(void) {
   if (((tail + 1) % FIFO_LEN) == head) {
     return 1;
@@ -244,7 +250,7 @@ void GNSSController::m_setBest() {
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
 uint8_t GNSSController::poll(SSModel &model) {
-  m_GNSSread();
+  m_GNSSread(); // Reads current positional data from Serial.
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
 
