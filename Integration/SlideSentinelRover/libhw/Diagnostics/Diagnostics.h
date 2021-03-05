@@ -7,7 +7,10 @@
 /**
  * Declaring Macros for indexing the 
  * array of Diagnostic data. This shows 
- * what each index's value corresponds to.
+ * what each index's value corresponds to. 
+ * Refer to the 'private' section of the class below 
+ * for desc. of what each index represents (they are 
+ * the same).
  */
 #define SS_DIAG "DIAG"
 #define MAX_DIAG_LEN 200
