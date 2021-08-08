@@ -112,6 +112,7 @@ void setup() {
 
   // PLOG init
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
+  plog::TimeSync(DateTime(__DATE__, __TIME__), -7);
 
   // filesystem init
   while (!fsController.init()) {
