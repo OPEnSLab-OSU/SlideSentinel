@@ -7,4 +7,4 @@
 #define RADIO_RAIL2 true
 
 // is the mounted radio a Z9-C
-#define IS_Z9C true
+#define IS_Z9C false

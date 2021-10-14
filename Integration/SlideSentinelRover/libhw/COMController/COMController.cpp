@@ -27,13 +27,16 @@ bool COMController::request(SSModel &model) { MARK;
   if (m_radio.getZ9C())
     m_max3243.enable();
 
-  if (!m_interface.sendPacket(REQ, model.toDiag())) { MARK;
-    console.debug("Failed to make request.\n");
-    m_droppedPkt();
-    m_max3243.disable();
-    model.setError(ACK_ERR);
-    return false;
+  while(1){
+    m_interface.sendPacket(REQ, model.toDiag());
   }
+  // if (!m_interface.sendPacket(REQ, model.toDiag())) { MARK;
+  //   console.debug("Failed to make request.\n");
+  //   m_droppedPkt();
+  //   m_max3243.disable();
+  //   model.setError(ACK_ERR);
+    //return false;
+  //}
   MARK;
 
   // NOTE case: the base is servicing another rover. The base will take the
