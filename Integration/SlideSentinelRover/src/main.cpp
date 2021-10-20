@@ -13,7 +13,7 @@
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
 #include "SSModel.h"
-#include "VoltageReg.h"
+#include "PoluluVRM.h"
 #include "config_2.0.0.h"
 #include "network_config_2.0.0.h"
 #include "pcb_2.0.0.h"
@@ -26,10 +26,13 @@
 
 Rover rover;
 void setup() {
+     Serial.begin(115200);
+     delay(3500);           //delay to allow screening in
+     Serial.println("Initializing Setup");
 
 }
 
-enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };
+enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
 

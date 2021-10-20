@@ -2,7 +2,7 @@
 #include "Console.h"
 #include "FeatherTrace.h"
 
-PMController::PMController(MAX4280 &max4280, PoluluVoltageReg &vcc2,
+PMController::PMController(MAX4280 &max4280, PoluluVRM &vcc2,
                            Battery &bat, bool GNSSrail2, bool radioRail2)
     : m_max4280(max4280), m_vcc2(vcc2), m_bat(bat), m_GNSSRail2(GNSSrail2),
       m_RadioRail2(radioRail2) {
@@ -43,7 +43,7 @@ void PMController::disableGNSS() { MARK;
 
 void PMController::enableRadio() { MARK;
   if (m_RadioRail2)
-    m_vcc2.enable();
+    m_vcc2.enable();        //Polulu object
   m_max4280.assertRail(0);
 
   // delay for radio to initialize
