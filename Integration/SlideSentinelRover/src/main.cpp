@@ -16,7 +16,7 @@
 #include "PoluluVRM.h"
 #include "config_2.0.0.h"
 #include "network_config_2.0.0.h"
-#include "pcb_2.0.0.h"
+// #include "pcb_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -26,12 +26,14 @@
 
 Rover rover;
 void setup() {
-     Serial.begin(115200);
-     delay(3500);           //delay to allow screening in
-     Serial.println("Initializing Setup");
-
+  Serial.begin(115200);
+  delay(3500);           //delay to allow screening in
+  Serial.println("Initializing Setup");
+  Serial.begin(115200);
+  delay(3500);           //delay to allow screening in
+  Serial.println("Initializing Setup");
+    SPI.begin();
 }
-
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
@@ -59,6 +61,11 @@ void loop() {
       Serial.println("Transitioning to Handshake...");
       
       state = HANDSHAKE; 
+      while(true){  //temporary for testing
+        rover.powerRadio();
+        delay(2000);
+        rover.powerDownRadio();
+      }
       break;
 
     /* Request communication from base, then return to sleep or intialize RTK process */

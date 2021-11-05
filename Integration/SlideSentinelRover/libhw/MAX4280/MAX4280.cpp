@@ -6,8 +6,12 @@ MAX4280::MAX4280(uint8_t cs, SPIClass *spi)
 }
 
 void MAX4280::assertRail(uint8_t num) {
+  Serial.println("Calling asert line");
   digitalWrite(m_cs, LOW);
+
   m_spi->transfer(_BV(num));
+      Serial.println("Callend end assert line");
+
   digitalWrite(m_cs, HIGH);
   delay(8);
   digitalWrite(m_cs, LOW);
