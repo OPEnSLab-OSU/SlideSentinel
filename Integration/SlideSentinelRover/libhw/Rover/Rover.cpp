@@ -1,27 +1,36 @@
 #include "Rover.h"
-#include "pcb_2.0.0.h"
+
 
 
 /* Ran on first bootup of Main*/
-Rover::Rover() : max4280(MAX_CS, &SPI){}
+Rover::Rover() : m_max4280(MAX_CS, &SPI){
+    m_rovInfo.id = CLIENT_ADDR;
+    m_rovInfo.serverAddr = SERVER_ADDR;
+    m_rovInfo.init_retries = INIT_RETRIES;
+    m_rovInfo.timeout = INIT_TIMEOUT;
+}
+
+void Rover::request(){
+        
+}
 
 void Rover::powerRadio(){
     Serial.println("Powering radio on.");
-    max4280.assertRail(0);
+    m_max4280.assertRail(0);
 }
 
 void Rover::powerDownRadio(){
     Serial.println("Powering radio down.");
-    max4280.assertRail(1);
+    m_max4280.assertRail(1);
 }
 
 void Rover::powerGNSS(){
-    Serial.println("Powering GNSS on.")
-      m_max4280.assertRail(2);
+    Serial.println("Powering GNSS on.");
+    m_max4280.assertRail(2);
 }
 
 void Rover::powerDownGNSS(){
-    Serial.printlnt("Powering GNSS down.")
+    Serial.println("Powering GNSS down.");
     m_max4280.assertRail(3);
 
 }

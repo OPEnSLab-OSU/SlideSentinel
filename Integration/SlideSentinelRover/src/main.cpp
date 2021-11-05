@@ -32,7 +32,7 @@ void setup() {
   Serial.begin(115200);
   delay(3500);           //delay to allow screening in
   Serial.println("Initializing Setup");
-    SPI.begin();
+  SPI.begin();
 }
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
