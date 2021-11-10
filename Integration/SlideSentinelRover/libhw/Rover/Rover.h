@@ -21,6 +21,10 @@ class Rover {
         int serverAddr;
     };
 
+    enum MuxFormat {
+        RadioToFeather = 0,
+        RadioToGNSS = 1
+    };
 
 public:
     Rover();
@@ -44,6 +48,8 @@ private:
 
     /* Tells the max4820 to disable the GNSS relay. */
     void powerDownGNSS();
+
+    void setMux(MuxFormat format);
     
 };
 
