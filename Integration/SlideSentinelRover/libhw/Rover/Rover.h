@@ -21,6 +21,12 @@ class Rover {
         int serverAddr;
     };
 
+    /* State of all relays/timers/multiplexer/etc */
+    struct RoverDiagnostics {
+        
+    };
+
+    /* Use in the setMux() function */
     enum MuxFormat {
         RadioToFeather = 0,
         RadioToGNSS = 1
@@ -34,7 +40,7 @@ public:
 private:
     RoverInfo m_rovInfo;
     MAX4280 m_max4280;
-    SN74LVC2G53 m_multiplex;
+    SN74LVC2G53 m_multiplexer;
 
 
     /* Tells the max4820 to enable the radio relay. */
@@ -49,6 +55,7 @@ private:
     /* Tells the max4820 to disable the GNSS relay. */
     void powerDownGNSS();
 
+    /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
     void setMux(MuxFormat format);
     
 };
