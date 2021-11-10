@@ -4,6 +4,7 @@
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
+#include "FreewaveRadio.h"
 
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
@@ -40,6 +41,7 @@ public:
 private:
     RoverInfo m_rovInfo;
     MAX4280 m_max4280;
+    FreewaveRadio radio;
     SN74LVC2G53 m_multiplexer;
 
 
