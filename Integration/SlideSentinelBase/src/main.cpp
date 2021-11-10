@@ -96,10 +96,10 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  // begin serial communications
   Serial.begin(115200);
-
-
-  // SPI INIT
+  delay(3500);           //delay to allow screening in
+  Serial.println("Initializing Setup");
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV8);
 
