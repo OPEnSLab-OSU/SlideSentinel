@@ -19,3 +19,7 @@ void FreewaveRadio::reset() {
   MARK;
   digitalWrite(m_rst, HIGH);
 }
+
+RadioType FreewaveRadio::getType(){
+  return m_radioType;
+}

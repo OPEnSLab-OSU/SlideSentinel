@@ -5,6 +5,7 @@
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
 #include "FreewaveRadio.h"
+#include "MAX3243.h"
 
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
@@ -12,6 +13,10 @@
  */
 
 class Rover {
+
+public:
+    Rover();
+    void request();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -33,9 +38,6 @@ class Rover {
         RadioToGNSS = 1
     };
 
-public:
-    Rover();
-    void request();
 
 
 private:
@@ -44,8 +46,9 @@ private:
     RoverDiagnostics m_rovDiag;
 
     /* Physical hardware implementations*/ 
-    MAX4280 m_max4280;
-    FreewaveRadio radio;
+    MAX4280 m_max4280; //relay driver
+    MAX3243 m_max3243; //signal shifter for Z9-T/GXM radios
+    FreewaveRadio m_radio;
     SN74LVC2G53 m_multiplexer;
 
 
