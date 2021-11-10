@@ -37,9 +37,9 @@ void Rover::powerDownGNSS(){
 
 void Rover::setMux(MuxFormat format){
     if(format == RadioToFeather){
-
+        m_multiplexer.comY1();          //Radio->Feather
     }else if(format == RadioToGNSS){
-        
+        m_multiplexer.comY2();
     }
 
 }
