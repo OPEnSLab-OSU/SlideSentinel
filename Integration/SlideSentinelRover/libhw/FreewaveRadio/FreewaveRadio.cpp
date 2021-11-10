@@ -1,8 +1,8 @@
 #include "FreewaveRadio.h"
 #include "FeatherTrace.h"
 
-FreewaveRadio::FreewaveRadio(uint8_t reset, uint8_t cd)
-    : m_rst(reset), m_cd(cd) {
+FreewaveRadio::FreewaveRadio(uint8_t reset, uint8_t cd, RadioType radioType)
+    : m_rst(reset), m_cd(cd),  m_radioType(radioType){
   pinMode(m_rst, OUTPUT);
   pinMode(m_cd, INPUT);
   digitalWrite(m_rst, HIGH);

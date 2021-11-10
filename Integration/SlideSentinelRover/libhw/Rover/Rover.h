@@ -39,7 +39,11 @@ public:
 
 
 private:
+    /* Data structs*/
     RoverInfo m_rovInfo;
+    RoverDiagnostics m_rovDiag;
+
+    /* Physical hardware implementations*/ 
     MAX4280 m_max4280;
     FreewaveRadio radio;
     SN74LVC2G53 m_multiplexer;
