@@ -45,7 +45,7 @@ private:
 
     /* Physical hardware implementations*/ 
     MAX4280 m_max4280;
-    FreewaveRadio radio;
+    FreewaveRadio m_radio;
     SN74LVC2G53 m_multiplexer;
 
 
