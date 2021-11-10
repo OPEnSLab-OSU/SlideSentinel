@@ -8,6 +8,7 @@ Rover::Rover() : m_max4280(MAX_CS, &SPI){
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;
     m_rovInfo.timeout = INIT_TIMEOUT;
+    m_rovInfo.radioBaud = RADIO_BAUD;
 }
 
 void Rover::request(){
