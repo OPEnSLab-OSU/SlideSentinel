@@ -11,8 +11,12 @@ Rover::Rover() : m_max4280(MAX_CS, &SPI){
     m_rovInfo.radioBaud = RADIO_BAUD;
 }
 
-void Rover::request(){
-        
+void Rover::request(){ 
+
+    if(m_radio.getType() != FreewaveRadio::Z9C){    //if true, the radio is GXM or Z9-T, requiring the use of the MAX3243 translating IC
+        m_max3243.enable();
+    }
+
 }
 
 void Rover::powerRadio(){
