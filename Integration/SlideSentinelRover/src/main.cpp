@@ -60,12 +60,18 @@ void loop() {
 
       Serial.println("Transitioning to Handshake...");
       
-      state = HANDSHAKE; 
-      while(true){  //temporary for testing
-        rover.powerRadio();
-        delay(2000);
-        rover.powerDownRadio();
+      for(int i = 0; i < 20; i++){
+        Serial.println(i + ", ");
+        delay(1000); //maybe use timer
       }
+
+
+      state = HANDSHAKE; 
+      // while(true){  //temporary for testing
+      //   rover.powerRadio();
+      //   delay(2000);
+      //   rover.powerDownRadio();
+      // }
       break;
 
     /* Request communication from base, then return to sleep or intialize RTK process */
@@ -73,6 +79,7 @@ void loop() {
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
+      rover.request();
 
       Serial.println("Transitioning to UPDATE...");
 
