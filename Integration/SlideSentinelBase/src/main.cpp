@@ -10,6 +10,8 @@
 #include "SatCommController.h"
 #include "SatCommDriver.h"
 
+#include "Base.h"
+
 FEATHERTRACE_BIND_ALL()
 
 #define RST 5
@@ -101,7 +103,6 @@ void setup() {
   delay(3500);           //delay to allow screening in
   Serial.println("Initializing Setup");
   SPI.begin();
-  SPI.setClockDivider(SPI_CLOCK_DIV8);
 
   // state machine start
   // this synchronizes PLOGs time, so it must come before PLOG
@@ -114,39 +115,10 @@ void setup() {
   plog::init(plog::debug, &serialAppender).addAppender(&fa);
 
   // filesystem init
-  while (!fsController.init()) {
-    // TODO: What happens here? Panic?
-    LOGF << "FS Controller failed to initialize!";
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(5000);
-  }
-  digitalWrite(LED_BUILTIN, LOW);
-
-  // TODO: send fault data over GNSS 
-  if (FeatherTrace::DidFault())
-    printFault(FeatherTrace::GetFault());
-
-  pinMode(GNSS_ON_PIN, OUTPUT);
-  pinMode(GNSS_OFF_PIN, OUTPUT);
-  LOGI << "gnss off";
-  useRelay(GNSS_OFF_PIN);
-  delay(1000);
-  LOGI << "gnss on";
-  useRelay(GNSS_ON_PIN);
 
   // SatComm init
   if (ENABLE_SATCOM)
     SatCommStateMachine::dispatch(PowerUp{});
-
-  static COMController _comController(radio, mux, Serial1, RADIO_BAUD,
-                                      CLIENT_ADDRESS, SERVER_ADDRESS,
-                                      INIT_TIMEOUT, INIT_RETRIES);
-  comController = &_comController;
-  comController->init();
-
-  fa.sync();
 }
 
 void loop() {

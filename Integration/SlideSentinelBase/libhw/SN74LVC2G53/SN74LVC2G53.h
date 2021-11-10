@@ -3,10 +3,11 @@
 
 #include <Arduino.h>
 
+/* The SN74LVC2G53 is a multiplexer capable of routing a signal to 2 separate endpoints. */
 class SN74LVC2G53 {
 private:
-  const int m_sel;
-  const int m_inh;
+  int m_sel;
+  int m_inh;
 
 public:
   SN74LVC2G53(int sel, int inh);
