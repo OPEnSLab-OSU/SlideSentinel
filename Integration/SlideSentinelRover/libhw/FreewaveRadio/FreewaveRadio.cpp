@@ -20,6 +20,6 @@ void FreewaveRadio::reset() {
   digitalWrite(m_rst, HIGH);
 }
 
-RadioType FreewaveRadio::getType(){
+FreewaveRadio::RadioType FreewaveRadio::getType(){
   return m_radioType;
 }
