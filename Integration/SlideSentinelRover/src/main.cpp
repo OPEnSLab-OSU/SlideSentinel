@@ -64,6 +64,7 @@ void loop() {
 
 
       state = HANDSHAKE; 
+      /* Demo code for testing the relays*/
       // while(true){  //temporary for testing
       //   rover.powerRadio();
       //   delay(2000);
