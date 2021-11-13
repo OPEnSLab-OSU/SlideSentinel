@@ -3,7 +3,7 @@
 
 
 /* Ran on first bootup of Main*/
-Rover::Rover() : m_max4280(MAX_CS, &SPI), m_max3243(FORCEOFF_N){
+Rover::Rover() : m_max4280(MAX_CS, &SPI), m_max3243(FORCEOFF_N), m_multiplexer(SPDT_SEL, -1){
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;

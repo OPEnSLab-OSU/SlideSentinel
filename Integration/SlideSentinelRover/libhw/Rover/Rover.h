@@ -15,7 +15,7 @@
 class Rover {
 
 public:
-    Rover();
+    Rover(int radioType);
     void request();
 
     /* Data Struct for rover info that gets sent to base. */
