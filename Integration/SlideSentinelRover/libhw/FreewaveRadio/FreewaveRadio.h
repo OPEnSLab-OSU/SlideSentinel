@@ -5,6 +5,8 @@
 
 class Freewave {
 
+/* Hardware level manager for freewave radio. */
+
 private:
   uint8_t m_rst;
   uint8_t m_cd;

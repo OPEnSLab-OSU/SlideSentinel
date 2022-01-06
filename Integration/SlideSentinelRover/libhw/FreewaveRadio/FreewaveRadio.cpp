@@ -14,8 +14,6 @@ bool Freewave::getZ9C() { return m_z9c; }
 
 void Freewave::reset() {
   digitalWrite(m_rst, LOW);
-  MARK;
   delay(2000);
-  MARK;
   digitalWrite(m_rst, HIGH);
 }

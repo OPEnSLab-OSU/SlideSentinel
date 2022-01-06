@@ -19,3 +19,4 @@ public:
 };
 
 #endif // _MAX4280_H_
+

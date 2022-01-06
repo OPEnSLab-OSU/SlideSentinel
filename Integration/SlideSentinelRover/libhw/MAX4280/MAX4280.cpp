@@ -5,13 +5,13 @@ MAX4280::MAX4280(uint8_t cs, SPIClass *spi)
   pinMode(m_cs, OUTPUT);
 }
 
+/**
+ * Sends command to Max to activate relays.
+ * @param uint8_t num: 0 and 1 refer to the Radio on/off, 2 and 3 refers to the GNSS for on/off
+*/
 void MAX4280::assertRail(uint8_t num) {
-  Serial.println("Calling asert line");
   digitalWrite(m_cs, LOW);
-
   m_spi->transfer(_BV(num));
-      Serial.println("Callend end assert line");
-
   digitalWrite(m_cs, HIGH);
   delay(8);
   digitalWrite(m_cs, LOW);

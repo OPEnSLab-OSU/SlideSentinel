@@ -4,6 +4,9 @@
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
+#include <RHReliableDatagram.h>
+#include <RH_Serial.h>
+#include <ArduinoJson.h>
 
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
@@ -14,24 +17,44 @@ class Rover {
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
+        /* @var id ID used by RadioHead library, sent to Base to determine which rover is contacting it.*/
         int id;
+        /* @var radioBaud Baud rate used by Freewave radio, should always be 115200 unless otherwise specified.*/
         int radioBaud;
+        /* @var init_retries Used by RadioHead to determine how many times to resend messages.*/
         int init_retries;
+        /* @var timeoute Time waited until a message is considered failed.*/
         int timeout;
+        /* @var serverAddr Server address that the rover sends a RadioHead message to. This should be 0 unless multiple bases in the same area.*/
         int serverAddr;
     };
 
 
 public:
     Rover();
+    
+    /* Powers radio via relay, called in wake cycle in main */
+    void wake();
+
+    /* Called after radio has been enabled in the HANDSHAKE section. Attempts to make contact with base. If successful:
+    transition to polling mode, if not: power down and set short wake timer if base is busy. */
     void request();
 
 
 private:
-    RoverInfo m_rovInfo;
-    MAX4280 m_max4280;
-    SN74LVC2G53 m_multiplex;
+    RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
+    MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
+    SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
+    RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
+    RHReliableDatagram m_RHManager;         //RadioHead communication manager class
 
+    /*  A message consists of an: ID, TYPE, MSG
+        The definitions are as such:
+            ID: ID of the rover sending the message
+            TYPE: Message type, such as REQUEST, UPLOAD
+            MSG: data upload, eg: "152.21312,12.12312, etc"
+     */
+    DynamicJsonDocument m_RHMessage;
 
     /* Tells the max4820 to enable the radio relay. */
     void powerRadio();
