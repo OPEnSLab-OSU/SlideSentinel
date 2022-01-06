@@ -6,5 +6,5 @@
 // which power rail is the GNSS receiver on
 #define RADIO_RAIL2 true
 
-// What type of radio is in the device, possible values of 0, 1, or 2 correspond to Z9-C, Z9-T, and GXM type respectively
-#define RadioType 0
+// is the mounted radio a Z9-C
+#define IS_Z9C false

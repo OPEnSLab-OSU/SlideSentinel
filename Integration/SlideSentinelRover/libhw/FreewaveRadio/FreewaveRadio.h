@@ -13,10 +13,25 @@ private:
   bool m_z9c;
 
 public:
-  Freewave(uint8_t reset, uint8_t cd, bool is_z9c);
-  bool getZ9C();
+  /*Enum for radio type as each radio handles communication differently. */
+  enum RadioType {
+    Z9C = 0,    //RS-232
+    Z9T = 1,    //TTL
+    GXM = 2     //TTL
+  };  
+
+  Freewave();
+
   bool channel_busy();
   void reset();
+  RadioType getType();
+
+
+private:
+  uint8_t m_rst;          //reset pin
+  uint8_t m_cd;           //carrier detect output
+  RadioType m_radioType;  //radio type, either Z9-C/T or GXM  
+  
 };
 
 #endif // _FREEWAVERADIO_H_

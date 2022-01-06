@@ -57,3 +57,12 @@ void Rover::powerDownGNSS(){
     Serial.println("Powering GNSS down.");
     m_max4280.assertRail(3);
 }
+
+void Rover::setMux(MuxFormat format){
+    if(format == RadioToFeather){
+        m_multiplex.comY1();          //Radio->Feather
+    }else if(format == RadioToGNSS){
+        m_multiplex.comY2();          //Radio->GNSS
+    }
+
+}

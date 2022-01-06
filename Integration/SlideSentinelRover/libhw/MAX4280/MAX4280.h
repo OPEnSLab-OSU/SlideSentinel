@@ -6,7 +6,9 @@
 
 #define _BV(bit) (1 << (bit))
 
+/*@brief The MAX4820 is a relay driver.*/
 class MAX4280 {
+  
 private:
   uint8_t m_cs;
   uint8_t m_clear;
@@ -14,6 +16,7 @@ private:
 
 public:
   MAX4280(uint8_t cs, SPIClass *spi);
+  /* Sends a command to the MAX4820 to turn on the relays.*/
   void assertRail(uint8_t num);
   void clear();
 };

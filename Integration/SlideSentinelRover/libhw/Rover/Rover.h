@@ -15,6 +15,10 @@
 
 class Rover {
 
+public:
+    Rover(int radioType);
+    void request();
+
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
         /* @var id ID used by RadioHead library, sent to Base to determine which rover is contacting it.*/
@@ -29,6 +33,16 @@ class Rover {
         int serverAddr;
     };
 
+    /* State of all relays/timers/multiplexer/etc */
+    struct RoverDiagnostics {
+        
+    };
+
+    /* Use in the setMux() function */
+    enum MuxFormat {
+        RadioToFeather = 0,
+        RadioToGNSS = 1
+    };
 
 public:
     Rover();
@@ -67,6 +81,9 @@ private:
 
     /* Tells the max4820 to disable the GNSS relay. */
     void powerDownGNSS();
+
+    /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
+    void setMux(MuxFormat format);
     
 };
 
