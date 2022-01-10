@@ -7,11 +7,6 @@ class Freewave {
 
 /* Hardware level manager for freewave radio. */
 
-private:
-  uint8_t m_rst;
-  uint8_t m_cd;
-  bool m_z9c;
-
 public:
   /*Enum for radio type as each radio handles communication differently. */
   enum RadioType {
@@ -26,12 +21,12 @@ public:
   void reset();
   RadioType getType();
 
-
 private:
-  uint8_t m_rst;          //reset pin
-  uint8_t m_cd;           //carrier detect output
-  RadioType m_radioType;  //radio type, either Z9-C/T or GXM  
-  
+  uint8_t m_rst;
+  uint8_t m_cd;
+  bool m_z9c;
+  RadioType m_radioType;  //radio type, either Z9-C/T or GXM 
+
 };
 
 #endif // _FREEWAVERADIO_H_
