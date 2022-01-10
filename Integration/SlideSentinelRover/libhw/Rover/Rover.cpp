@@ -33,10 +33,13 @@ void Rover::wake(){
 void Rover::request(){
     m_multiplex.comY1(); 
     Serial.println("Radio ---> Feather");
-
+    //wipe message first
     m_RHMessage["TYPE"] = "REQUEST";
-    m_RHMessage["MSG"] = "";
-    serializeJson(m_RHMessage);      
+    m_RHMessage["MSG"] = "REQUEST";
+    String RHMessageStr = "";
+    //serializeJson(m_RHMessage, );
+    
+          
 }
 
 void Rover::powerRadio(){

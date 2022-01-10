@@ -17,7 +17,7 @@ class Rover {
 
 public:
     Rover(int radioType);
-    void request();
+    Rover();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -43,9 +43,6 @@ public:
         RadioToFeather = 0,
         RadioToGNSS = 1
     };
-
-public:
-    Rover();
     
     /* Powers radio via relay, called in wake cycle in main */
     void wake();
@@ -53,7 +50,6 @@ public:
     /* Called after radio has been enabled in the HANDSHAKE section. Attempts to make contact with base. If successful:
     transition to polling mode, if not: power down and set short wake timer if base is busy. */
     void request();
-
 
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
