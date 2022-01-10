@@ -7,7 +7,7 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
                     m_multiplex(SPDT_SEL, -1),
                     m_RHSerialDriver(Serial1), 
                     m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
-                    m_RHMessage(1024){
+                    m_RHMessage(1024) {
 
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
@@ -35,7 +35,8 @@ void Rover::request(){
     Serial.println("Radio ---> Feather");
 
     m_RHMessage["TYPE"] = "REQUEST";
-    m_RHMessage["MSG"] = "";      
+    m_RHMessage["MSG"] = "";
+    serializeJson(m_RHMessage);      
 }
 
 void Rover::powerRadio(){

@@ -25,6 +25,7 @@
 
 
 Rover rover;
+
 void setup() {
   Serial.begin(115200);
   delay(3500);           //delay to allow screening in
@@ -56,37 +57,17 @@ void loop() {
       rover.wake();
       Serial.println("Radio enabled.");
       
-<<<<<<< HEAD
       state = HANDSHAKE;
-=======
-      for(int i = 0; i < 20; i++){
-        Serial.println(i + ", ");
-        delay(1000); //maybe use timer
-      }
-
-
-      state = HANDSHAKE; 
-      /* Demo code for testing the relays*/
-      // while(true){  //temporary for testing
-      //   rover.powerRadio();
-      //   delay(2000);
-      //   rover.powerDownRadio();
-      // }
->>>>>>> 06d0e4af04a6eac107076da41eb1a9e5ed255430
       break;
 
     /* Request communication from base, then return to sleep or intialize RTK process */
-    case HANDSHAKE: MARK;
+    case HANDSHAKE: //MARK;
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
-<<<<<<< HEAD
       
 
-=======
       rover.request();
->>>>>>> 06d0e4af04a6eac107076da41eb1a9e5ed255430
-
       Serial.println("Transitioning to UPDATE...");
 
       state = UPDATE;
