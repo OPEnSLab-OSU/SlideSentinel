@@ -9,7 +9,7 @@ Freewave::Freewave(/*uint8_t reset, uint8_t cd, RadioType radioType*/){ //add va
 
 bool Freewave::channel_busy() { return digitalRead(m_cd) == HIGH; }
 
-
+bool Freewave::getZ9C() {return m_z9c;}
 
 void Freewave::reset() {
   digitalWrite(m_rst, LOW);

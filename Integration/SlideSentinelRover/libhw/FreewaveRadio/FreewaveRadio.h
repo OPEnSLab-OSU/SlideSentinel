@@ -21,6 +21,8 @@ public:
   void reset();
   RadioType getType();
 
+  bool getZ9C();
+
 private:
   uint8_t m_rst;
   uint8_t m_cd;
