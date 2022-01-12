@@ -11,8 +11,8 @@ private:
 
 public:
   SN74LVC2G53(int sel, int inh);
-  void comY1();
-  void comY2();
+  void comY1(); //RTCMout--->RadioRx
+  void comY2(); //FeatherTx--->RadioRx
   void disable();
   void enable();
 };

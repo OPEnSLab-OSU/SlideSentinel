@@ -57,7 +57,7 @@ void RadioManager::clearBuffer(){
  * Clear out the Serial1 buffer from the radio
  */ 
 void RadioManager::clearSerial(){
-    while(Serial.available()){
+    while(Serial1.available()){
         Serial1.read();
     }
 }

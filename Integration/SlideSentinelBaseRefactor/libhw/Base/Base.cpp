@@ -13,7 +13,7 @@ Base::Base() : m_max4280(MAX_CS, &SPI),
 
 void Base::wait_for_request(){
         // Reroute data from the radio to the feather
-        setMux(RadioToFeather);
+        setMux(FeatherTxToRadioRx);
 }
 
 
@@ -49,10 +49,11 @@ void Base::powerDownGNSS(){
 }
 
 void Base::setMux(MuxFormat format){
-    if(format == RadioToFeather){
-        m_multiplexer.comY1();          //Radio->Feather
-    }else if(format == RadioToGNSS){
+    if(format == RTCMOutToRadioRx){
+        m_multiplexer.comY1();          
+    }else if(format == FeatherTxToRadioRx){
         m_multiplexer.comY2();
     }
+    
 
 }

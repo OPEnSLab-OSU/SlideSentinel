@@ -45,8 +45,8 @@ class Base {
 
         /* Use in the setMux() function */
         enum MuxFormat {
-            RadioToFeather = 0,
-            RadioToGNSS = 1
+            RTCMOutToRadioRx = 0,
+            FeatherTxToRadioRx = 1
         };
 
         // Wait for data to be sent from a rover to the base
