@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "cstdlib": "cpp",
+        "queue": "cpp",
+        "streambuf": "cpp",
+        "system_error": "cpp"
+    }
+}
