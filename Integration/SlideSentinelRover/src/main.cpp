@@ -67,11 +67,16 @@ void loop() {
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
       
 
-      rover.request();
-      Serial.println("Transitioning to UPDATE...");
+      if(rover.request()){
+        Serial.println("Transitioning to UPDATE...");
 
-      state = UPDATE;
-      break;
+        state = UPDATE;
+      }else{
+        state = SLEEP;
+        break;
+      }
+      
+      
 
     /* Transition to RTK, turn on GNSS */
     case UPDATE: MARK;

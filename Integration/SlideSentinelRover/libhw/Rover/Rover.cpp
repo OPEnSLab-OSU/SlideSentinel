@@ -30,15 +30,24 @@ void Rover::wake(){
       
 }
 
-void Rover::request(){
-    m_multiplex.comY1(); 
-    Serial.println("Radio ---> Feather");
+bool Rover::request(){
+    //TDL: Conditionally enable max3243
+    setMux(RadioToFeather); 
+
     //wipe message first
+
     m_RHMessage["TYPE"] = "REQUEST";
     m_RHMessage["MSG"] = "REQUEST";
     String RHMessageStr = "";
-    //serializeJson(m_RHMessage, );
+
+    //serialize json object into a string format
+    serializeJson(m_RHMessage, RHMessageStr);
+    //cast string to a uint8_t* so radiohead can send it
+    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
     
+    //will block while waiting on timeout, should be 2 seconds by default
+    return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length, SERVER_ADDR);
+
           
 }
 
@@ -64,9 +73,10 @@ void Rover::powerDownGNSS(){
 
 void Rover::setMux(MuxFormat format){
     if(format == RadioToFeather){
-        m_multiplex.comY1();          //Radio->Feather
+        m_multiplex.comY1();         
+        Serial.println("Radio ---> Feather");
     }else if(format == RadioToGNSS){
-        m_multiplex.comY2();          //Radio->GNSS
+        m_multiplex.comY2();          
+        Serial.println("Radio ---> GNSS");
     }
-
 }
