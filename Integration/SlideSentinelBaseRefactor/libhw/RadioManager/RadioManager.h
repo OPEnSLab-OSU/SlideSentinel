@@ -10,6 +10,11 @@
 class RadioManager{
     public:
 
+        /**
+         * Default constructor initializes the Radio on the device
+         */ 
+        RadioManager();
+
         /* Parse the integer data received from the radio into JSON, and write it to the JSON object passed in*/
         bool readHeader();    
         /* Wait the given timeout length for a new packet to arrive from the rovers */ 
@@ -25,8 +30,6 @@ class RadioManager{
 
     private:
 
-        RadioManager();
-    
         uint8_t recvBuffer[RH_MAX_MESSAGE_LEN]; // Buffer that the recieved message will be written into
         uint8_t fromAddr;                       // Address the message was received from
         

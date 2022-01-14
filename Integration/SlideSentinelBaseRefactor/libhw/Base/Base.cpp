@@ -3,7 +3,8 @@
 
 /* Ran on first bootup of Main*/
 Base::Base() : m_max4280(MAX_CS, &SPI),
-               m_multiplexer(SPDT_SEL, -1){
+               m_multiplexer(SPDT_SEL, -1),
+               m_RManager(){
     
     m_baseInfo.id = SERVER_ADDR;
     m_baseInfo.init_retries = INIT_RETRIES;
