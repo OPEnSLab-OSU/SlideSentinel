@@ -76,6 +76,9 @@ bool RadioManager::waitForPacket(){
 bool RadioManager::readHeader(){
     // Convert the uint8_t array to a char* and then serialize it to a JSON object
     char* data = (char* )recvBuffer;
+
+    // Clear the current JSON buffer, and then write to it
+    parsedDoc.clear();
     auto error = serializeJson(&parsedDoc, data);
 
     // Return the status of the serialization
