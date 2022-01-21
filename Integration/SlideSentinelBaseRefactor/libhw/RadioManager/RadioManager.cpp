@@ -1,47 +1,4 @@
 #include "RadioManager.h"
-
-/* 
-bool SSInterface::receivePacket(char *buffer) {
-  clearSerial();
-  if (!_receive())
-    return false;
-
-  _readHeader(m_buf);
-
-  for (int i = 0; i < m_inFrag; i++) {
-    if (!_receive())
-      return false;
-    memcpy(buffer + (i * m_blen), m_buf, m_blen);
-  }
-  return true;
-}
-
-bool SSInterface::_receive() {
-  _clearBuffer();
-  uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
-  if (m_manager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_timeout, &m_from))
-    return true;
-  return false;
-}
-
-void SSInterface::_clearBuffer() {
-  memset(m_buf, '\0', sizeof(char) * RH_SERIAL_MAX_MESSAGE_LEN);
-}
-
-// TODO also check if the key exists in the document even though it should
-bool SSInterface::_readHeader(char *buf) {
-  StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> doc;
-  auto error = deserializeJson(doc, buf);
-  if (error)
-    return false;
-  m_inFrag = doc[FRAGMENT_NUM];
-  m_type = doc[TYPE];
-  if (m_base)
-    m_clientId = doc[ROVER_ID];
-  return true;
-}
- */ 
-
 RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){}
 

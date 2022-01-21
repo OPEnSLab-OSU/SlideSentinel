@@ -5,7 +5,8 @@
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
-#include <RadioManager.h>
+#include "RadioManager.h"
+#include "SDManager.h"
 
 #include <RHReliableDatagram.h>
 #include <RH_Serial.h>
@@ -37,11 +38,22 @@ class Base {
             int timeout;
         };
 
+        /* Data Struct for tracking diagnostic information about the base*/
+        struct BaseDiagnostics {
+
+            /*@var droppedPackets Tracks the number of times we waited for a packet at the expected time and nothing was ever received*/
+            int droppedPackets;
+
+            /*@var totalPacketsExpected Tracks the number of packets we should have received*/
+            int totalPacketsExpected;
+        };
+        
+
         /* State of all relays/timers/multiplexer/etc */
         struct RoverDiagnostics {
             
         };
-        RoverDiagnostics *rovers;
+        
 
         /* Use in the setMux() function */
         enum MuxFormat {
@@ -50,7 +62,10 @@ class Base {
         };
 
         // Wait for data to be sent from a rover to the base
-        void wait_for_request();
+        bool wait_for_request();
+
+        // Initialize the components of the base
+        bool initBase();
 
         // Print the current diagnostic information about the base station
         void print_diagnostics();
@@ -60,7 +75,10 @@ class Base {
         MAX4280 m_max4280;                      // Relay driver, used to power on relays controlling GNSS/Radio
         SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
         RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
-
+        SDManager m_sdManager;
+        
+        BaseDiagnostics m_baseDiagnostics;      // Diagnostics Struct to track debug information about the base
+        RoverDiagnostics *rovers;               // Pointer array of rover diagnostic information
 
         /* Tells the max4820 to enable the radio relay. */
         void powerRadio();
