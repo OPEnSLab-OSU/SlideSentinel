@@ -13,6 +13,9 @@ Base::Base() : m_max4280(MAX_CS, &SPI),
     m_baseInfo.radioBaud = RADIO_BAUD;
 }
 
+/**
+ * Listen for a radio request from the Rover with data
+ */ 
 bool Base::wait_for_request(){
         // Reroute data from the radio to the feather
         setMux(FeatherTxToRadioRx);
@@ -30,6 +33,9 @@ bool Base::wait_for_request(){
         return m_RManager.readHeader();
 }
 
+/**
+ * Initialize all aspects of the base
+ */ 
 bool Base::initBase(){
 
     // Attempt to initialize the SD card
@@ -41,7 +47,9 @@ bool Base::initBase(){
     return true;
 }
 
-
+/**
+ * Print the base's diagnostic and just general information to the serial bus
+ */ 
 void Base::print_diagnostics(){
 
     //Print Basic Configuration Information
@@ -55,26 +63,41 @@ void Base::print_diagnostics(){
     m_baseDiagnostics.print_serial();
 }
 
+/**
+ * Power on the radio to transmit data
+ */ 
 void Base::powerRadio(){
-    Serial.println("Powering radio on.");
+    Serial.println("[Base] Powering radio on.");
     m_max4280.assertRail(0);
 }
 
+/**
+ * Power down the radio to conserve energy
+ */ 
 void Base::powerDownRadio(){
-    Serial.println("Powering radio down.");
+    Serial.println("[Base] Powering radio down.");
     m_max4280.assertRail(1);
 }
 
+/**
+ * Power up the GNSS board to get fixes 
+ */ 
 void Base::powerGNSS(){
-    Serial.println("Powering GNSS on.");
+    Serial.println("[Base] Powering GNSS on.");
     m_max4280.assertRail(2);
 }
 
+/**
+ * Power down the GNSS board
+ */ 
 void Base::powerDownGNSS(){
-    Serial.println("Powering GNSS down.");
+    Serial.println("[Base] Powering GNSS down.");
     m_max4280.assertRail(3);
 }
 
+/**
+ * Set the current path the multiplexer is using is it feather ot radio or RTC to Radio
+ */ 
 void Base::setMux(MuxFormat format){
     if(format == RTCMOutToRadioRx){
         m_multiplexer.comY1();          

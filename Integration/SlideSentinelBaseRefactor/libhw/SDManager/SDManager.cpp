@@ -95,7 +95,6 @@ bool SDManager::log(const int roverNum, const char* message, const char* file){
     return returnToLogDir();
 }
 
-
 /**
  * Log the diagnostic information about a specific rover
  */ 
