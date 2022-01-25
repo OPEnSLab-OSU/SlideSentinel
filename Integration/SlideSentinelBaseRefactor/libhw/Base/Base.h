@@ -21,7 +21,6 @@ class Base {
     public:
         Base();
 
-        
         /* Data Struct for rover info that gets sent to base. */
         struct BaseInfo{
 
@@ -37,23 +36,6 @@ class Base {
             /* @var timeoute Time waited until a message is considered failed.*/
             int timeout;
         };
-
-        /* Data Struct for tracking diagnostic information about the base*/
-        struct BaseDiagnostics {
-
-            /*@var droppedPackets Tracks the number of times we waited for a packet at the expected time and nothing was ever received*/
-            int droppedPackets;
-
-            /*@var totalPacketsExpected Tracks the number of packets we should have received*/
-            int totalPacketsExpected;
-        };
-        
-
-        /* State of all relays/timers/multiplexer/etc */
-        struct RoverDiagnostics {
-            
-        };
-        
 
         /* Use in the setMux() function */
         enum MuxFormat {
@@ -75,10 +57,10 @@ class Base {
         MAX4280 m_max4280;                      // Relay driver, used to power on relays controlling GNSS/Radio
         SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
         RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
-        SDManager m_sdManager;
+        SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
         
-        BaseDiagnostics m_baseDiagnostics;      // Diagnostics Struct to track debug information about the base
-        RoverDiagnostics *rovers;               // Pointer array of rover diagnostic information
+        Diagnostics m_baseDiagnostics;          // Diagnostics  to track debug information about the base
+        Diagnostics *roverDiagnostics;          // Pointer array of rover diagnostic information
 
         /* Tells the max4820 to enable the radio relay. */
         void powerRadio();

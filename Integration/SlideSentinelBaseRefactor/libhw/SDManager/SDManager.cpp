@@ -1,3 +1,13 @@
+///////////////////////////////////////////////////////////////////////////////
+///
+/// @file		SDManager.cpp
+/// @brief		File containing SDFat wrapper implementation.
+/// @author		Will Richards
+/// @date		2022
+/// @copyright	GNU General Public License v3.0
+///
+///////////////////////////////////////////////////////////////////////////////
+
 #include "SDManager.h"
 
 SDManager::SDManager(int csPin, int spiSpeed): csPin(csPin),spiSpeed(spiSpeed){}

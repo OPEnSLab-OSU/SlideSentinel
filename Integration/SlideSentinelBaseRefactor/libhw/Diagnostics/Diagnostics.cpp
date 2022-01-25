@@ -42,6 +42,18 @@ void Diagnostics::print() {
   LOGD << "*************************";
 }
 
+void Diagnostics::print_serial(){
+  Serial.println("**** DIAGNOSTICS ****");
+  Serial.println("\tIMU Flag: " + imu());
+  Serial.println("\tBattery Voltage: " + String(bat()));
+  Serial.println("\tSD Space: " + String(space()));
+  Serial.println("\tWake Cycles: " + cycles());
+  Serial.println("\tDropped Packets: " + droppedPkts());
+  Serial.println("\tError Count: " + errCount());
+  Serial.println("\tConvergence Time: " + String(convergenceTime()));
+  Serial.println("*************************");
+}
+
 // getters
 bool Diagnostics::imu() { return m_imu_flag; }
 float Diagnostics::bat() { return m_bat; }

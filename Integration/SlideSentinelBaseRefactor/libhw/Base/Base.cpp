@@ -14,17 +14,15 @@ Base::Base() : m_max4280(MAX_CS, &SPI),
 }
 
 bool Base::wait_for_request(){
-
-        // Increase the total count for number of packets we expected to have
-        m_baseDiagnostics.totalPacketsExpected++;
-
         // Reroute data from the radio to the feather
         setMux(FeatherTxToRadioRx);
 
         Serial.println("[Base] Waiting for data from rovers...");
         // Wait for a packet and if it is not received increase the dropped packet count
         if(!m_RManager.waitForPacket()){
-            m_baseDiagnostics.droppedPackets++;
+
+            // Increase the dropped packet count by one
+            m_baseDiagnostics.setDroppedPkts(m_baseDiagnostics.droppedPkts() + 1);
             Serial.println("[Base] Packet was not received in the expected interval!");
             return false;
         }
@@ -47,13 +45,14 @@ bool Base::initBase(){
 void Base::print_diagnostics(){
 
     //Print Basic Configuration Information
-    Serial.println("--- Configuration ---");
-    Serial.println("Base ID: " + String(m_baseInfo.id));
-    Serial.println("Retry Count: " + String(m_baseInfo.init_retries));
-    Serial.println("Radio Baud Rate: " + String(m_baseInfo.radioBaud));
+    Serial.println("\n**** Configuration ****");
+    Serial.println("\tBase ID: " + String(m_baseInfo.id));
+    Serial.println("\tRetry Count: " + String(m_baseInfo.init_retries));
+    Serial.println("\tRadio Baud Rate: " + String(m_baseInfo.radioBaud));
+    Serial.println("*************************");
 
-    Serial.println("\n--- Diagnostics ---");
-    Serial.println("Dropped Packets: " + String(m_baseDiagnostics.droppedPackets));
+    // Print out the diagnostics to serial
+    m_baseDiagnostics.print_serial();
 }
 
 void Base::powerRadio(){

@@ -1,3 +1,14 @@
+///////////////////////////////////////////////////////////////////////////////
+///
+/// @file		SDManager.h
+/// @brief		File containing SDFat wrapper prototypes.
+/// @author		Will Richards
+/// @date		2022
+/// @copyright	GNU General Public License v3.0
+///
+///////////////////////////////////////////////////////////////////////////////
+
+#pragma once
 #include <SdFat.h>
 
 #include "Diagnostics.h"
@@ -25,9 +36,6 @@ class SDManager{
 
         // Log the rover diagnostics to the SD card
         bool logRoverDiagnostics(int roverNum, Diagnostics diagnostics);
-
-        // Log the base diagnostics to the SD card
-        //bool logBaseDiagnostics();
 
         // Log the data from the rovers to the SD card
         bool logData(int roverNum, char* data);

@@ -31,7 +31,6 @@ void loop(){
     if(Serial.available()){
         char cmd = Serial.read();
         if(cmd == '1'){
-            Serial.println("------- BASE DIAGNOSTICS --------");
             base.print_diagnostics();
         }
     }
