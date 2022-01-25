@@ -1,7 +1,7 @@
 #include "RadioManager.h"
+
 RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){}
-
 
 /**
  * Overwrite the recvBuffer with null bytes to clear it before new data is written to it
@@ -19,6 +19,9 @@ void RadioManager::clearSerial(){
     }
 }
 
+/**
+ * Wait for a packet from the rover
+ */ 
 bool RadioManager::waitForPacket(){
     clearSerial(); // Clear the serial buffer to wash out any remaining junk
     clearBuffer(); // Clear out the buffer that we are gonna write the data to
@@ -40,4 +43,18 @@ bool RadioManager::readHeader(){
 
     // Return the status of the serialization
     return !error;
+}
+
+/**
+ * Return the address of the most recent rover
+ */ 
+int RadioManager::getMostRecentRover(){
+    return fromAddr;
+}
+
+/**
+ * Serialize the JSON object and then return the string representation
+ */ 
+StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> RadioManager::getRoverPacket(){
+    return parsedDoc;
 }

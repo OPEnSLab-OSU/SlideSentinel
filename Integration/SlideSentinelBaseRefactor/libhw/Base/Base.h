@@ -1,5 +1,4 @@
-#ifndef _Base_H_
-#define _Base_H_
+#pragma once
 
 #include "MAX4280.h"
 #include "SN74LVC2G53.h"
@@ -43,14 +42,23 @@ class Base {
             FeatherTxToRadioRx = 1
         };
 
-        // Wait for data to be sent from a rover to the base
-        bool wait_for_request();
+        /* Wait for data to be sent from a rover to the base */
+        bool waitForRequest();
 
-        // Initialize the components of the base
+        /* Initialize the components of the base */
         bool initBase();
 
-        // Print the current diagnostic information about the base station
-        void print_diagnostics();
+        /* Print the current diagnostic information about the base station */
+        void printDiagnostics();
+
+        /* Print out the most recent rover packet received by the base */
+        void printMostRecentPacket();
+
+        /* Check the current status of the SD card and reinitialize it if necessary */
+        void checkSD();
+
+        /* Waits for input over serial to output debug information about the base */
+        void debugInformation();
 
     private:
         BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
@@ -59,8 +67,8 @@ class Base {
         RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
         SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
         
-        Diagnostics m_baseDiagnostics;          // Diagnostics  to track debug information about the base
-        Diagnostics *roverDiagnostics;          // Pointer array of rover diagnostic information
+        Diagnostics  m_baseDiagnostics;         // Diagnostics  to track debug information about the base
+        Diagnostics *m_roverDiagnostics;        // Pointer array of rover diagnostic information
 
         /* Tells the max4820 to enable the radio relay. */
         void powerRadio();
@@ -76,7 +84,4 @@ class Base {
 
         /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
         void setMux(MuxFormat format);
-        
     };
-
-#endif // _Base_H_

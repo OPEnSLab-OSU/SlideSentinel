@@ -16,7 +16,7 @@ Base::Base() : m_max4280(MAX_CS, &SPI),
 /**
  * Listen for a radio request from the Rover with data
  */ 
-bool Base::wait_for_request(){
+bool Base::waitForRequest(){
         // Reroute data from the radio to the feather
         setMux(FeatherTxToRadioRx);
 
@@ -43,14 +43,36 @@ bool Base::initBase(){
         return false;
     }
 
-
     return true;
+}
+
+/**
+ * Check if the SD card is initialized if not reinitialize it
+ */ 
+void Base::checkSD(){
+    if(!m_sdManager.checkSD()){
+        m_sdManager.initSD();
+    }
+}
+
+/**
+ * Reads bytes in from the Serial bus to print out requested data
+ */ 
+void Base::debugInformation(){
+
+    // Check for user input on serial to request information about the base
+    if(Serial.available()){
+        char cmd = Serial.read();
+        if(cmd == '1'){
+            printDiagnostics();
+        }
+    }
 }
 
 /**
  * Print the base's diagnostic and just general information to the serial bus
  */ 
-void Base::print_diagnostics(){
+void Base::printDiagnostics(){
 
     //Print Basic Configuration Information
     Serial.println("\n**** Configuration ****");
@@ -61,6 +83,16 @@ void Base::print_diagnostics(){
 
     // Print out the diagnostics to serial
     m_baseDiagnostics.print_serial();
+}
+
+/**
+ * Print out the most recent rover packet 
+ */ 
+void Base::printMostRecentPacket(){
+    Serial.println("\n**** Rover Packet ****");
+    Serial.println("Rover Addr: " + String(m_RManager.getMostRecentRover()));
+    serializeJsonPretty(m_RManager.getRoverPacket(), Serial);
+    Serial.println("*************************");
 }
 
 /**
