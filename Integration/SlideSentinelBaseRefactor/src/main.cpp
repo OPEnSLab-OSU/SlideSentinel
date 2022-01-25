@@ -42,9 +42,7 @@ void loop(){
     {
         case WAIT: MARK;
             // Default operating mode, in this mode we simply wait for data to be received from the rovers
-
             base.wait_for_request();
-            
             break;
     }
 }

@@ -1,5 +1,5 @@
 #include "Base.h"
-#include "network_config_2.0.0.h"
+#include "network_config.h"
 
 /* Ran on first bootup of Main*/
 Base::Base() : m_max4280(MAX_CS, &SPI),
@@ -34,13 +34,13 @@ bool Base::wait_for_request(){
 
 bool Base::initBase(){
 
-    // Initialize the SD card
+    // Attempt to initialize the SD card
     if(!m_sdManager.initSD()){
-        Serial.println("[Base] Failed to initialize SD card!");
         return false;
     }
 
-    // Using an if here cause more initilization will be added later
+
+    return true;
 }
 
 

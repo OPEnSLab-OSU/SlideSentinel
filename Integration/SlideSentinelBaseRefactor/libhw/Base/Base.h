@@ -3,8 +3,8 @@
 
 #include "MAX4280.h"
 #include "SN74LVC2G53.h"
-#include "pcb_2.0.0.h"
-#include "network_config_2.0.0.h"
+#include "pcb_config.h"
+#include "network_config.h"
 #include "RadioManager.h"
 #include "SDManager.h"
 
