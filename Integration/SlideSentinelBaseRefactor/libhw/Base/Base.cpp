@@ -1,5 +1,5 @@
 #include "Base.h"
-#include "network_config.h"
+
 
 /* Ran on first bootup of Main*/
 Base::Base() : m_max4280(MAX_CS, &SPI),

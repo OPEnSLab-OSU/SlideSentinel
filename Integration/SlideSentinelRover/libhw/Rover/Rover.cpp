@@ -45,7 +45,7 @@ bool Rover::request(){
     //cast string to a uint8_t* so radiohead can send it
     uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
     
-    //will block while waiting on timeout, should be 2 seconds by default
+    //will block while waiting on timeout, should be 2-4 seconds by default
     return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length, SERVER_ADDR);
 
           
