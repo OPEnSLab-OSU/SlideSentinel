@@ -43,12 +43,11 @@ bool Rover::request(){
     //serialize json object into a string format
     serializeJson(m_RHMessage, RHMessageStr);
     //cast string to a uint8_t* so radiohead can send it
-    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    char processedRHMessage[255];
     
     //will block while waiting on timeout, should be 2-4 seconds by default
-    return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
-
-          
+    return m_RHManager.sendtoWait((uint8_t)processedRHMessage, RHMessageStr.length(), SERVER_ADDR);          
 }
 
 void Rover::sendManualMsg(String msg){
