@@ -51,6 +51,8 @@ public:
     transition to polling mode, if not: power down and set short wake timer if base is busy. */
     bool request();
 
+    void sendManualMsg(String msg);
+
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
     MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
@@ -58,7 +60,7 @@ private:
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
 
-    uint8_t
+    
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

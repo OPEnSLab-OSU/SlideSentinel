@@ -46,9 +46,19 @@ bool Rover::request(){
     uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
     
     //will block while waiting on timeout, should be 2 seconds by default
-    return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length, SERVER_ADDR);
+    return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
 
           
+}
+
+void Rover::sendManualMsg(String msg){
+    m_RHMessage["TYPE"] = "Debug";
+    m_RHMessage["MSG"] = msg;
+    String RHMessageStr = "";
+
+    serializeJson(m_RHMessage, RHMessageStr);
+    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
 }
 
 void Rover::powerRadio(){
