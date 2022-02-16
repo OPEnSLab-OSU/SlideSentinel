@@ -60,7 +60,6 @@ private:
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
 
-    
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

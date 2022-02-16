@@ -8,3 +8,6 @@
 
 // is the mounted radio a Z9-C
 #define IS_Z9C false
+
+// Number of rovers connected to this base station
+#define NUM_ROVERS 2

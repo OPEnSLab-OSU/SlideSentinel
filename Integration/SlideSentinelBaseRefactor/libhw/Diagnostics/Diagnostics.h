@@ -49,6 +49,7 @@ public:
 
   void clear();
   void print();
+  void print_serial();
 };
 
 #endif // _DIAGNOSTICS_H_

@@ -11,7 +11,7 @@
 #define MAX_CS 9
 #define BAT_PIN 15
 
-/****** FSController ******/
+/****** SDManager ******/
 #define SD_CS 18  				// A4
 #define SD_RST 16 				// A2
 
