@@ -16,8 +16,8 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     m_RHMessage["TYPE"] = "";
     m_RHMessage["MSG"] = "";
-
-
+    powerDownRadio();
+    delay(100);
 }
 
 void Rover::wake(){
@@ -47,7 +47,7 @@ bool Rover::request(){
     char processedRHMessage[255];
     
     //will block while waiting on timeout, should be 2-4 seconds by default
-    return m_RHManager.sendtoWait((uint8_t)processedRHMessage, RHMessageStr.length(), SERVER_ADDR);          
+    return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, RHMessageStr.length(), SERVER_ADDR);          
 }
 
 void Rover::sendManualMsg(String msg){
@@ -55,9 +55,10 @@ void Rover::sendManualMsg(String msg){
     m_RHMessage["MSG"] = msg;
     String RHMessageStr = "";
 
-    serializeJson(m_RHMessage, RHMessageStr);
-    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
-    m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
+    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    char processedRHMessage[255];
+    serializeJson(m_RHMessage, processedRHMessage);
+    m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
 }
 
 void Rover::powerRadio(){

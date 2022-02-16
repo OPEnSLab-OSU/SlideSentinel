@@ -74,7 +74,7 @@ void loop() {
       //   state = SLEEP;
       //   break;
       // }
-      // rover.sendManualMsg("Test String abc");
+      rover.sendManualMsg("Test String abc");
       state = HANDSHAKE;
       Serial.println("Transitioning to handshake...");
       // delay(2000);
