@@ -16,8 +16,6 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     m_RHMessage["TYPE"] = "";
     m_RHMessage["MSG"] = "";
-    powerDownRadio();
-    delay(100);
 }
 
 void Rover::wake(){
@@ -54,11 +52,12 @@ void Rover::sendManualMsg(String msg){
     m_RHMessage["TYPE"] = "Debug";
     m_RHMessage["MSG"] = msg;
     String RHMessageStr = "";
+    JsonObject RHMessageObject = m_RHMessage.to<JsonObject>();
 
     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
     char processedRHMessage[255];
-    serializeJson(m_RHMessage, processedRHMessage);
-    m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
+    serializeJson(RHMessageObject, processedRHMessage);
+    m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
 }
 
 void Rover::powerRadio(){
