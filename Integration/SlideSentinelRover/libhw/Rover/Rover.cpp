@@ -75,6 +75,18 @@ void Rover::sendManualMsg(char* msg){
     // Serial.println(status);
 }
 
+//prototype
+uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
+ char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
+bool Rover::listen(){
+    if(m_RHManager.available()){
+        if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
+            Serial.println(m_buf);
+            return true;
+    }
+    return false;
+}
+
 void Rover::powerRadio(){
     Serial.println("Powering radio on.");
     m_max4280.assertRail(0);

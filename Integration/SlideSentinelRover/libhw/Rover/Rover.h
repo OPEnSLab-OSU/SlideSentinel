@@ -18,6 +18,7 @@ class Rover {
 public:
     Rover(int radioType);
     Rover();
+      bool listen();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -87,6 +88,8 @@ private:
 
     /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
     void setMux(MuxFormat format);
+
+  
     
 };
 

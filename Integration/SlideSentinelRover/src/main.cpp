@@ -77,11 +77,12 @@ void loop() {
       //   state = SLEEP;
       //   break;
       // }
-      rover.request();
+      // rover.request();
       // Serial1.println("Test");
       state = HANDSHAKE;
-      Serial.println("Transitioning to handshake...");
-      delay(2000);
+      // Serial.println("Transitioning to handshake...");
+      // delay(2000);
+      rover.listen();
       break;
       
 
