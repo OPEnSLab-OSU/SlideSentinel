@@ -31,6 +31,9 @@ void setup() {
   delay(3500);           //delay to allow screening in
   Serial.println("Initializing Setup");
   SPI.begin();
+  rover.powerDownRadio();
+  rover.initRadio();
+  // Serial1.begin(115200);
 }
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
@@ -66,15 +69,21 @@ void loop() {
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
       
-      if(rover.request()){
-        Serial.println("Transitioning to UPDATE...");
+      // if(rover.request()){
+      //   Serial.println("Transitioning to UPDATE...");
 
-        state = UPDATE;
-      }else{
-        state = SLEEP;
-        break;
-      }
-      
+      //   state = UPDATE;
+      // }else{
+      //   state = SLEEP;
+      //   break;
+      // }
+      // rover.request();
+      // Serial1.println("Test");
+      state = HANDSHAKE;
+      // Serial.println("Transitioning to handshake...");
+      // delay(2000);
+      rover.listen();
+      break;
       
 
     /* Transition to RTK, turn on GNSS */

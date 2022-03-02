@@ -5,10 +5,10 @@
 /* Ran on first bootup of Main. Pass in */
 Rover::Rover() :    m_max4280(MAX_CS, &SPI), 
                     m_multiplex(SPDT_SEL, -1),
-                    m_RHSerialDriver(Serial1), 
+                    m_serial(Serial1),
+                    m_RHSerialDriver(m_serial),
                     m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
                     m_RHMessage(1024) {
-
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;
@@ -16,8 +16,15 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     m_RHMessage["TYPE"] = "";
     m_RHMessage["MSG"] = "";
+}
 
+void Rover::initRadio(){
+    m_serial.begin(115200);
 
+    m_RHManager.setTimeout(m_rovInfo.timeout);
+    m_RHManager.setRetries(m_rovInfo.init_retries);
+
+    m_RHManager.init();
 }
 
 void Rover::wake(){
@@ -32,33 +39,52 @@ void Rover::wake(){
 
 bool Rover::request(){
     //TDL: Conditionally enable max3243
-    setMux(RadioToFeather); 
-
+    setMux(RadioToFeather);
+    JsonObject RHJson = m_RHMessage.to<JsonObject>();
     //wipe message first
 
-    m_RHMessage["TYPE"] = "REQUEST";
-    m_RHMessage["MSG"] = "REQUEST";
-    String RHMessageStr = "";
+    RHJson["TYPE"] = "REQUEST";
+    RHJson["MSG"] = "REQUEST";
+    // Serial.println(m_RHMessage);
+    // String RHMessageStr = "";
 
     //serialize json object into a string format
-    serializeJson(m_RHMessage, RHMessageStr);
-    //cast string to a uint8_t* so radiohead can send it
-    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
-    
-    //will block while waiting on timeout, should be 2-4 seconds by default
-    return m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
+    char processedRHMessage[255];
+    serializeJson(RHJson, processedRHMessage);
+    Serial.println(processedRHMessage);
+    // ast string to a uint8_t* so radiohead can send it
+    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
 
-          
+    //will block while waiting on timeout, should be 2-4 seconds by default
+    bool status = m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHJson), SERVER_ADDR);
+    return status;
 }
 
-void Rover::sendManualMsg(String msg){
-    m_RHMessage["TYPE"] = "Debug";
-    m_RHMessage["MSG"] = msg;
-    String RHMessageStr = "";
+void Rover::sendManualMsg(char* msg){
+    // String RHMessageStr = "";
+    StaticJsonDocument<JSON_OBJECT_SIZE(3)> testdoc;
+    JsonObject RHMessageObject = testdoc.to<JsonObject>();
+    RHMessageObject["TYPE"] = "Debug";
+    RHMessageObject["MSG"] = msg;
 
-    serializeJson(m_RHMessage, RHMessageStr);
-    uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
-    m_RHManager.sendtoWait(processedRHMessage, RHMessageStr.length(), SERVER_ADDR);
+    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    char processedRHMessage[255];
+    serializeJson(RHMessageObject, processedRHMessage);
+    Serial.println(processedRHMessage);
+    m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
+    // Serial.println(status);
+}
+
+//prototype
+uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
+ char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
+bool Rover::listen(){
+    if(m_RHManager.available()){
+        if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
+            Serial.println(m_buf);
+            return true;
+    }
+    return false;
 }
 
 void Rover::powerRadio(){

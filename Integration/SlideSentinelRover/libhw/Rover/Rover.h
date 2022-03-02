@@ -18,6 +18,7 @@ class Rover {
 public:
     Rover(int radioType);
     Rover();
+      bool listen();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -51,12 +52,19 @@ public:
     transition to polling mode, if not: power down and set short wake timer if base is busy. */
     bool request();
 
-    void sendManualMsg(String msg);
+    /* Send a test message */
+    void sendManualMsg(char* msg);
 
+    /* Tells the max4820 to disable the radio relay. */
+    void powerDownRadio();
+
+    /* Initialize RadioHead objects */
+    void initRadio();
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
     MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
     SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
+    HardwareSerial &m_serial;       //Reference to a serial interface object
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
 
@@ -72,9 +80,6 @@ private:
     /* Tells the max4820 to enable the radio relay. */
     void powerRadio();
 
-    /* Tells the max4820 to disable the radio relay. */
-    void powerDownRadio();
-
     /* Tells the max4820 to enable the GNSS relay. */
     void powerGNSS();
 
@@ -83,6 +88,8 @@ private:
 
     /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
     void setMux(MuxFormat format);
+
+  
     
 };
 
