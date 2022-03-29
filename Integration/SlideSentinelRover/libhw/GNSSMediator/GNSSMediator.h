@@ -7,7 +7,13 @@
 class GNSSMediator {
 
 private:
-    
+
+    /* Variables for additional Serial Interface */
+    HardwareSerial &m_serial;
+    int m_baud;
+    uint8_t m_rx;
+    uint8_t m_tx;
+
     /* State of the SBP message parser.*/
     sbp_state_t m_sbp_state;
 
@@ -29,6 +35,9 @@ private:
     sbp_msg_callbacks_node_t gps_time_node;
 
 public:
+
+    GNSSMediator();
+    poll();
 
 };
 
