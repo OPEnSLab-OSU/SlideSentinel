@@ -7,7 +7,7 @@
 #include <RHReliableDatagram.h>
 #include <RH_Serial.h>
 #include <ArduinoJson.h>
-
+#include <GNSSController.h>
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
  *  
@@ -67,6 +67,7 @@ private:
     HardwareSerial &m_serial;       //Reference to a serial interface object
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
+    GNSSController m_gnssController;        //handles interrupts from the uart line of GNSS
 
 
     /*  A message consists of an: ID, TYPE, MSG
@@ -88,9 +89,7 @@ private:
 
     /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
     void setMux(MuxFormat format);
-
-  
     
 };
 
-#endif // _Rover_H_
+#endif  _Rover_H_
