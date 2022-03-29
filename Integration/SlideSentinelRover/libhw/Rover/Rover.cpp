@@ -8,8 +8,7 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
                     m_serial(Serial1),
                     m_RHSerialDriver(m_serial),
                     m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
-                    m_RHMessage(1024),
-                    m_gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX, INIT_LOG_FREQ) {
+                    m_RHMessage(1024) {
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;

@@ -67,7 +67,7 @@ private:
     HardwareSerial &m_serial;       //Reference to a serial interface object
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
-    GNSSController m_gnssController;        //handles interrupts from the uart line of GNSS
+
 
 
     /*  A message consists of an: ID, TYPE, MSG
