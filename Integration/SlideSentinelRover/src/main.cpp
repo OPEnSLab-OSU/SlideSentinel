@@ -9,7 +9,6 @@
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
-#include "RTCController.h"
 #include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
 #include "SSModel.h"
@@ -59,7 +58,7 @@ void loop() {
       //Turns on radio and waits 20 seconds to properly initialize
       rover.wake();
       Serial.println("Radio enabled.");
-      
+      rover.debugRTCPrint();
       state = HANDSHAKE;
       break;
 

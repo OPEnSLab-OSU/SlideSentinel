@@ -8,6 +8,8 @@
 #include <RH_Serial.h>
 #include <ArduinoJson.h>
 #include <GNSSController.h>
+#include "SPI.h"
+#include <RTClib.h>
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
  *  
@@ -18,7 +20,7 @@ class Rover {
 public:
     Rover(int radioType);
     Rover();
-      bool listen();
+    bool listen();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -58,26 +60,6 @@ public:
     /* Tells the max4820 to disable the radio relay. */
     void powerDownRadio();
 
-    /* Initialize RadioHead objects */
-    void initRadio();
-private:
-    RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
-    MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
-    SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
-    HardwareSerial &m_serial;       //Reference to a serial interface object
-    RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
-    RHReliableDatagram m_RHManager;         //RadioHead communication manager class
-
-
-
-    /*  A message consists of an: ID, TYPE, MSG
-        The definitions are as such:
-            ID: ID of the rover sending the message
-            TYPE: Message type, such as REQUEST, UPLOAD
-            MSG: data upload, eg: "152.21312,12.12312, etc"
-     */
-    DynamicJsonDocument m_RHMessage;
-
     /* Tells the max4820 to enable the radio relay. */
     void powerRadio();
 
@@ -89,6 +71,33 @@ private:
 
     /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
     void setMux(MuxFormat format);
+
+    /* Initialize RadioHead objects */
+    void initRadio();
+
+    /* Debug function for RTC to print out time*/
+    void debugRTCPrint();
+
+    
+private:
+    RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
+    MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
+    SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
+    HardwareSerial &m_serial;       //Reference to a serial interface object
+    RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
+    RHReliableDatagram m_RHManager;         //RadioHead communication manager class
+    RTC_DS3231 m_RTC;               //Real time clock object
+
+
+    /*  A message consists of an: ID, TYPE, MSG
+        The definitions are as such:
+            ID: ID of the rover sending the message
+            TYPE: Message type, such as REQUEST, UPLOAD
+            MSG: data upload, eg: "152.21312,12.12312, etc"
+     */
+    DynamicJsonDocument m_RHMessage;
+
+
     
 };
 

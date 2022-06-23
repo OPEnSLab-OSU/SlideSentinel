@@ -1,5 +1,5 @@
 #include "Rover.h"
-
+#include <Wire.h>
 
 
 /* Ran on first bootup of Main. Pass in */
@@ -15,7 +15,7 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_rovInfo.timeout = INIT_TIMEOUT;
     m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     m_RHMessage["TYPE"] = "";
-    m_RHMessage["MSG"] = "";
+    m_RHMessage["MSG"] = "";    
 }
 
 void Rover::initRadio(){
@@ -73,6 +73,17 @@ void Rover::sendManualMsg(char* msg){
     Serial.println(processedRHMessage);
     m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
     // Serial.println(status);
+}
+
+void Rover::debugRTCPrint(){
+    delay(5000);
+    Serial.println("Testing RTC...");
+    Wire.begin();
+    if(m_RTC.begin()){
+        Serial.println("RTC connected");
+    }else{
+        Serial.println("RTC Failed");
+    }
 }
 
 //prototype
