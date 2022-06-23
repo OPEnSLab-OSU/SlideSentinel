@@ -86,7 +86,7 @@ u16 tail = 0;
 
 /* Return 1 if true, 0 otherwise. */
 u8 fifo_empty(void) {
-  if (head == 0 || tail == 0)
+  if (head == tail)
     return 1;
   return 0;
 }
