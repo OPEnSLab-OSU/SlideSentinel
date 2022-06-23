@@ -39,11 +39,13 @@ void setup() {
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
+GNSSController gnss(Serial1, 115200, 12,11,30);
 
 void loop() {
-  if(Serial1.peek() != -1){
-    Serial.println(Serial1.read());
-  }
+  // if(Serial1.peek() != -1){
+  //   Serial.println(Serial1.read());
+  // }
+  Serial.println(gnss.m_pos_llh.lat);
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();

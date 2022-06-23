@@ -35,14 +35,15 @@ private:
   void m_reset();
   void m_setLogFreq(int logFreq);
 
+  
+
+public:
   msg_pos_llh_t m_pos_llh;
   msg_baseline_ned_t m_baseline_ned;
   msg_vel_ned_t m_vel_ned;
   msg_dops_t m_dops;
   msg_gps_time_t m_gps_time;
   uint8_t m_mode;
-
-public:
   GNSSController(HardwareSerial &serial, uint32_t baud, uint8_t rx, uint8_t tx,
                  int logFreq);
   bool init();
