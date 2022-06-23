@@ -46,6 +46,10 @@ void loop() {
   //   Serial.println(Serial1.read());
   // }
   Serial.println(gnss.m_pos_llh.lat);
+  Serial.println("Test");
+
+  Serial.println(gnss.m_pos_llh.lon, 5);
+
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();

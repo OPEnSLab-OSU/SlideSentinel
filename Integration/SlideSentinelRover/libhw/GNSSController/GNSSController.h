@@ -34,6 +34,12 @@ private:
   void m_isFixed(uint8_t &flag);
   void m_reset();
   void m_setLogFreq(int logFreq);
+  
+  // void sbp_pos_llh_callback(u16, u8, u8[], void*);
+  // void sbp_baseline_ned_callback(u16, u8, u8[], void*);
+  // void sbp_vel_ned_callback(u16, u8, u8[], void*);
+  // void sbp_dops_callback(u16, u8, u8[], void*);
+  // void sbp_gps_time_callback(u16, u8, u8[], void*);
 
   
 
@@ -47,13 +53,16 @@ public:
   GNSSController(HardwareSerial &serial, uint32_t baud, uint8_t rx, uint8_t tx,
                  int logFreq);
   bool init();
-  uint8_t poll(SSModel &model);
+  //uint8_t poll(SSModel &model);
+  uint8_t poll();
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);
   void setup();
   void reset();
   void startTimer();
+
+
 };
 
 #endif // _GNSSCONTROLLER_H_
