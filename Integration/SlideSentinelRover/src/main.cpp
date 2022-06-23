@@ -39,16 +39,30 @@ void setup() {
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
-GNSSController gnss(Serial1, 115200, 12,11,30);
+GNSSController gnss1(Serial1, 115200, 12,11,30);
+
+bool hasBeenCalled = false;
 
 void loop() {
+  if(!hasBeenCalled){
+    gnss1.init();
+    hasBeenCalled = true;
+  }
+  
   // if(Serial1.peek() != -1){
   //   Serial.println(Serial1.read());
   // }
+<<<<<<< HEAD
   Serial.println(gnss.m_pos_llh.lat);
   Serial.println("Test");
 
   Serial.println(gnss.m_pos_llh.lon, 5);
+=======
+  gnss1.poll();
+  Serial.println(gnss1.m_pos_llh.lat);
+  Serial.println(gnss1.m_pos_llh.lon);
+  Serial.println(gnss1.m_pos_llh.height);
+>>>>>>> refs/remotes/origin/gnss-test
 
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {

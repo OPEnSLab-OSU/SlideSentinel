@@ -148,7 +148,9 @@ GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
     : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<RTK Mode>,<Week>,<Seconds>,"
                "<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
-               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(), m_convergenceTime(0), m_pollCycles(0) {}
+               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(), m_convergenceTime(0), m_pollCycles(0) {
+                 
+               }
 
 // bool because need to use in if statement
 bool GNSSController::init() {
@@ -243,8 +245,12 @@ void GNSSController::m_setBest() {
  * 1 - data collected
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
+<<<<<<< HEAD
 //uint8_t GNSSController::poll(SSModel &model) {
 uint8_t GNSSController::poll() {
+=======
+uint8_t GNSSController::poll(/*SSModel &model*/) {
+>>>>>>> refs/remotes/origin/gnss-test
   m_GNSSread();
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
@@ -257,7 +263,11 @@ uint8_t GNSSController::poll() {
            if (m_compare()) 
             m_setBest();
 
+<<<<<<< HEAD
             // // log the current reading from Swift
+=======
+            // log the current reading from Swift
+>>>>>>> refs/remotes/origin/gnss-test
             // model.setPos_llh(pos_llh); 
             // model.setBaseline_ned(baseline_ned);
             // model.setMsg_vel_ned_t(vel_ned); 

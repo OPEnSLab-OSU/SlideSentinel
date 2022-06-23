@@ -30,7 +30,7 @@ private:
   uint8_t m_getMode();
   void m_getModeStr(msg_pos_llh_t pos_llh, char rj[]);
   bool m_compare();
-  void m_setBest();
+ 
   void m_isFixed(uint8_t &flag);
   void m_reset();
   void m_setLogFreq(int logFreq);
@@ -50,11 +50,16 @@ public:
   msg_dops_t m_dops;
   msg_gps_time_t m_gps_time;
   uint8_t m_mode;
+   void m_setBest();
   GNSSController(HardwareSerial &serial, uint32_t baud, uint8_t rx, uint8_t tx,
                  int logFreq);
   bool init();
+<<<<<<< HEAD
   //uint8_t poll(SSModel &model);
   uint8_t poll();
+=======
+  uint8_t poll(/*SSModel &model*/);
+>>>>>>> refs/remotes/origin/gnss-test
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);
