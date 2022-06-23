@@ -54,12 +54,7 @@ public:
   GNSSController(HardwareSerial &serial, uint32_t baud, uint8_t rx, uint8_t tx,
                  int logFreq);
   bool init();
-<<<<<<< HEAD
-  //uint8_t poll(SSModel &model);
-  uint8_t poll();
-=======
   uint8_t poll(/*SSModel &model*/);
->>>>>>> refs/remotes/origin/gnss-test
   char *getFormat();
   void status(SSModel &model);
   void update(SSModel &model);

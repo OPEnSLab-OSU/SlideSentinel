@@ -245,12 +245,7 @@ void GNSSController::m_setBest() {
  * 1 - data collected
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
-<<<<<<< HEAD
-//uint8_t GNSSController::poll(SSModel &model) {
-uint8_t GNSSController::poll() {
-=======
 uint8_t GNSSController::poll(/*SSModel &model*/) {
->>>>>>> refs/remotes/origin/gnss-test
   m_GNSSread();
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
@@ -263,11 +258,7 @@ uint8_t GNSSController::poll(/*SSModel &model*/) {
            if (m_compare()) 
             m_setBest();
 
-<<<<<<< HEAD
-            // // log the current reading from Swift
-=======
             // log the current reading from Swift
->>>>>>> refs/remotes/origin/gnss-test
             // model.setPos_llh(pos_llh); 
             // model.setBaseline_ned(baseline_ned);
             // model.setMsg_vel_ned_t(vel_ned); 
