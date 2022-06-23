@@ -146,7 +146,9 @@ GNSSController::GNSSController(HardwareSerial &serial, uint32_t baud,
     : m_serial(serial), m_baud(baud), m_rx(rx), m_tx(tx), m_logFreq(logFreq),
       m_FORMAT("<RTK Mode>,<Week>,<Seconds>,"
                "<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
-               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(), m_convergenceTime(0), m_pollCycles(0) {}
+               ",<PDOP>,<TDOP>,<VDOP>"), m_timer(), m_convergenceTime(0), m_pollCycles(0) {
+                 
+               }
 
 bool GNSSController::init() {
   m_serial.begin(m_baud);
@@ -243,7 +245,7 @@ void GNSSController::m_setBest() {
  * 1 - data collected
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
  */
-uint8_t GNSSController::poll(SSModel &model) {
+uint8_t GNSSController::poll(/*SSModel &model*/) {
   m_GNSSread();
   uint8_t datFlag = 0;
   s8 ret = sbp_process(&sbp_state, fifo_read);
@@ -257,31 +259,31 @@ uint8_t GNSSController::poll(SSModel &model) {
             m_setBest();
 
             // log the current reading from Swift
-            model.setPos_llh(pos_llh); 
-            model.setBaseline_ned(baseline_ned);
-            model.setMsg_vel_ned_t(vel_ned); 
-            model.setMsg_dops_t(dops);
-            model.setMsg_gps_time_t(gps_time); 
-            model.setMode(m_getMode());
-            model.setProp(LOG_FREQ, m_logFreq);
+            // model.setPos_llh(pos_llh); 
+            // model.setBaseline_ned(baseline_ned);
+            // model.setMsg_vel_ned_t(vel_ned); 
+            // model.setMsg_dops_t(dops);
+            // model.setMsg_gps_time_t(gps_time); 
+            // model.setMode(m_getMode());
+            // model.setProp(LOG_FREQ, m_logFreq);
 
             // check if a fix occured on this wake cycle
             // calculate the new running average for fix convergence
             
-            if(m_getMode() == 4 && !m_convFlag){
-              m_pollCycles++;
-              m_convergenceTime *= (m_pollCycles - 1);
+            // if(m_getMode() == 4 && !m_convFlag){
+            //   m_pollCycles++;
+            //   m_convergenceTime *= (m_pollCycles - 1);
 
-              m_convFlag = true; 
-              //m_convergenceTime = ((m_convergenceTime + m_timer.stopwatch()) / float(m_pollCycles));
-              m_convergenceTime += m_timer.stopwatch();
-              m_convergenceTime /= m_pollCycles;
-            }
+            //   m_convFlag = true; 
+            //   //m_convergenceTime = ((m_convergenceTime + m_timer.stopwatch()) / float(m_pollCycles));
+            //   m_convergenceTime += m_timer.stopwatch();
+            //   m_convergenceTime /= m_pollCycles;
+            // }
             
 
-            // check if we acheived an RTK fix, reset internal variables
-            m_isFixed(datFlag); 
-            m_reset();
+            // // check if we acheived an RTK fix, reset internal variables
+            // m_isFixed(datFlag); 
+            // m_reset();
           );
 
   return datFlag;
