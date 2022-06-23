@@ -33,6 +33,7 @@ void setup() {
   SPI.begin();
   rover.powerDownRadio();
   rover.initRadio();
+  Serial1.begin(115200);
   // Serial1.begin(115200);
 }
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
@@ -40,7 +41,9 @@ enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for 
 static State state = WAKE;
 
 void loop() {
-
+  if(Serial1.peek() != -1){
+    Serial.println(Serial1.read());
+  }
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();
@@ -57,10 +60,10 @@ void loop() {
     case WAKE: 
 
       //Turns on radio and waits 20 seconds to properly initialize
-      rover.wake();
-      Serial.println("Radio enabled.");
+      //rover.wake();
+      //Serial.println("Radio enabled.");
       
-      state = HANDSHAKE;
+      //state = HANDSHAKE;
       break;
 
     /* Request communication from base, then return to sleep or intialize RTK process */
