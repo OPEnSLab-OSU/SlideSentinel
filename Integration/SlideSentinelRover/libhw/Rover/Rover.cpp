@@ -117,10 +117,30 @@ void Rover::printRTCTime(){
 
         m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
         m_RTC.writeSqwPinMode(DS3231_OFF); //interrupt mode
-        pinMode(RTC_INT, INPUT_PULLUP);
-         attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
-         SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;  //configure for deep sleep per cortex m0 docs
-         __WFI();
+        if(!intFired){
+            powerDownRadio();
+            delay(500);
+            powerRadio();
+            powerDownRadio();
+        
+            pinMode(RTC_INT, INPUT_PULLUP);
+            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,CHANGE);
+            Serial.println("Going to sleep...");
+            // /*Taken from old PMController code*/
+            // // Disable USB
+            // USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
+
+            // // Enter sleep mode
+            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+            EIC->WAKEUP.reg |= (1 << digitalPinToInterrupt(RTC_INT));
+            __DSB();
+            __WFI();
+            // // ...Sleep
+
+            // // Enable USB
+                
+            // USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
+        }
         
     }else{
 
@@ -131,6 +151,10 @@ void Rover::printRTCTime(){
         powerDownRadio();
         delay(500);
         powerRadio();
+        delay(8000);
+        Serial.println("Test1");
+        delay(5000);
+        Serial.println("Test2");
     }
 
 }
