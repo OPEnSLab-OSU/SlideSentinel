@@ -85,15 +85,36 @@ void Rover::debugRTCPrint(){
         Serial.println("RTC Failed");
     }
 }
-
+bool ranFirst = false;
 void Rover::printRTCTime(){
     char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
 
     //char* format = "DDD, DD MMM YYYY hh:mm:ss";
     Serial.print("time is: ");
     m_RTC.now().toString(timeStamp);
-
     Serial.println(timeStamp);
+    if(m_RTC.lostPower()){
+        m_RTC.adjust(m_RTC.now());
+        Serial.println("Lost Power");
+      
+    }
+    if(!ranFirst){
+        DateTime alarmDate(m_RTC.now()+20);
+
+        m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
+        ranFirst = true;
+    }
+    if(m_RTC.alarmFired(1)){
+        Serial.println("Alarm fired, rescheduling");
+        m_RTC.clearAlarm(1);
+        DateTime alarmDate(m_RTC.now()+20);
+
+        m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
+    }else{
+
+    }
+   
+
 }
 
 //prototype

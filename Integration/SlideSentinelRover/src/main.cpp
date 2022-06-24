@@ -9,7 +9,6 @@
 #include "MAX3243.h"
 #include "MAX4280.h"
 #include "PMController.h"
-#include "RTClibExtended.h"
 #include "SN74LVC2G53.h"
 #include "SSModel.h"
 #include "PoluluVRM.h"
