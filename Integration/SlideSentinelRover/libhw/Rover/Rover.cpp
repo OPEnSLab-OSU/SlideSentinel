@@ -86,6 +86,16 @@ void Rover::debugRTCPrint(){
     }
 }
 
+void Rover::printRTCTime(){
+    char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
+
+    //char* format = "DDD, DD MMM YYYY hh:mm:ss";
+    Serial.print("time is: ");
+    m_RTC.now().toString(timeStamp);
+
+    Serial.println(timeStamp);
+}
+
 //prototype
 uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
 char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];

@@ -78,6 +78,8 @@ public:
     /* Debug function for RTC to print out time*/
     void debugRTCPrint();
 
+    /* prints time from real time clock*/
+    void printRTCTime();
     
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID

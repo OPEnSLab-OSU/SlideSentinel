@@ -56,7 +56,7 @@ void loop() {
     case WAKE: 
 
       //Turns on radio and waits 20 seconds to properly initialize
-      rover.wake();
+     // rover.wake();
       Serial.println("Radio enabled.");
       rover.debugRTCPrint();
       state = HANDSHAKE;
@@ -64,6 +64,9 @@ void loop() {
 
     /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
+      delay(1000);
+      rover.printRTCTime();
+      //state = HANDSHAKE;
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
@@ -81,7 +84,7 @@ void loop() {
       state = HANDSHAKE;
       // Serial.println("Transitioning to handshake...");
       // delay(2000);
-      rover.listen();
+     // rover.listen();
       break;
       
 
