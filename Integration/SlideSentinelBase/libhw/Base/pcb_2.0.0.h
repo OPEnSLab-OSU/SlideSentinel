@@ -27,5 +27,5 @@
 
 /****** RTCController ******/
 #define RTC_INT 5
-#define INIT_WAKETIME 3         // minutes
-#define INIT_SLEEPTIME 2       	// minutes
+#define INIT_WAKETIME 15         // minutes
+#define INIT_SLEEPTIME 15       	// minutes
