@@ -2,6 +2,7 @@
 #include <Wire.h>
 
 
+
 /* Ran on first bootup of Main. Pass in */
 Rover::Rover() :    m_max4280(MAX_CS, &SPI), 
                     m_multiplex(SPDT_SEL, -1),
@@ -110,10 +111,11 @@ void Rover::printRTCTime(){
         DateTime alarmDate(m_RTC.now()+20);
 
         m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
+        m_RTC.writeSqwPinMode(DS3231_OFF); //interrupt mode
+        
     }else{
 
     }
-   
 
 }
 
