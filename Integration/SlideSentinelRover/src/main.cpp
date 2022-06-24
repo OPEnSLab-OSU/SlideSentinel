@@ -120,6 +120,7 @@ void loop() {
       // 1. Turn off everything
       // 2. Set wake alarm
       // 3. Wait for interrupt
+      __WFI(); //wait for interrupt
       
       Serial.println("Transitioning to WAKE...");
       state = WAKE;

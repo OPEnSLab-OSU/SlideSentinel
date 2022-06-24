@@ -1,5 +1,6 @@
 #include "Rover.h"
 #include <Wire.h>
+// #include <avr/sleep.h>
 
 
 
@@ -87,6 +88,10 @@ void Rover::debugRTCPrint(){
     }
 }
 bool ranFirst = false;
+bool intFired = false;
+void fire_int(){
+    intFired = true;
+}
 void Rover::printRTCTime(){
     char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
 
@@ -112,9 +117,20 @@ void Rover::printRTCTime(){
 
         m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
         m_RTC.writeSqwPinMode(DS3231_OFF); //interrupt mode
+        pinMode(RTC_INT, INPUT_PULLUP);
+         attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
+         SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;  //configure for deep sleep per cortex m0 docs
+         __WFI();
         
     }else{
 
+    }
+    if(intFired){
+        // Serial.println("Interrupt fired");
+        intFired=!intFired;
+        powerDownRadio();
+        delay(500);
+        powerRadio();
     }
 
 }
@@ -150,6 +166,7 @@ void Rover::powerDownGNSS(){
     Serial.println("Powering GNSS down.");
     m_max4280.assertRail(3);
 }
+
 
 void Rover::setMux(MuxFormat format){
     if(format == RadioToFeather){
