@@ -89,8 +89,12 @@ void Rover::debugRTCPrint(){
 }
 bool ranFirst = false;
 bool intFired = false;
+
 void fire_int(){
+    detachInterrupt(digitalPinToInterrupt(5)); //use built-in led to diagnose
+    digitalWrite(LED_BUILTIN, HIGH);
     intFired = true;
+    
 }
 void Rover::printRTCTime(){
     char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
@@ -99,13 +103,41 @@ void Rover::printRTCTime(){
     Serial.print("time is: ");
     m_RTC.now().toString(timeStamp);
     Serial.println(timeStamp);
+
     if(m_RTC.lostPower()){
         m_RTC.adjust(m_RTC.now());
         Serial.println("Lost Power");
       
     }
+
+    // First execute
     if(!ranFirst){
-        DateTime alarmDate(m_RTC.now()+20);
+        pinMode(RTC_INT, INPUT_PULLUP);
+        DateTime alarmDate(m_RTC.now() + 5);
+        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
+        Serial.println("Ran First!");
+        ranFirst = true;
+    }
+    
+    // If the alarm was triggered
+    if(m_RTC.alarmFired(1)){
+        
+        m_RTC.clearAlarm(1);
+        DateTime alarmDate(m_RTC.now() + 5);
+        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
+        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
+        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
+        
+        digitalWrite(LED_BUILTIN, LOW);
+        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+        __DSB();
+        __WFI();
+    }
+
+    
+    /*
+    if(!ranFirst){
+        DateTime alarmDate(m_RTC.now()+5);
 
         m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
         ranFirst = true;
@@ -113,7 +145,7 @@ void Rover::printRTCTime(){
     if(m_RTC.alarmFired(1)){
         Serial.println("Alarm fired, rescheduling");
         m_RTC.clearAlarm(1);
-        DateTime alarmDate(m_RTC.now()+20);
+        DateTime alarmDate(m_RTC.now()+5);
 
         m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
         m_RTC.writeSqwPinMode(DS3231_OFF); //interrupt mode
@@ -124,29 +156,34 @@ void Rover::printRTCTime(){
             powerDownRadio();
         
             pinMode(RTC_INT, INPUT_PULLUP);
-            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,CHANGE);
+            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
+            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
+            digitalWrite(LED_BUILTIN, LOW);
+
             Serial.println("Going to sleep...");
             // /*Taken from old PMController code*/
-            // // Disable USB
-            // USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
+            // // // Disable USB
+            // // USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
 
-            // // Enter sleep mode
-            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-            EIC->WAKEUP.reg |= (1 << digitalPinToInterrupt(RTC_INT));
-            __DSB();
-            __WFI();
+            // // // Enter sleep mode
+       
+            // EIC->WAKEUP.reg |= (1 << digitalPinToInterrupt(RTC_INT));
+        //    __DSB();
+        //    __WFI();
             // // ...Sleep
 
             // // Enable USB
                 
             // USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-        }
+            
+        //}
         
-    }else{
+    //}else{
 
-    }
+   // } 
+   
     if(intFired){
-        // Serial.println("Interrupt fired");
+        Serial.println("Interrupt fired");
         intFired=!intFired;
         powerDownRadio();
         delay(500);

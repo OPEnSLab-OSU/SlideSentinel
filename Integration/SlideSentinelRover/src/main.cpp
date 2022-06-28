@@ -26,11 +26,14 @@ Rover rover;
 
 void setup() {
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
   delay(3500);           //delay to allow screening in
   Serial.println("Initializing Setup");
   SPI.begin();
   rover.powerDownRadio();
   rover.initRadio();
+  // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
   // Serial1.begin(115200);
 }
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
@@ -64,6 +67,7 @@ void loop() {
     /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
       delay(1000);
+
       rover.printRTCTime();
       //state = HANDSHAKE;
 
