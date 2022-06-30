@@ -96,6 +96,112 @@ void fire_int(){
     intFired = true;
     
 }
+
+// https://forum.arduino.cc/t/ds3231-read-time-error/909413/3
+void Rover::printRTCTime_Ben(RTC_DS3231 rtc) {
+    char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+    byte myHour = nowDT.hour();
+    byte myMin = nowDT.minute(); //to show leading zero of minute
+    byte mySec = nowDT.second();
+    byte myDay = nowDT.day();
+    byte myMonth = nowDT.month();
+    
+    nowDT = rtc.now();
+
+    if (myHour < 10) {
+        Serial.print('0');
+    }
+    Serial.print(myHour); Serial.print(':'); //12:58:57     
+
+    if (myMin < 10) {
+        Serial.print('0');
+    }
+    Serial.print(nowDT.minute()); Serial.print(':');
+    //--------------------------------------------------
+    if (mySec < 10) {
+        Serial.print('0');
+    }
+    Serial.print(mySec);//(nowDT.second(), DEC);
+    //----------------------------------------- `
+    Serial.print("  ");
+    Serial.print(daysOfTheWeek[nowDT.dayOfTheWeek()]); Serial.print(' ');
+    
+    if (myDay < 10) {
+        Serial.print('0');
+    }
+    Serial.print(myDay); Serial.print(':');
+    //-----------------------------------------------------
+    if (myMonth < 10) {
+        Serial.print('0');
+    }
+    Serial.print(nowDT. month()); Serial.print(':');
+    Serial.println(nowDT.year());
+}
+
+void Rover::timeDelay(RTC_DS3231 rtc) {
+  byte prSec = 0;
+  prSec = bcdSecond(rtc);   //current second of RTC
+  while (bcdSecond(rtc) == prSec) // != 1 )
+  {
+    ;
+  }
+  prSec = bcdSecond(rtc); //delay(1000);
+}
+
+byte Rover::bcdSecond(RTC_DS3231 rtc) {
+  nowDT = rtc.now();
+  if (nowDT.second() == 0 )
+  {
+    return 0;
+  }
+  else
+  {
+    return nowDT.second();
+  }
+}
+
+void Rover::rtc_alarm(RTC_DS3231 rtc) {
+    if (rtc.lostPower()) {
+        rtc.adjust(m_RTC.now());
+        Serial.println("Lost Power");
+    }
+
+    // First execute
+    if (!ranFirst) {
+        pinMode(RTC_INT, INPUT_PULLUP);
+        DateTime alarmDate(rtc.now() + 5);
+        rtc.setAlarm1(alarmDate, DS3231_A1_Second);
+        Serial.println("Ran First!");
+        ranFirst = true;
+    }
+
+    if (rtc.alarmFired(1)) {
+        rtc.clearAlarm(1);
+        DateTime alarmDate(rtc.now() + 5);
+        rtc.setAlarm1(alarmDate, DS3231_A1_Second);
+        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
+        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     
+        digitalWrite(LED_BUILTIN, LOW);
+        // -- Not sure what this line does or its intention, but it stops the loop
+        //SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+        __DSB();
+        __WFI();
+    }
+
+    if (intFired) {
+        Serial.println("Interrupt fired");
+        intFired=!intFired;
+        powerDownRadio();
+        delay(500);
+        powerRadio();
+        delay(8000);
+        Serial.println("Test1");
+        delay(5000);
+        Serial.println("Test2");
+    }
+
+}
+
 void Rover::printRTCTime(){
     char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
 

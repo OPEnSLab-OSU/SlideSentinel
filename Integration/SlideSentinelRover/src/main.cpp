@@ -21,8 +21,11 @@
 #include "FeatherTrace.h"
 #include "Rover.h"
 
-
+// Improve:
+// - Make these vars accessible in their respective object rather than being global,
+//  it's viable right now.
 Rover rover;
+RTC_DS3231 m_RTC_main;
 
 void setup() {
   Serial.begin(115200);
@@ -33,6 +36,8 @@ void setup() {
   SPI.begin();
   rover.powerDownRadio();
   rover.initRadio();
+  m_RTC_main.begin();
+  m_RTC_main.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
   // Serial1.begin(115200);
 }
@@ -67,8 +72,10 @@ void loop() {
     /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
       delay(1000);
-
-      rover.printRTCTime();
+      //rover.printRTCTime();
+      rover.printRTCTime_Ben(m_RTC_main);
+      rover.timeDelay(m_RTC_main);
+      rover.rtc_alarm(m_RTC_main);
       //state = HANDSHAKE;
 
       // 1. Send message to base, radiohead will tell us if it receives it

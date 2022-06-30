@@ -81,6 +81,10 @@ public:
     /* prints time from real time clock*/
     void printRTCTime();
 
+    void printRTCTime_Ben(RTC_DS3231);
+    void timeDelay(RTC_DS3231);
+    byte bcdSecond(RTC_DS3231);
+    void rtc_alarm(RTC_DS3231);
 
     
 private:
@@ -91,7 +95,9 @@ private:
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
     RTC_DS3231 m_RTC;               //Real time clock object
-
+    RTC_DS3231 m_RTC_2;
+    DateTime nowDT;
+    byte prSec = 0;
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:
