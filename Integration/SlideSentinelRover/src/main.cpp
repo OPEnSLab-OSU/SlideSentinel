@@ -36,16 +36,35 @@ void setup() {
   SPI.begin();
   rover.powerDownRadio();
   rover.initRadio();
+
   m_RTC_main.begin();
   m_RTC_main.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
+
+  Serial1.begin(115200);
+
   // Serial1.begin(115200);
 }
 enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
+GNSSController gnss1(Serial1, 115200, 12,11,30);
+
+bool hasBeenCalled = false;
 
 void loop() {
+  if(!hasBeenCalled){
+    gnss1.init();
+    hasBeenCalled = true;
+  }
+  
+  // if(Serial1.peek() != -1){
+  //   Serial.println(Serial1.read());
+  // }
+  gnss1.poll();
+  Serial.println(gnss1.m_pos_llh.lat, 10);
+  Serial.println(gnss1.m_pos_llh.lon, 10);
+  Serial.println(gnss1.m_pos_llh.height);
 
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {

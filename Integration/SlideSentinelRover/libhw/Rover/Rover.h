@@ -86,6 +86,10 @@ public:
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm(RTC_DS3231);
 
+    /* RTC Final Functions */
+
+
+
     
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID

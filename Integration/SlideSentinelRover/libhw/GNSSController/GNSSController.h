@@ -98,27 +98,22 @@ private:
    * @param logFreq Current Log frequency in the Properties Class
    */
   void m_setLogFreq(int logFreq);
+  
+  // void sbp_pos_llh_callback(u16, u8, u8[], void*);
+  // void sbp_baseline_ned_callback(u16, u8, u8[], void*);
+  // void sbp_vel_ned_callback(u16, u8, u8[], void*);
+  // void sbp_dops_callback(u16, u8, u8[], void*);
+  // void sbp_gps_time_callback(u16, u8, u8[], void*);
 
-  /**
-   * Various structures holding data gathered from 
-   * the piksi and transfered here. These structs are 
-   * copies of the structs provided by Swift Navigation, 
-   * used here to store the data locally.
-   */
+  
+
+public:
   msg_pos_llh_t m_pos_llh;
   msg_baseline_ned_t m_baseline_ned;
   msg_vel_ned_t m_vel_ned;
   msg_dops_t m_dops;
   msg_gps_time_t m_gps_time;
-  uint8_t m_mode; ///< RTK mode: 4 = Fix, 3 = Float, etc.
-
-public:
-
-  /**
-   * Class Constructor for GNSSController. Passes necessary info to 
-   * start the class such as pins used from the feather, Hardware Serial 
-   * info, and Log Frequency property.
-   */
+  uint8_t m_mode;
   GNSSController(HardwareSerial &serial, uint32_t baud, uint8_t rx, uint8_t tx,
                  int logFreq);
 
@@ -128,29 +123,7 @@ public:
    * @return Returns true. 
    */
   bool init();
-
-  /**
-   * This function polls for new GNSS data collected by the Piksi
-   * for the duration of the wake cycle (Specified by the Property). 
-   * If the newest packet of data is better than the current best, it 
-   * updates the structs in SSModel with the new data. Additionally, 
-   * When/If an RTK fix is reached, it calculates the new running average 
-   * time it took to reach a Fix and updates the ConvergenceTime var with it.
-   * @param model Pointer to the SSModel object. Needed to update struct data.
-   * @return Returns true if a fix is reached. (Not currently used for anything).
-   */
-  uint8_t poll(SSModel &model);
-
-  /**
-   * Returns the m_FORMAT string that is hardcoded in this class. 
-   * This string is written to the beginning of each DATA.json file on 
-   * the SD card to help readers interpret the values of each index in the 
-   * packets.
-   * "<RTK Mode>,<Week>,<Seconds>,"
-     "<Latitude>,<Longitude,<Height>,<Satellites>,<GDOP>,<HDOP>"
-     ",<PDOP>,<TDOP>,<VDOP>"
-   * @return the Format string.
-   */
+  uint8_t poll(/*SSModel &model*/);
   char *getFormat();
 
   /**
@@ -194,6 +167,8 @@ public:
    *
    */
   void startTimer();
+
+
 };
 
 #endif // _GNSSCONTROLLER_H_
