@@ -190,10 +190,10 @@ void Rover::scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode) {
 }
 
 void Rover::scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode){
-    scheduleAlarm(INIT_WAKETIME, alarmMode);
+    scheduleAlarm(INIT_WAKETIME*60, alarmMode);
 }
 void Rover::scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode){
-    scheduleAlarm(INIT_SLEEPTIME, alarmMode);
+    scheduleAlarm(INIT_SLEEPTIME*60, alarmMode);
 }
 
 void Rover::rtc_alarm() {

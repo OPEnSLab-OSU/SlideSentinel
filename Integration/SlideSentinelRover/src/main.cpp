@@ -45,20 +45,20 @@ void setup() {
 enum State { WAKE, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
-
+// GNSSController gnss1(Serial1, 115200, 12,11,30);
 
 bool hasBeenCalled = false;
 
 void loop() {
   if(!hasBeenCalled){
-    gnss1.init();
+    // gnss1.init();
     hasBeenCalled = true;
   }
   
   // if(Serial1.peek() != -1){
   //   Serial.println(Serial1.read());
   // }
-  gnss1.poll();
+  // gnss1.poll();
   Serial.println(gnss1.m_pos_llh.lat, 10);
   Serial.println(gnss1.m_pos_llh.lon, 10);
   Serial.println(gnss1.m_pos_llh.height);
