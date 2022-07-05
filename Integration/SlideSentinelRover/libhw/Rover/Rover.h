@@ -69,11 +69,39 @@ public:
     /* Tells the max4820 to disable the GNSS relay. */
     void powerDownGNSS();
 
-    /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
+/***ALARM FUNCTIONS******************************************************************************************************************************************/
+  
+    /** Schedule alarm for the RTK process when base and rover are talking to each other 
+     * 
+     * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
+    */
+    void scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode);
+
+    /** Schedule alarm for sleep alarm when rover is asleep 
+     * 
+     * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
+    */
+    void scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode);
+
+    /** Versatile alarm function for custom sleep times
+     * 
+     * @param sec       Time in seconds that an alarm will be scheduled for in the future 
+     * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
+
+    */
+    void scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode); 
+
+    /** Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact. Ensure
+     *  alarm is set no longer than 59 minutes in the future. 
+     * 
+     * @param format    The route that the multiplexer will use
+    */
     void setMux(MuxFormat format);
 
     /* Initialize RadioHead objects */
     void initRadio();
+
+
 
     /* Debug function for RTC to print out time*/
     void debugRTCPrint();
@@ -81,10 +109,10 @@ public:
     /* prints time from real time clock*/
     void printRTCTime();
 
-    void printRTCTime_Ben(RTC_DS3231);
-    void timeDelay(RTC_DS3231);
+    void printRTCTime_Ben();
+    void timeDelay();
     byte bcdSecond(RTC_DS3231);
-    void rtc_alarm(RTC_DS3231);
+    void rtc_alarm();
 
     /* RTC Final Functions */
 
@@ -99,9 +127,9 @@ private:
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
     RHReliableDatagram m_RHManager;         //RadioHead communication manager class
     RTC_DS3231 m_RTC;               //Real time clock object
-    RTC_DS3231 m_RTC_2;
     DateTime nowDT;
     byte prSec = 0;
+    // GNSSController gnss1(Serial1, 115200, 12,11,30);
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

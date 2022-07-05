@@ -17,7 +17,11 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_rovInfo.timeout = INIT_TIMEOUT;
     m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     m_RHMessage["TYPE"] = "";
-    m_RHMessage["MSG"] = "";    
+    m_RHMessage["MSG"] = "";
+
+    //begin rtc and populate it with the current datetime
+    m_RTC.begin();
+    m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec    
 }
 
 void Rover::initRadio(){
@@ -42,6 +46,7 @@ void Rover::wake(){
 bool Rover::request(){
     //TDL: Conditionally enable max3243
     setMux(RadioToFeather);
+    delay(5);
     JsonObject RHJson = m_RHMessage.to<JsonObject>();
     //wipe message first
 
@@ -97,8 +102,11 @@ void fire_int(){
     
 }
 
+
+
+
 // https://forum.arduino.cc/t/ds3231-read-time-error/909413/3
-void Rover::printRTCTime_Ben(RTC_DS3231 rtc) {
+void Rover::printRTCTime_Ben() {
     char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
     byte myHour = nowDT.hour();
     byte myMin = nowDT.minute(); //to show leading zero of minute
@@ -106,7 +114,7 @@ void Rover::printRTCTime_Ben(RTC_DS3231 rtc) {
     byte myDay = nowDT.day();
     byte myMonth = nowDT.month();
     
-    nowDT = rtc.now();
+    nowDT = m_RTC.now();
 
     if (myHour < 10) {
         Serial.print('0');
@@ -138,14 +146,14 @@ void Rover::printRTCTime_Ben(RTC_DS3231 rtc) {
     Serial.println(nowDT.year());
 }
 
-void Rover::timeDelay(RTC_DS3231 rtc) {
+void Rover::timeDelay() {
   byte prSec = 0;
-  prSec = bcdSecond(rtc);   //current second of RTC
-  while (bcdSecond(rtc) == prSec) // != 1 )
+  prSec = bcdSecond(m_RTC);   //current second of RTC
+  while (bcdSecond(m_RTC) == prSec) // != 1 )
   {
     ;
   }
-  prSec = bcdSecond(rtc); //delay(1000);
+  prSec = bcdSecond(m_RTC); //delay(1000);
 }
 
 byte Rover::bcdSecond(RTC_DS3231 rtc) {
@@ -160,25 +168,53 @@ byte Rover::bcdSecond(RTC_DS3231 rtc) {
   }
 }
 
-void Rover::rtc_alarm(RTC_DS3231 rtc) {
-    if (rtc.lostPower()) {
-        rtc.adjust(m_RTC.now());
+void Rover::scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode) {
+    m_RTC.clearAlarm(1);
+    m_RTC.clearAlarm(2);
+
+    m_RTC.writeSqwPinMode(DS3231_OFF);
+
+    // turn off alarm 2 (in case it isn't off already)
+    // again, this isn't done at reboot, so a previously set alarm could easily go overlooked
+    m_RTC.disableAlarm(2);
+
+    ////set alarm and configure alarm to activate every time minutes and seconds match
+    if (!m_RTC.setAlarm1( m_RTC.now() + TimeSpan(sec), alarmMode)) { 
+        Serial.println("Error, no alarm set!");
+    }
+    else {
+        Serial.print("Alarm will happen in ");
+        Serial.print((String)sec);
+        Serial.println(" seconds!");
+    }
+}
+
+void Rover::scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode){
+    scheduleAlarm(INIT_WAKETIME, alarmMode);
+}
+void Rover::scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode){
+    scheduleAlarm(INIT_SLEEPTIME, alarmMode);
+}
+
+void Rover::rtc_alarm() {
+    if (m_RTC.lostPower()) {
+        m_RTC.adjust(m_RTC.now());
         Serial.println("Lost Power");
     }
 
     // First execute
     if (!ranFirst) {
         pinMode(RTC_INT, INPUT_PULLUP);
-        DateTime alarmDate(rtc.now() + 5);
-        rtc.setAlarm1(alarmDate, DS3231_A1_Second);
+        DateTime alarmDate(m_RTC.now() + 5);
+        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
         Serial.println("Ran First!");
         ranFirst = true;
     }
 
-    if (rtc.alarmFired(1)) {
-        rtc.clearAlarm(1);
-        DateTime alarmDate(rtc.now() + 5);
-        rtc.setAlarm1(alarmDate, DS3231_A1_Second);
+    if (m_RTC.alarmFired(1)) {
+        m_RTC.clearAlarm(1);
+        DateTime alarmDate(m_RTC.now() + 5);
+        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
         attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
         attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     
         digitalWrite(LED_BUILTIN, LOW);
@@ -190,7 +226,7 @@ void Rover::rtc_alarm(RTC_DS3231 rtc) {
 
     if (intFired) {
         Serial.println("Interrupt fired");
-        intFired=!intFired;
+        intFired=!intFired;  
         powerDownRadio();
         delay(500);
         powerRadio();

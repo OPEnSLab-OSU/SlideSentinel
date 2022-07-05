@@ -25,7 +25,6 @@
 // - Make these vars accessible in their respective object rather than being global,
 //  it's viable right now.
 Rover rover;
-RTC_DS3231 m_RTC_main;
 
 void setup() {
   Serial.begin(115200);
@@ -37,18 +36,16 @@ void setup() {
   rover.powerDownRadio();
   rover.initRadio();
 
-  m_RTC_main.begin();
-  m_RTC_main.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
   Serial1.begin(115200);
 
   // Serial1.begin(115200);
 }
-enum State { WAKE, HANDSHAKE, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
+enum State { WAKE, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = WAKE;
-GNSSController gnss1(Serial1, 115200, 12,11,30);
+
 
 bool hasBeenCalled = false;
 
@@ -82,47 +79,42 @@ void loop() {
     case WAKE: 
 
       //Turns on radio and waits 20 seconds to properly initialize
-     // rover.wake();
+      rover.wake();
       Serial.println("Radio enabled.");
-      rover.debugRTCPrint();
       state = HANDSHAKE;
       break;
 
     /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
       delay(1000);
-      //rover.printRTCTime();
-      rover.printRTCTime_Ben(m_RTC_main);
-      rover.timeDelay(m_RTC_main);
-      rover.rtc_alarm(m_RTC_main);
-      //state = HANDSHAKE;
+
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
-      
-      // if(rover.request()){
-      //   Serial.println("Transitioning to UPDATE...");
 
-      //   state = UPDATE;
-      // }else{
-      //   state = SLEEP;
-      //   break;
-      // }
-      // rover.request();
-      // Serial1.println("Test");
-      state = HANDSHAKE;
-      // Serial.println("Transitioning to handshake...");
-      // delay(2000);
-     // rover.listen();
+      if(rover.request()){
+
+        Serial.println("Contact established... transitioning to poll");
+        state = POLL;
+
+      }else{
+
+        Serial.println("Unable to communicate with base.");
+        state = SLEEP;  //transistion to sleep upon failed communication
+
+      }
       break;
-      
 
     /* Transition to RTK, turn on GNSS */
-    case UPDATE: MARK;
+    case PREPOLL: MARK;
 
       // 1. Turn on GNSS
       // 2. Set and start gnss timer
       // 3. Set multiplexer so received radio input is piped to GNSS
+      
+      rover.powerGNSS();
+      rover.scheduleRTKAlarm();
+      rover.setMux(Rover::RadioToGNSS);
       
       state = POLL;
       break;
@@ -133,6 +125,9 @@ void loop() {
       // 1. Poll GNSS 
       // 2. Log data if data is at threshold 
       // 3. Check if timer is done, if so, transition
+
+
+
       state = UPLOAD;
       break;
 
