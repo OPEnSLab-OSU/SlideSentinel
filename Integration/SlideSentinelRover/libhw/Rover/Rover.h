@@ -75,13 +75,13 @@ public:
      * 
      * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
     */
-    void scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode);
+    void scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode = DS3231_A1_Minute);
 
     /** Schedule alarm for sleep alarm when rover is asleep 
      * 
      * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
     */
-    void scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode);
+    void scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode = DS3231_A1_Minute);
 
     /** Versatile alarm function for custom sleep times
      * 
@@ -89,7 +89,7 @@ public:
      * @param alarmMode The alarm type. Typically  DS3231_A1_Minute is used, triggering every hour when minutes and seconds match.
 
     */
-    void scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode); 
+    void scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode = DS3231_A1_Minute); 
 
     /** Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact. Ensure
      *  alarm is set no longer than 59 minutes in the future. 
@@ -101,13 +101,20 @@ public:
     /* Initialize RadioHead objects */
     void initRadio();
 
-
+    /* initialize rtc */
+    void initRTC();
 
     /* Debug function for RTC to print out time*/
     void debugRTCPrint();
 
     /* prints time from real time clock*/
     void printRTCTime();
+
+    /* Attach RTC interrupt to device */
+    void attachAlarmInterrupt();
+
+    /* Sleep and wake from interrupt*/
+    void toSleep();
 
     void printRTCTime_Ben();
     void timeDelay();

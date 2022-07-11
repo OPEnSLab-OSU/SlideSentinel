@@ -20,10 +20,15 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     m_RHMessage["MSG"] = "";
 
     //begin rtc and populate it with the current datetime
-    m_RTC.begin();
-    m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec    
-}
 
+    delay(2000);
+    // m_RTC.begin();
+    // m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec    
+}
+void Rover::initRTC(){
+    m_RTC.begin();
+    m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
+}
 void Rover::initRadio(){
     m_serial.begin(115200);
 
@@ -236,6 +241,18 @@ void Rover::rtc_alarm() {
         Serial.println("Test2");
     }
 
+}
+
+void Rover::attachAlarmInterrupt(){
+    attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
+    attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     //@will richards. attached twice because it works?     
+}
+
+void Rover::toSleep(){
+    /* Standard sleep code for microcontrollers */
+    digitalWrite(LED_BUILTIN, LOW);
+    __DSB();    //data sync bus function for stability, refer to m0 cpu documentation for more info
+    __WFI();    //wait for interrupt/puts device to sleep
 }
 
 void Rover::printRTCTime(){
