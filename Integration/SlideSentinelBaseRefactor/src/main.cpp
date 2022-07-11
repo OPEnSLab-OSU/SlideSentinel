@@ -19,6 +19,8 @@ void setup(){
 
     // Initialize the components used by the base
     base.initBase();
+
+    base.powerRadio();
 }
 
 // Enum to track the currrent state the Base is in, default to waiting for data

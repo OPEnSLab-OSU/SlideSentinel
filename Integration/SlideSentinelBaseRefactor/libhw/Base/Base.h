@@ -60,17 +60,7 @@ class Base {
         /* Waits for input over serial to output debug information about the base */
         void debugInformation();
 
-    private:
-        BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
-        MAX4280 m_max4280;                      // Relay driver, used to power on relays controlling GNSS/Radio
-        SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
-        RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
-        SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
-        
-        Diagnostics  m_baseDiagnostics;         // Diagnostics  to track debug information about the base
-        Diagnostics *m_roverDiagnostics;        // Pointer array of rover diagnostic information
-
-        /* Tells the max4820 to enable the radio relay. */
+           /* Tells the max4820 to enable the radio relay. */
         void powerRadio();
 
         /* Tells the max4820 to disable the radio relay. */
@@ -84,4 +74,16 @@ class Base {
 
         /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
         void setMux(MuxFormat format);
+
+    private:
+        BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
+        MAX4280 m_max4280;                      // Relay driver, used to power on relays controlling GNSS/Radio
+        SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
+        RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
+        SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
+        
+        Diagnostics  m_baseDiagnostics;         // Diagnostics  to track debug information about the base
+        Diagnostics *m_roverDiagnostics;        // Pointer array of rover diagnostic information
+
+     
     };
