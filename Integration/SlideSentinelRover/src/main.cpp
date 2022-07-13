@@ -53,9 +53,9 @@ void setup() {
 
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
-  Serial1.begin(115200);
+  //Serial1.begin(115200);
 
-  // Serial1.begin(115200);
+  Serial1.begin(19200);
 }
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
@@ -97,7 +97,7 @@ void loop() {
       delay(1000);
       Serial.println("Radio enabled.");
 
-      state = SLEEP;
+      state = WAKE;
       break;
 
     /* Wake up from sleep */
@@ -113,6 +113,8 @@ void loop() {
     case HANDSHAKE: //MARK;
       delay(1000);
 
+      Serial.println("I'm in handshake");
+      rover.sendManualMsg("Hello");
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
@@ -125,10 +127,10 @@ void loop() {
       // }else{
 
       //   Serial.println("Unable to communicate with base.");
-      //   state = SLEEP;  //transistion to sleep upon failed communication
+      state = SLEEP;  //transistion to sleep upon failed communication
 
       // }
-      // break;
+      break;
 
     /* Transition to RTK, turn on GNSS */
     case PREPOLL: MARK;
