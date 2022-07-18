@@ -121,6 +121,10 @@ public:
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm();
 
+
+    bool transmit();
+
+    bool uploadData();
     /* RTC Final Functions */
 
 
@@ -136,7 +140,7 @@ private:
     RTC_DS3231 m_RTC;               //Real time clock object
     DateTime nowDT;
     byte prSec = 0;
-    // GNSSController gnss1(Serial1, 115200, 12,11,30);
+    GNSSController m_gnss(Serial1, 115200, 12,11,30);   //gnss controller that handles data incoming into the feather from piksi
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

@@ -162,7 +162,7 @@ void loop() {
       
       // 1. Turn off GNSS
       // 2. Send data to base
-    
+      rover.uploadData();
 
       state = SLEEP;
       break;

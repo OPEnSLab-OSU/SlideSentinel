@@ -51,6 +51,7 @@ void Rover::wake(){
 }
 
 bool Rover::request(){
+
     //TDL: Conditionally enable max3243
     setMux(RadioToFeather);
     delay(5);
@@ -62,6 +63,12 @@ bool Rover::request(){
     // Serial.println(m_RHMessage);
     // String RHMessageStr = "";
 
+    return transmit();
+}
+bool Rover::uploadData(){
+    return transmit();
+}
+bool Rover::transmit(){
     //serialize json object into a string format
     char processedRHMessage[255];
     serializeJson(RHJson, processedRHMessage);
@@ -70,8 +77,7 @@ bool Rover::request(){
     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
 
     //will block while waiting on timeout, should be 2-4 seconds by default
-    bool status = m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHJson), SERVER_ADDR);
-    return status;
+    return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHJson), SERVER_ADDR);
 }
 
 void Rover::sendManualMsg(char* msg){
