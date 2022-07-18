@@ -25,10 +25,12 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
     // m_RTC.begin();
     // m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec    
 }
+
 void Rover::initRTC(){
     m_RTC.begin();
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
+
 void Rover::initRadio(){
     m_serial.begin(115200);
 
@@ -97,18 +99,11 @@ void Rover::debugRTCPrint(){
         Serial.println("RTC Failed");
     }
 }
-bool ranFirst = false;
-bool intFired = false;
 
 void fire_int(){
     detachInterrupt(digitalPinToInterrupt(5)); //use built-in led to diagnose
     digitalWrite(LED_BUILTIN, HIGH);
-    intFired = true;
-    
 }
-
-
-
 
 // https://forum.arduino.cc/t/ds3231-read-time-error/909413/3
 void Rover::printRTCTime_Ben() {
@@ -197,50 +192,9 @@ void Rover::scheduleAlarm(int sec, Ds3231Alarm1Mode alarmMode) {
 void Rover::scheduleRTKAlarm(Ds3231Alarm1Mode alarmMode){
     scheduleAlarm(INIT_WAKETIME*60, alarmMode);
 }
+
 void Rover::scheduleSleepAlarm(Ds3231Alarm1Mode alarmMode){
     scheduleAlarm(INIT_SLEEPTIME*60, alarmMode);
-}
-
-void Rover::rtc_alarm() {
-    if (m_RTC.lostPower()) {
-        m_RTC.adjust(m_RTC.now());
-        Serial.println("Lost Power");
-    }
-
-    // First execute
-    if (!ranFirst) {
-        pinMode(RTC_INT, INPUT_PULLUP);
-        DateTime alarmDate(m_RTC.now() + 5);
-        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
-        Serial.println("Ran First!");
-        ranFirst = true;
-    }
-
-    if (m_RTC.alarmFired(1)) {
-        m_RTC.clearAlarm(1);
-        DateTime alarmDate(m_RTC.now() + 5);
-        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
-        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
-        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     
-        digitalWrite(LED_BUILTIN, LOW);
-        // -- Not sure what this line does or its intention, but it stops the loop
-        //SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-        __DSB();
-        __WFI();
-    }
-
-    if (intFired) {
-        Serial.println("Interrupt fired");
-        intFired=!intFired;  
-        powerDownRadio();
-        delay(500);
-        powerRadio();
-        delay(8000);
-        Serial.println("Test1");
-        delay(5000);
-        Serial.println("Test2");
-    }
-
 }
 
 void Rover::attachAlarmInterrupt(){
@@ -255,109 +209,10 @@ void Rover::toSleep(){
     __WFI();    //wait for interrupt/puts device to sleep
 }
 
-void Rover::printRTCTime(){
-    char timeStamp[] = "DD/MM/YYYY hh:mm:ss";
-
-    //char* format = "DDD, DD MMM YYYY hh:mm:ss";
-    Serial.print("time is: ");
-    m_RTC.now().toString(timeStamp);
-    Serial.println(timeStamp);
-
-    if(m_RTC.lostPower()){
-        m_RTC.adjust(m_RTC.now());
-        Serial.println("Lost Power");
-      
-    }
-
-    // First execute
-    if(!ranFirst){
-        pinMode(RTC_INT, INPUT_PULLUP);
-        DateTime alarmDate(m_RTC.now() + 5);
-        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
-        Serial.println("Ran First!");
-        ranFirst = true;
-    }
-    
-    // If the alarm was triggered
-    if(m_RTC.alarmFired(1)){
-        
-        m_RTC.clearAlarm(1);
-        DateTime alarmDate(m_RTC.now() + 5);
-        m_RTC.setAlarm1(alarmDate, DS3231_A1_Second);
-        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
-        attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);
-        
-        digitalWrite(LED_BUILTIN, LOW);
-        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-        __DSB();
-        __WFI();
-    }
-
-    
-    /*
-    if(!ranFirst){
-        DateTime alarmDate(m_RTC.now()+5);
-
-        m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
-        ranFirst = true;
-    }
-    if(m_RTC.alarmFired(1)){
-        Serial.println("Alarm fired, rescheduling");
-        m_RTC.clearAlarm(1);
-        DateTime alarmDate(m_RTC.now()+5);
-
-        m_RTC.setAlarm1(alarmDate,DS3231_A1_Minute);
-        m_RTC.writeSqwPinMode(DS3231_OFF); //interrupt mode
-        if(!intFired){
-            powerDownRadio();
-            delay(500);
-            powerRadio();
-            powerDownRadio();
-        
-            pinMode(RTC_INT, INPUT_PULLUP);
-            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
-            attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int,FALLING);
-            digitalWrite(LED_BUILTIN, LOW);
-
-            Serial.println("Going to sleep...");
-            // /*Taken from old PMController code*/
-            // // // Disable USB
-            // // USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE;
-
-            // // // Enter sleep mode
-       
-            // EIC->WAKEUP.reg |= (1 << digitalPinToInterrupt(RTC_INT));
-        //    __DSB();
-        //    __WFI();
-            // // ...Sleep
-
-            // // Enable USB
-                
-            // USB->DEVICE.CTRLA.reg |= USB_CTRLA_ENABLE;
-            
-        //}
-        
-    //}else{
-
-   // } 
-   
-    if(intFired){
-        Serial.println("Interrupt fired");
-        intFired=!intFired;
-        powerDownRadio();
-        delay(500);
-        powerRadio();
-        delay(8000);
-        Serial.println("Test1");
-        delay(5000);
-        Serial.println("Test2");
-    }
-
-}
-
 //prototype
 uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
 char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
+
 bool Rover::listen(){
     if(m_RHManager.available()){
         if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
