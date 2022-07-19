@@ -2,7 +2,7 @@
 #define _SSMODEL_H_
 
 #include <Arduino.h>
-#include "ArduinoJson.h"
+#include <ArduinoJson.h>
 #include "Diagnostics.h"
 #include "Properties.h"
 #include "SwiftPiksi.h"
