@@ -68,6 +68,13 @@ class GNSSController : public Controller {
      */ 
     String getRTKModeString();
 
+    /**
+    * Populates a json object with the desired GNSS data
+    * 
+    * @author Will Richards
+    */ 
+    void populateGNSSMessage(JsonObject msgJson);
+
 
     /**
      * Get latitude position
