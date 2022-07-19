@@ -350,3 +350,43 @@ void GNSSController::reset() {
 void GNSSController::setup(){
   m_timer.startStopwatch();
 }
+
+/**
+ * 
+ * Populates the Rover message response
+ * Message JSON Format:
+ * Message{
+ *  GNSS{
+ *    RTK Mode  :
+ *    Week :
+ *    Seconds :
+ *    Latitude :
+ *    Longitude :
+ *    Height :
+ *    Satellites :
+ *    GDOP :
+ *    HDOP :
+ *    PDOP :
+ *    TDOP :
+ *    VDOP :
+ *  }
+ * }
+ * 
+ * @author Will Richards
+ * @param msgJson Reference to the message key as a json object
+ */ 
+void GNSSController::populateGNSSMessage(JsonObject msgJson){
+  JsonObject json = msgJson.createNestedObject("GNSS");
+  json["RTK Mode"] = m_getMode();
+  json["Week"] = gps_time.wn;
+  json["Seconds"] = gps_time.tow;
+  json["Latitude"] = pos_llh.lat;
+  json["Longitude"] = pos_llh.lon;
+  json["Height"] = pos_llh.height;
+  json["Satellites"] = pos_llh.n_sats;
+  json["GDOP"] = dops.gdop;
+  json["HDOP"] = dops.hdop;
+  json["PDOP"] = dops.pdop;
+  json["TDOP"] = dops.tdop;
+  json["VDOP"] = dops.vdop;
+}

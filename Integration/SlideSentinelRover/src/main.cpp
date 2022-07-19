@@ -118,8 +118,8 @@ void loop() {
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
-
-      // if(rover.request()){
+      rover.packageData(Rover::DataType::REQUEST);
+      // if(rover.transmit()){
 
       //   Serial.println("Contact established... transitioning to poll");
       //   state = POLL;
@@ -162,7 +162,8 @@ void loop() {
       
       // 1. Turn off GNSS
       // 2. Send data to base
-      rover.uploadData();
+      rover.packageData(Rover::DataType::UPLOAD);
+      rover.transmit();
 
       state = SLEEP;
       break;

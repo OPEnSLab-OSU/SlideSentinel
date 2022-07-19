@@ -9,6 +9,7 @@ Rover::Rover() :    m_max4280(MAX_CS, &SPI),
                     m_multiplex(SPDT_SEL, -1),
                     m_serial(Serial1),
                     m_RHSerialDriver(m_serial),
+                    m_gnss(Serial1, 115200, 12, 11, 30),
                     m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
                     m_RHMessage(1024) {
     m_rovInfo.id = CLIENT_ADDR;
@@ -49,35 +50,39 @@ void Rover::wake(){
     }
       
 }
+void Rover::packageData(DataType packType){
+    JsonObject RHJson = m_RHMessage.to<JsonObject>();
 
-bool Rover::request(){
+    switch(packType){
+        case REQUEST: 
+            RHJson["TYPE"] = "REQUEST";
+            RHJson["MSG"] = "REQUEST";
+            break;
+        case UPLOAD:
+            RHJson["TYPE"] = "UPLOAD";
+
+            // Take the message in as an object to create a new GNSS data object
+            m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>());
+            break;
+
+    }
+}
+
+bool Rover::transmit(){
 
     //TDL: Conditionally enable max3243
     setMux(RadioToFeather);
     delay(5);
-    JsonObject RHJson = m_RHMessage.to<JsonObject>();
-    //wipe message first
 
-    RHJson["TYPE"] = "REQUEST";
-    RHJson["MSG"] = "REQUEST";
-    // Serial.println(m_RHMessage);
-    // String RHMessageStr = "";
-
-    return transmit();
-}
-bool Rover::uploadData(){
-    return transmit();
-}
-bool Rover::transmit(){
     //serialize json object into a string format
     char processedRHMessage[255];
-    serializeJson(RHJson, processedRHMessage);
+    serializeJson(m_RHMessage, processedRHMessage);
     Serial.println(processedRHMessage);
     // ast string to a uint8_t* so radiohead can send it
     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
 
     //will block while waiting on timeout, should be 2-4 seconds by default
-    return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHJson), SERVER_ADDR);
+    return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
 }
 
 void Rover::sendManualMsg(char* msg){

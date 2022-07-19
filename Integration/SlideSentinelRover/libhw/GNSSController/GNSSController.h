@@ -168,6 +168,13 @@ public:
    */
   void startTimer();
 
+  /**
+   * Populates a json object with the desired GNSS data
+   * 
+   * @author Will Richards
+   */ 
+  void populateGNSSMessage(JsonObject msgJson);
+
 
 };
 
