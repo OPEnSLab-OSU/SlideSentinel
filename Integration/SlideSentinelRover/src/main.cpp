@@ -75,10 +75,6 @@ void loop() {
   // if(Serial1.peek() != -1){
   //   Serial.println(Serial1.read());
   // }
-  gnss1.poll();
-  Serial.println(gnss1.getLatitude(), 10);
-  Serial.println(gnss1.getLongitude(), 10);
-  Serial.println(gnss1.getHeight());
 
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
