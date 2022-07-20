@@ -253,6 +253,7 @@ void Rover::toSleep(){
     digitalWrite(LED_BUILTIN, LOW);
     __DSB();    //data sync bus function for stability, refer to m0 cpu documentation for more info
     __WFI();    //wait for interrupt/puts device to sleep
+    digitalWrite(LED_BUILTIN,HIGH);
 }
 
 void Rover::printRTCTime(){
