@@ -155,9 +155,9 @@ void GNSSController::populateGNSSMessage(JsonObject msgJson){
   json["RTK Mode"] = getRTKModeString();
   json["Week"] = m_gps_time.wn;
   json["Seconds"] = m_gps_time.tow;
-  json["Latitude"] = m_gpsPos.lat;
-  json["Longitude"] = m_gpsPos.lon;
-  json["Height"] = m_gpsPos.height;
+  json["Latitude"] = String(m_gpsPos.lat);
+  json["Longitude"] = String(m_gpsPos.lon);
+  json["Height"] = String(m_gpsPos.height);
   json["Satellites"] = m_gpsPos.n_sats;
   json["GDOP"] = m_dataPecision.gdop;
   json["HDOP"] = m_dataPecision.hdop;
