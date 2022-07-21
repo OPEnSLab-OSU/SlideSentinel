@@ -64,6 +64,10 @@ void Rover::packageData(DataType packType){
             // Take the message in as an object to create a new GNSS data object
             m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>());
             break;
+        case ALERT:
+            RHJson["TYPE"] = "ALERT";
+            RHJson["MSG"] = "UNSPECIFIED_ALERT";
+            break;
 
     }
 }
@@ -218,6 +222,7 @@ void Rover::toSleep(){
     digitalWrite(LED_BUILTIN, LOW);
     __DSB();    //data sync bus function for stability, refer to m0 cpu documentation for more info
     __WFI();    //wait for interrupt/puts device to sleep
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 //prototype

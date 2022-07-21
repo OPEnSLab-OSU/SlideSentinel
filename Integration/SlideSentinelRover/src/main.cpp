@@ -159,7 +159,9 @@ void loop() {
       // 1. Turn off GNSS
       // 2. Send data to base
       rover.packageData(Rover::DataType::UPLOAD);
-      rover.transmit();
+      if(rover.transmit()){
+        Serial.println("WARNING: Unsure if base received transmission");
+      }
 
       state = SLEEP;
       break;
@@ -173,7 +175,7 @@ void loop() {
       rover.powerDownRadio();
 
       // rover.scheduleSleepAlarm();
-      rover.scheduleAlarm(15); //15 second manual alarm
+      rover.scheduleAlarm(15*60); //15 minute alarm
       rover.attachAlarmInterrupt();
 
      

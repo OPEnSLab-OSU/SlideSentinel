@@ -54,7 +54,7 @@ public:
         Different Ways to Package Data for transmit
         REQUEST - Notify base that rover is awaiting instructions
         UPLOAD - Upload polled data to base
-        ALERT - High priority message
+        ALERT - High priority message such as accelerometer trip
     */
     enum DataType{
         REQUEST,
