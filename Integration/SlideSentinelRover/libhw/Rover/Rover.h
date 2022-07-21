@@ -144,7 +144,7 @@ private:
             TYPE: Message type, such as REQUEST, UPLOAD
             MSG: data upload, eg: "152.21312,12.12312, etc"
      */
-    DynamicJsonDocument m_RHMessage;
+    DynamicJsonDocument m_RHMessage;    //document that will contain all information sent to the base
 
 
     
