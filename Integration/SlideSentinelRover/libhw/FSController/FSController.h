@@ -125,7 +125,7 @@ public:
   * @return bolean flag: true for success, else false.
   */
   bool init();
-
+  void _init();
   /**
   * Checks whether the SD card intialized. This is used to 
   * disable function calls to SD logging functionality throughout 

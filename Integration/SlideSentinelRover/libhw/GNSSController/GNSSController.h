@@ -81,9 +81,11 @@ class GNSSController : public Controller {
     * 
     * @author Will Richards
     */ 
-    void populateGNSSMessage(JsonObject msgJson);
+    //void populateGNSSMessage(JsonObject msgJson);
+    void populateGNSSMessage();
 
-
+    size_t populateGNSSMessage_Ben();
+    char *getFormat();
     /**
      * Get latitude position
      */ 

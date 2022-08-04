@@ -88,7 +88,6 @@ void Rover::sendManualMsg(char* msg){
 }
 
 void Rover::debugRTCPrint(){
-    delay(5000);
     Serial.println("Testing RTC...");
     Wire.begin();
     if(m_RTC.begin()){
@@ -106,8 +105,6 @@ void fire_int(){
     intFired = true;
     
 }
-
-
 
 
 // https://forum.arduino.cc/t/ds3231-read-time-error/909413/3
@@ -147,8 +144,17 @@ void Rover::printRTCTime_Ben() {
     if (myMonth < 10) {
         Serial.print('0');
     }
-    Serial.print(nowDT. month()); Serial.print(':');
+    Serial.print(nowDT.month()); Serial.print(':');
     Serial.println(nowDT.year());
+}
+char *Rover::getTimeStamp() {
+    nowDT = m_RTC.now();
+    char m_timestamp[512];
+    memset(m_timestamp, '\0', sizeof(char) * 512);
+    sprintf(m_timestamp, "%.2d.%.2d.%.2d.%.2d.%.2d", nowDT.month(), nowDT.day(),
+         nowDT.hour(), nowDT.minute(), nowDT.second());
+  
+    return m_timestamp;
 }
 
 void Rover::timeDelay() {

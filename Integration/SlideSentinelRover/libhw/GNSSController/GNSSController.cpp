@@ -1,6 +1,6 @@
 #include "GNSSController.h"
 #include "SwiftController.h"
-
+#include "Arduino.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 GNSSController::GNSSController(
@@ -150,7 +150,8 @@ String GNSSController::getRTKModeString(){
  * @author Will Richards
  * @param msgJson Reference to the message key as a json object
  */ 
-void GNSSController::populateGNSSMessage(JsonObject msgJson){
+void GNSSController::populateGNSSMessage() {
+  JsonObject msgJson;
   JsonObject json = msgJson.createNestedObject("GNSS");
   json["RTK Mode"] = getRTKModeString();
   json["Week"] = m_gps_time.wn;
@@ -164,7 +165,37 @@ void GNSSController::populateGNSSMessage(JsonObject msgJson){
   json["PDOP"] = m_dataPecision.pdop;
   json["TDOP"] = m_dataPecision.tdop;
   json["VDOP"] = m_dataPecision.vdop;
+
 }
+
+size_t GNSSController::populateGNSSMessage_Ben() {
+  DynamicJsonDocument doc(1024);
+  
+
+  // doc.createNestedObject("GNSS");
+  // doc["RTK Mode"] = getRTKModeString();
+  // doc["Week"] = m_gps_time.wn;
+  doc["Seconds"] = 11;
+  doc["Latitude"] = String(22.7);
+  doc["Longitude"] = String(4.6);
+  doc["Height"] = String(43.8);
+  // doc["Satellites"] = m_gpsPos.n_sats;
+  // doc["GDOP"] = m_dataPecision.gdop;
+  // doc["HDOP"] = m_dataPecision.hdop;
+  // doc["PDOP"] = m_dataPecision.pdop;
+  // doc["TDOP"] = m_dataPecision.tdop;
+  // doc["VDOP"] = m_dataPecision.vdop;
+
+  size_t temp = serializeJson(doc, Serial);
+  
+  return temp;
+}
+
+char *GNSSController::getFormat() {
+  return (char*)populateGNSSMessage_Ben();
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

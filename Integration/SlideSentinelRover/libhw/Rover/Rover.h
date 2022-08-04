@@ -120,7 +120,7 @@ public:
     void timeDelay();
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm();
-
+    char *getTimeStamp();
     /* RTC Final Functions */
 
 

@@ -11,20 +11,34 @@ FSController::FSController(uint8_t cs, uint8_t rst)
 bool FSController::init() {
   if (m_did_begin)
     return true;
-  pinMode(m_cs, OUTPUT);
-  MARK;
+  pinMode(4, OUTPUT); MARK;
   // set clock rate, open root directory, check if MAIN exists, if not create it
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
-      (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
+  // if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
+  //     (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
+  //   return false;
+
+
+  // Initializes SD card
+  Serial.print("Initializing SD card...");
+  if (!m_sd.begin(4, SD_SCK_MHZ(10))) {
+    Serial.println("Card failed, or not present");
     return false;
-  console.debug("FSController initialized.\n");
+  } 
+  else {
+    Serial.println("FSController initialized!");
+  }
+
+
+  
   m_did_begin = true;
   return true;
 }
 
+
 void FSController::logData(char *data) {
-  if (!m_logMsg(data, m_DATA))
-    m_logMsg((char *)WRITE_ERR, m_DIAG);
+  if (!m_logMsg(data, m_DATA)) {
+    m_logMsg((char *)WRITE_ERR, m_DATA);
+  }
 }
 
 void FSController::logDiag(char *data) {
@@ -48,9 +62,11 @@ bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
   // reset ptr, enter "/data", cerify timestampped dir does not exists, make
   // timestamped dir, enter /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt,
   // set file ptr gnss.csv
-  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(m_curDir) &&
-        m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
-    return false;
+  // if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(m_curDir) &&
+  //       m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
+  //   return false;
+ 
+  m_mkFile(m_DATA);
 
   m_file.open(m_DATA, O_WRONLY | O_APPEND);
   m_write(format);     // write the data header
@@ -66,9 +82,13 @@ bool FSController::m_mkFile(const char *name) { MARK;
 }
 
 bool FSController::m_setFile(const char *file) { MARK;
-  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.chdir(m_curDir) &&
-      m_file.open(file, O_WRONLY | O_APPEND)))
+  // if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.chdir(m_curDir) &&
+  //     m_file.open(file, O_WRONLY | O_APPEND)))
+  //   return false;
+  if (!(m_file.open(file, O_WRONLY | O_APPEND)))
     return false;
+  
+  
   return true;
 }
 
