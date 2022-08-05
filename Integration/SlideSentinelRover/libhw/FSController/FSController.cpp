@@ -6,8 +6,7 @@ FSController::FSController(uint8_t cs, uint8_t rst)
     : m_cs(cs), m_rst(rst), m_did_begin(false), m_DATA("data.json"), m_DIAG("diag.json"),
       m_cycle(0), m_spaceMB(0) {}
 
-// NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
-// any subdirectory
+
 bool FSController::init() {
   pinMode(4, OUTPUT); MARK;
 
@@ -18,11 +17,11 @@ bool FSController::init() {
   } 
   else {
     Serial.println("FSController initialized!");
+    m_did_begin = true;
   }
 
   return true;
 }
-
 
 void FSController::logData(char *data) {
   if (!m_logMsg(data, m_DATA)) {
@@ -35,8 +34,6 @@ void FSController::logDiag(char *data) {
     m_logMsg((char *)WRITE_ERR, m_DIAG);
 }
 
-// TODO maintian a way to determine if SD failed and reactivley reattempt to
-// reinit()
 bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
   Serial.println("Creating new wake cycle directory: ");
   Serial.println(timestamp);
@@ -44,11 +41,8 @@ bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
   m_curDir = timestamp;
   m_cycles();
 
-  // check if we wok up instantaneously, might occur due to accelerometer
-  if (m_sd.exists(m_curDir) && m_sd.chdir(m_curDir))
-    return true;
- 
   m_mkFile(m_DATA);
+  m_mkFile(m_DIAG);
 
   m_file.open(m_DATA, O_WRONLY | O_APPEND);
   m_write(format);     // write the data header
@@ -64,9 +58,6 @@ bool FSController::m_mkFile(const char *name) { MARK;
 }
 
 bool FSController::m_setFile(const char *file) { MARK;
-  // if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.chdir(m_curDir) &&
-  //     m_file.open(file, O_WRONLY | O_APPEND)))
-  //   return false;
   if (!(m_file.open(file, O_WRONLY | O_APPEND)))
     return false;
 
@@ -76,13 +67,10 @@ bool FSController::m_setFile(const char *file) { MARK;
 bool FSController::m_write(char *msg) { MARK; return m_file.println(msg); }
 
 bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
-  Serial.print("Writing ");
-  Serial.print(msg);
-  Serial.print(" to file ");
-  Serial.print(file);
-  Serial.println("");
-  //(char *)msg))
-  if (!(m_setFile(file) && m_write((char *)msg))) {
+  char to_print[MAX_DATA_LEN];
+  sprintf(to_print, "Writing %s to file %s \n", msg, file);
+  Serial.println(to_print);
+  if (!(m_setFile(file) && m_write((char *)msg))) { // Writes msg to SD card
     Serial.println("Failed to write...");
     m_file.close();
     return false;

@@ -52,8 +52,6 @@ enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };    
 
 static State state = DEBUG;
 
-bool hasBeenCalled = false;
-
 void loop() {
   delay(1000);
   /* Print out rover diagnostic information if 1 has been typed */
@@ -77,22 +75,17 @@ void loop() {
     /* Wake up from sleep */
     case WAKE: 
 
-      rover.debugRTCPrint();
+      rover.debugRTCPrint(); // Turns on RTC for correct timestamp
       Serial.println("WAKE mode...");
-      //_gnssController.populateGNSSMessage();
-      //gnssController.populateGNSSMessage_Ben();
+      Serial.println("Initializing SD card...");
 
-      if (fsController.init()) {
-        Serial.println("Initialized SD card...");
-      }
-      else {
+      if (!fsController.init()) { // Initializes SD card
         Serial.println("Failed to initialize SD card...");
       }
 
-      fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->getFormat());
-      //rover.printRTCTime_Ben();
-      //Serial.println(rover.getTimeStamp());
-      //Serial.println(gnssController->getFormat());
+      if (fsController.check_init()) { // Checks if initialized
+        fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->populateGNSS()); // Responsible for creating files 
+      }
 
       state = HANDSHAKE;
       break;
@@ -101,14 +94,10 @@ void loop() {
     case HANDSHAKE: //MARK;
       Serial.println("HANDSHAKE mode...");
 
-     
-      // fsController.logData(model.toDiag());
-      // fsController.logData(model.toProp());
-
-      //fsController.logData(gnssController->toData(gnssController->getProp(THRESHOLD)));
-      //fsController.logData(model.toData(model.getProp(THRESHOLD)));
-
-      fsController.logData(gnssController->getFormat());
+      if (fsController.check_init()) { // Checks if initialized
+        fsController.logData(gnssController->populateGNSS()); // Logs GNSS data into SD
+        fsController.logDiag(model.toDiag()); // Logs diag to SD
+      }
 
       state = SLEEP;
       break;
@@ -122,8 +111,8 @@ void loop() {
     case SLEEP: MARK;
 
       Serial.println("SLEEP mode...");
+
       state = DEBUG;
-      
       break;
   }
 }

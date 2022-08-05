@@ -86,8 +86,7 @@ class GNSSController : public Controller {
     void populateGNSSMessage();
 
     void populateGNSSMessage_Ben(JsonDocument &doc);
-    char *populateGNSS_return();
-    char *getFormat();
+    char *populateGNSS();
 
     /* Replacing SSModel */
     char *toData(int);

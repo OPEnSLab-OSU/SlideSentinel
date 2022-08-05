@@ -197,7 +197,7 @@ void GNSSController::populateGNSSMessage_Ben(JsonDocument &test) {
 
 }
 
-char *GNSSController::populateGNSS_return() {
+char *GNSSController::populateGNSS() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   doc["GNSS"]["RTK Mode"] = getRTKModeString();
   doc["GNSS"]["Week"] = m_gps_time.wn;
@@ -210,7 +210,7 @@ char *GNSSController::populateGNSS_return() {
   doc["GNSS"]["HDOP"] = m_dataPecision.hdop;
   doc["GNSS"]["PDOP"] = m_dataPecision.pdop;
   doc["GNSS"]["TDOP"] = m_dataPecision.tdop;
-  doc["GNSS"]["VDOP"] = m_dataPecision.vdop; /*
+  doc["GNSS"]["VDOP"] = m_dataPecision.vdop; 
 
   /*
     Stores every GNSS data points in their respective array
@@ -219,7 +219,7 @@ char *GNSSController::populateGNSS_return() {
     "GNSS" = {
       "Seconds" = 11,
       "Latitude" = 11,
-      "Longitude" = 11,
+      "Longitude" = 11, 
       "Height" = 11,
       .
       .
@@ -229,14 +229,12 @@ char *GNSSController::populateGNSS_return() {
 
   //serializeJson(doc, Serial);
   String temp = (doc.as<JsonObject>())["GNSS"];
-  const char *ch = new char;
-  ch = temp.c_str();
-  return (char *)ch;
+  return (char *)temp.c_str();
 }
 
-char *GNSSController::getFormat() {
-  return (char*)populateGNSS_return();
-}
+// char *GNSSController::getFormat() {
+//   return (char*)populateGNSS_return();
+// }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
