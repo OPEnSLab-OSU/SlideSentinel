@@ -86,7 +86,7 @@ class GNSSController : public Controller {
     void populateGNSSMessage();
 
     void populateGNSSMessage_Ben(JsonDocument &doc);
-    size_t populateGNSS_return();
+    char *populateGNSS_return();
     char *getFormat();
 
     /* Replacing SSModel */
@@ -94,6 +94,9 @@ class GNSSController : public Controller {
     void m_serializePkt(JsonDocument &doc);
     void m_clear();
     int getProp(int);
+    char temp[512];
+
+
 
 
     /**
