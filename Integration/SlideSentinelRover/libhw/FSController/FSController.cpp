@@ -9,17 +9,9 @@ FSController::FSController(uint8_t cs, uint8_t rst)
 // NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
 // any subdirectory
 bool FSController::init() {
-  if (m_did_begin)
-    return true;
   pinMode(4, OUTPUT); MARK;
-  // set clock rate, open root directory, check if MAIN exists, if not create it
-  // if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
-  //     (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
-  //   return false;
-
 
   // Initializes SD card
-  Serial.print("Initializing SD card...");
   if (!m_sd.begin(4, SD_SCK_MHZ(10))) {
     Serial.println("Card failed, or not present");
     return false;
@@ -28,9 +20,6 @@ bool FSController::init() {
     Serial.println("FSController initialized!");
   }
 
-
-  
-  m_did_begin = true;
   return true;
 }
 
@@ -49,22 +38,15 @@ void FSController::logDiag(char *data) {
 // TODO maintian a way to determine if SD failed and reactivley reattempt to
 // reinit()
 bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
-  console.debug("Creating new wake cycle directory: ");
-  console.debug(timestamp);
-  console.debug("\n");
+  Serial.println("Creating new wake cycle directory: ");
+  Serial.println(timestamp);
+  Serial.println(format);
   m_curDir = timestamp;
   m_cycles();
 
   // check if we wok up instantaneously, might occur due to accelerometer
   if (m_sd.exists(m_curDir) && m_sd.chdir(m_curDir))
     return true;
-
-  // reset ptr, enter "/data", cerify timestampped dir does not exists, make
-  // timestamped dir, enter /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt,
-  // set file ptr gnss.csv
-  // if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(m_curDir) &&
-  //       m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
-  //   return false;
  
   m_mkFile(m_DATA);
 
@@ -87,20 +69,21 @@ bool FSController::m_setFile(const char *file) { MARK;
   //   return false;
   if (!(m_file.open(file, O_WRONLY | O_APPEND)))
     return false;
-  
-  
+
   return true;
 }
 
 bool FSController::m_write(char *msg) { MARK; return m_file.println(msg); }
 
 bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
-  console.debug("Writing \"");
-  console.debug(msg);
-  console.debug("\" to file ");
-  console.debug(file);
-  console.debug("\n");
+  Serial.print("Writing ");
+  Serial.print(msg);
+  Serial.print(" to file ");
+  Serial.print(file);
+  Serial.println("");
+  //(char *)msg))
   if (!(m_setFile(file) && m_write((char *)msg))) {
+    Serial.println("Failed to write...");
     m_file.close();
     return false;
   }

@@ -34,16 +34,18 @@ static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LO
 void setup() {
   Serial.begin(115200); //functions rely on serial being begun
   SPI.begin();
-  
-  // Serial.println("Initializing card...");
-  // if (!SD.begin(SD_CS)) {
-  //   Serial.println("Initialization failed...");
-  // }
-  // Serial.println("Card initialized...");
-
+ 
   gnssController = &_gnssController;
-
-  Serial1.begin(115200);
+  manager.add(&_gnssController);
+  if (!manager.init()) {
+    Serial.println("Manager failed to initialize...");
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
 }
 
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
@@ -53,7 +55,6 @@ static State state = DEBUG;
 bool hasBeenCalled = false;
 
 void loop() {
-  Serial.println("Test");
   delay(1000);
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
@@ -78,7 +79,7 @@ void loop() {
 
       rover.debugRTCPrint();
       Serial.println("WAKE mode...");
-      //gnssController.populateGNSSMessage();
+      //_gnssController.populateGNSSMessage();
       //gnssController.populateGNSSMessage_Ben();
 
       if (fsController.init()) {
@@ -89,8 +90,9 @@ void loop() {
       }
 
       fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->getFormat());
-      //rover.getTimeStamp();
-      
+      //rover.printRTCTime_Ben();
+      //Serial.println(rover.getTimeStamp());
+      //Serial.println(gnssController->getFormat());
 
       state = HANDSHAKE;
       break;
@@ -103,7 +105,10 @@ void loop() {
       // fsController.logData(model.toDiag());
       // fsController.logData(model.toProp());
 
-      fsController.logData(model.toData(model.getProp(THRESHOLD)));
+      //fsController.logData(gnssController->toData(gnssController->getProp(THRESHOLD)));
+      //fsController.logData(model.toData(model.getProp(THRESHOLD)));
+
+      fsController.logData(gnssController->getFormat());
 
       state = SLEEP;
       break;

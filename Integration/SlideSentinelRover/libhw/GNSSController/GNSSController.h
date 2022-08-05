@@ -15,6 +15,7 @@
 #include "Console.h"
 #include "FeatherTrace.h"
 #include "Controller.h"
+#include "Properties.h"
 
 #include "Timer.h"
 
@@ -84,8 +85,17 @@ class GNSSController : public Controller {
     //void populateGNSSMessage(JsonObject msgJson);
     void populateGNSSMessage();
 
-    size_t populateGNSSMessage_Ben();
+    void populateGNSSMessage_Ben(JsonDocument &doc);
+    size_t populateGNSS_return();
     char *getFormat();
+
+    /* Replacing SSModel */
+    char *toData(int);
+    void m_serializePkt(JsonDocument &doc);
+    void m_clear();
+    int getProp(int);
+
+
     /**
      * Get latitude position
      */ 
@@ -113,7 +123,8 @@ class GNSSController : public Controller {
     int m_logFreq;                        // Log Frequency
 
     /* GNSS Data */
-
+    
+    char m_buffer[MAX_DATA_LEN];
     msg_pos_llh_t m_gpsPos;               // This position solution message reports the absolute geodetic coordinates and the status
     msg_vel_ned_t m_velocity;             // Velocity of the rover in North, East, Down (NED) Vector coordinates.
     msg_baseline_ned_t m_rtkBaseline;     // This baseline is the relative vector distance from the base station to the rover receiver
@@ -129,6 +140,10 @@ class GNSSController : public Controller {
     void m_resetStructs();                // Reset the GNSS Structs
     
     void m_updateGNSSInformation();       // Update variables that store GNSS related data
+
+    Properties m_props; ///< Object stores all property data.
+    uint8_t m_mode;                    ///< data
+
 };
 
 #endif // _GNSSCONTROLLER_H_

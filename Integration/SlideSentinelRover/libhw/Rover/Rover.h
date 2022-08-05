@@ -21,6 +21,10 @@ public:
     Rover(int radioType);
     Rover();
     bool listen();
+    /* Debug function for RTC to print out time*/
+    void debugRTCPrint();
+
+    char *getTimeStamp();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -104,9 +108,6 @@ public:
     /* initialize rtc */
     void initRTC();
 
-    /* Debug function for RTC to print out time*/
-    void debugRTCPrint();
-
     /* prints time from real time clock*/
     void printRTCTime();
 
@@ -120,7 +121,7 @@ public:
     void timeDelay();
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm();
-    char *getTimeStamp();
+
     /* RTC Final Functions */
 
 
@@ -136,6 +137,9 @@ private:
     RTC_DS3231 m_RTC;               //Real time clock object
     DateTime nowDT;
     byte prSec = 0;
+    char m_timestamp[512];
+
+
     // GNSSController gnss1(Serial1, 115200, 12,11,30);
 
     /*  A message consists of an: ID, TYPE, MSG
