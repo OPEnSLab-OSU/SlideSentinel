@@ -56,7 +56,9 @@ bool RTCController::init() { MARK;
   console.debug("RTCController initialized.\n");
   return true;
 }
-
+void rtc_isr(){
+  
+}
 void RTCController::m_setAlarm(int time) { MARK;
   m_clearAlarm();
   m_setDate();
@@ -64,7 +66,9 @@ void RTCController::m_setAlarm(int time) { MARK;
   uint8_t hr = (m_date.hour() + ((m_date.minute() + time) / 60)) % 24;
   m_RTC.setAlarm(ALM1_MATCH_HOURS, min, hr, 0);
   m_RTC.alarmInterrupt(1, true);
-  attachInterrupt(digitalPinToInterrupt(m_pin), RTC_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(5), rtc_isr , LOW);
+  attachInterrupt(digitalPinToInterrupt(5), rtc_isr, LOW);
+  
 
   console.debug("\nCurrent Time: ");
   console.debug(m_date.hour());
