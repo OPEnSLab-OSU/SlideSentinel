@@ -2,7 +2,7 @@
 
 
 /* Ran on first bootup of Main*/
-Base::Base() : m_max4280(MAX_CS, &SPI),
+Base::Base() : m_max4820(MAX_CS, &SPI),
                m_multiplexer(SPDT_SEL, -1),
                m_RManager(),
                m_sdManager(SD_CS, 10){
@@ -100,7 +100,7 @@ void Base::printMostRecentPacket(){
  */ 
 void Base::powerRadio(){
     Serial.println("[Base] Powering radio on.");
-    m_max4280.assertRail(0);
+    m_max4820.assertRail(0);
 }
 
 /**
@@ -108,7 +108,7 @@ void Base::powerRadio(){
  */ 
 void Base::powerDownRadio(){
     Serial.println("[Base] Powering radio down.");
-    m_max4280.assertRail(1);
+    m_max4820.assertRail(1);
 }
 
 /**
@@ -116,7 +116,7 @@ void Base::powerDownRadio(){
  */ 
 void Base::powerGNSS(){
     Serial.println("[Base] Powering GNSS on.");
-    m_max4280.assertRail(2);
+    m_max4820.assertRail(2);
 }
 
 /**
@@ -124,7 +124,7 @@ void Base::powerGNSS(){
  */ 
 void Base::powerDownGNSS(){
     Serial.println("[Base] Powering GNSS down.");
-    m_max4280.assertRail(3);
+    m_max4820.assertRail(3);
 }
 
 /**
