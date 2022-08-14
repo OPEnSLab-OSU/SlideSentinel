@@ -1,6 +1,6 @@
 #ifndef _Rover_H_
 #define _Rover_H_
-#include "MAX4280.h"
+#include "MAX4820.h"
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
@@ -128,7 +128,7 @@ public:
     
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
-    MAX4280 m_max4280;              //Relay driver, used to power on relays controlling GNSS/Radio
+    MAX4820 m_max4820;              //Relay driver, used to power on relays controlling GNSS/Radio
     SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
     HardwareSerial &m_serial;       //Reference to a serial interface object
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.

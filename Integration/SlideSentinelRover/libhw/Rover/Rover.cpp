@@ -5,7 +5,7 @@
 
 
 /* Ran on first bootup of Main. Pass in */
-Rover::Rover() :    m_max4280(MAX_CS, &SPI), 
+Rover::Rover() :    m_max4820(MAX_CS, &SPI), 
                     m_multiplex(SPDT_SEL, -1),
                     m_serial(Serial1),
                     m_RHSerialDriver(m_serial),
@@ -370,22 +370,22 @@ bool Rover::listen(){
 
 void Rover::powerRadio(){
     Serial.println("Powering radio on.");
-    m_max4280.assertRail(0);
+    m_max4820.assertRail(0);
 }
 
 void Rover::powerDownRadio(){
     Serial.println("Powering radio down.");
-    m_max4280.assertRail(1);
+    m_max4820.assertRail(1);
 }
 
 void Rover::powerGNSS(){
     Serial.println("Powering GNSS on.");
-    m_max4280.assertRail(2);
+    m_max4820.assertRail(2);
 }
 
 void Rover::powerDownGNSS(){
     Serial.println("Powering GNSS down.");
-    m_max4280.assertRail(3);
+    m_max4820.assertRail(3);
 }
 
 
