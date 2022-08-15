@@ -63,18 +63,16 @@ void loop() {
     }
   }
 
-  /* Start state */
+  /* Starting state. The flow of the program. */
   switch (state) {
     case DEBUG:
       Serial.println("DEBUG mode...");
-      rover.wake();
-
+      rover.wake(); // Turns on the radio
       state = WAKE;
       break;
 
     /* Wake up from sleep */
     case WAKE: 
-
       rover.debugRTCPrint(); // Turns on RTC for correct timestamp
       Serial.println("WAKE mode...");
       Serial.println("Initializing SD card...");
@@ -90,7 +88,6 @@ void loop() {
       state = HANDSHAKE;
       break;
 
-    /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
       Serial.println("HANDSHAKE mode...");
 

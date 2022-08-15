@@ -167,35 +167,6 @@ void GNSSController::populateGNSSMessage() {
   json["VDOP"] = m_dataPecision.vdop;
 }
 
-void GNSSController::populateGNSSMessage_Ben(JsonDocument &test) {
-  //StaticJsonDocument<MAX_DATA_LEN> doc = test.createNestedObject("GNSS");
-  //doc.createNestedObject("GNSS");
-  // doc["RTK Mode"] = getRTKModeString();
-  // doc["Week"] = m_gps_time.wn;
-  // doc["Seconds"] = 11;
-  // doc["Latitude"] = String(22.7);
-  // doc["Longitude"] = String(4.6);
-  // doc["Height"] = String(43.8);
-  // doc["Satellites"] = m_gpsPos.n_sats;
-  // doc["GDOP"] = m_dataPecision.gdop;
-  // doc["HDOP"] = m_dataPecision.hdop;
-  // doc["PDOP"] = m_dataPecision.pdop;
-  // doc["TDOP"] = m_dataPecision.tdop;
-  // doc["VDOP"] = m_dataPecision.vdop;
-
-  //size_t temp = serializeJson(doc, Serial);
-  
-  // return temp;
-  JsonArray data = test.to<JsonArray>();
-  // data.add(m_mode);
-  // data.add(m_gps_time.wn);
-  // data.add(11);
-  data.add(String(22.7));
-  data.add(String(4.6));
-  data.add(String(4.6));
-  data.add(m_gpsPos.n_sats);
-
-}
 
 char *GNSSController::populateGNSS() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
@@ -231,10 +202,6 @@ char *GNSSController::populateGNSS() {
   String temp = (doc.as<JsonObject>())["GNSS"];
   return (char *)temp.c_str();
 }
-
-// char *GNSSController::getFormat() {
-//   return (char*)populateGNSS_return();
-// }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
