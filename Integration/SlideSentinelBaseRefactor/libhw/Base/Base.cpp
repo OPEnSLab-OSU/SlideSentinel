@@ -28,18 +28,21 @@ bool Base::waitForRequest(){
             m_baseDiagnostics.setDroppedPkts(m_baseDiagnostics.droppedPkts() + 1);
             Serial.println("[Base] Packet was not received in the expected interval!");
             return false;
+        }else{
+            Serial.println("[Base]Not false!!!");
         }
 
         return m_RManager.readHeader();
 }
 
 /**
- * Initialize all aspects of the base
+ * Initialize all aspects of the base, currently checks the sd if it's been initialized
  */ 
 bool Base::initBase(){
 
     // Attempt to initialize the SD card
     if(!m_sdManager.initSD()){
+
         return false;
     }
 

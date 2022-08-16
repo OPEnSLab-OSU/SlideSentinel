@@ -62,7 +62,7 @@ public:
         ALERT
     };
     
-    /* Powers radio via relay, called in wake cycle in main */
+    /* Powers radio via relay, called in wake cycle in main, and waits 20 seconds to ensure proper power on */
     void wake();
 
     /* Called after radio has been enabled in the HANDSHAKE section. Attempts to make contact with base. If successful:

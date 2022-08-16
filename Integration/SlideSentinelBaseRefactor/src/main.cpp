@@ -10,6 +10,7 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
+    Serial1.begin(115200);
     delay(3500); // Wait for data to propigate
 
     Serial.println("[Main] Initializing Setup...");
@@ -30,10 +31,10 @@ static State state = WAIT;
 void loop(){
 
     // Reinit the SD card if necessary
-    base.checkSD();
+    //base.checkSD();
 
     // Checks if there are requests to print debug information
-    base.debugInformation();
+    //base.debugInformation();
 
     // Main control loop managing which state the base currently exists in
     switch (state)
@@ -45,7 +46,14 @@ void loop(){
 
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
+                Serial.println("Main true route");
+            }else{
+                Serial.println("Main else route");
             }
+            // if (Serial1.available()) {
+            //     // int inByte = Serial1.read();
+            //     Serial.print((char)Serial1.read());
+            // }
             break;
 
         /* Transition to RTK fix mode */

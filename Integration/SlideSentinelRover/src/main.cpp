@@ -88,12 +88,15 @@ void loop() {
   /* Start state */
   switch (state) {
     case DEBUG:
-      rover.wake();
+      // rover.wake();
       rover.powerRadio();
       delay(1000);
       Serial.println("Radio enabled.");
 
-      state = WAKE;
+      rover.sendManualMsg("Testing 123");
+      
+
+      state = DEBUG;
       break;
 
     /* Wake up from sleep */
