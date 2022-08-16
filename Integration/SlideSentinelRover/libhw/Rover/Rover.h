@@ -4,8 +4,11 @@
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
-#include <RHReliableDatagram.h>
+
+#include <HardwareSerial.h>
 #include <RH_Serial.h>
+#include <RHReliableDatagram.h>
+
 #include <ArduinoJson.h>
 #include <GNSSController.h>
 #include "SPI.h"
@@ -46,13 +49,31 @@ public:
         RadioToFeather = 0,
         RadioToGNSS = 1
     };
+
+    /* 
+        Different Ways to Package Data for transmit
+        REQUEST - Notify base that rover is awaiting instructions
+        UPLOAD - Upload polled data to base
+        ALERT - High priority message such as accelerometer trip
+    */
+    enum DataType{
+        REQUEST,
+        UPLOAD,
+        ALERT
+    };
     
-    /* Powers radio via relay, called in wake cycle in main */
+    /* Powers radio via relay, called in wake cycle in main, and waits 20 seconds to ensure proper power on */
     void wake();
 
     /* Called after radio has been enabled in the HANDSHAKE section. Attempts to make contact with base. If successful:
     transition to polling mode, if not: power down and set short wake timer if base is busy. */
-    bool request();
+    //bool request();
+
+    /* Serialize and send JSON packet to Base*/
+    bool transmit();
+
+    /* Package data for transmit */
+    void packageData(DataType packType);
 
     /* Send a test message */
     void sendManualMsg(char* msg);
@@ -121,6 +142,9 @@ public:
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm();
 
+
+   
+
     /* RTC Final Functions */
 
 
@@ -136,7 +160,7 @@ private:
     RTC_DS3231 m_RTC;               //Real time clock object
     DateTime nowDT;
     byte prSec = 0;
-    // GNSSController gnss1(Serial1, 115200, 12,11,30);
+    GNSSController m_gnss;   //gnss controller that handles data incoming into the feather from piksi
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

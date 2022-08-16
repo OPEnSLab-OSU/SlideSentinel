@@ -71,8 +71,8 @@ uint8_t GNSSController::poll(){
     console.debug(String("Error occurred when processing GNSS Data : " + String(ret) + "\n").c_str());
   }
 
-  // Update the data per the logging frequency
-  DO_EVERY(m_logFreq, if(m_compareFixMode()) m_updateGNSSInformation());
+  // Updates local variables from GNSS data
+  m_updateGNSSInformation();
 
   // TODO: Implement return codes
   return 0;

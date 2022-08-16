@@ -35,13 +35,13 @@ void setup() {
   delay(3000);
   rover.initRTC();
   // rover.powerRadio();
-  // rover.initRadio();
+  rover.initRadio();
 
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
-  Serial1.begin(115200);
+  //Serial1.begin(115200);
 
-  // Serial1.begin(115200);
+  Serial1.begin(19200);
 }
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
@@ -74,12 +74,15 @@ void loop() {
   /* Start state */
   switch (state) {
     case DEBUG:
-      rover.wake();
+      // rover.wake();
       rover.powerRadio();
       delay(1000);
       Serial.println("Radio enabled.");
 
-      state = SLEEP;
+      rover.sendManualMsg("Testing 123");
+      
+
+      state = DEBUG;
       break;
 
     /* Wake up from sleep */
@@ -95,11 +98,13 @@ void loop() {
     case HANDSHAKE: //MARK;
       delay(1000);
 
+      Serial.println("I'm in handshake");
+      rover.sendManualMsg("Hello");
 
       // 1. Send message to base, radiohead will tell us if it receives it
       // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
-
-      // if(rover.request()){
+      rover.packageData(Rover::DataType::REQUEST);
+      // if(rover.transmit()){
 
       //   Serial.println("Contact established... transitioning to poll");
       //   state = POLL;
@@ -107,10 +112,10 @@ void loop() {
       // }else{
 
       //   Serial.println("Unable to communicate with base.");
-      //   state = SLEEP;  //transistion to sleep upon failed communication
+      state = SLEEP;  //transistion to sleep upon failed communication
 
       // }
-      // break;
+      break;
 
     /* Transition to RTK, turn on GNSS */
     case PREPOLL: MARK;
@@ -142,7 +147,10 @@ void loop() {
       
       // 1. Turn off GNSS
       // 2. Send data to base
-    
+      rover.packageData(Rover::DataType::UPLOAD);
+      if(rover.transmit()){
+        Serial.println("WARNING: Unsure if base received transmission");
+      }
 
       state = SLEEP;
       break;
@@ -156,7 +164,7 @@ void loop() {
       rover.powerDownRadio();
 
       // rover.scheduleSleepAlarm();
-      rover.scheduleAlarm(15); //15 second manual alarm
+      rover.scheduleAlarm(15*60); //15 minute alarm
       rover.attachAlarmInterrupt();
 
      
