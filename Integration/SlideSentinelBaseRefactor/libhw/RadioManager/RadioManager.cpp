@@ -32,6 +32,7 @@ bool RadioManager::waitForPacket(){
 
     uint8_t messageSize = RH_SERIAL_MAX_MESSAGE_LEN;
     return m_RHManager.recvfromAckTimeout((uint8_t *)recvBuffer, &messageSize, INIT_TIMEOUT, &fromAddr);
+
 }
 
 /**
@@ -44,7 +45,8 @@ bool RadioManager::readHeader(){
 
     // Serialize the values received from the radio into the JSON document given the capacity of the buffer
     auto error = serializeJson(parsedDoc, (char* )recvBuffer, sizeof(recvBuffer));
-
+    Serial.println((const char*)(parsedDoc[0]));
+    Serial.println("[RadioManager.readHeader]");
     // Return the status of the serialization
     return !error;
 }

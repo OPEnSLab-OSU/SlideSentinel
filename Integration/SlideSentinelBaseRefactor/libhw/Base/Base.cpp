@@ -30,6 +30,8 @@ bool Base::waitForRequest(){
             return false;
         }else{
             Serial.println("[Base]Not false!!!");
+            String s = (char *) (m_RManager.recvBuffer);
+            Serial.println(s);
         }
 
         return m_RManager.readHeader();
