@@ -42,11 +42,10 @@ bool RadioManager::readHeader(){
     // Clear the current JSON buffer, and then write to it
 
     parsedDoc.clear();
-
+ 
     // Serialize the values received from the radio into the JSON document given the capacity of the buffer
-    auto error = serializeJson(parsedDoc, (char* )recvBuffer, sizeof(recvBuffer));
-    Serial.println((const char*)(parsedDoc[0]));
-    Serial.println("[RadioManager.readHeader]");
+    auto error = deserializeJson(parsedDoc, (char* )recvBuffer, sizeof(recvBuffer));
+   
     // Return the status of the serialization
     return !error;
 }

@@ -46,10 +46,10 @@ void loop(){
 
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
-                Serial.println("Main true route");
-            }else{
-                Serial.println("Main else route");
-            }
+              
+            }else
+
+            /* Raw Radio Input, save for now*/
             // if (Serial1.available()) {
             //     // int inByte = Serial1.read();
             //     Serial.print((char)Serial1.read());

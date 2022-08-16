@@ -34,7 +34,9 @@ void Rover::initRTC(){
 
 void Rover::initRadio(){
     m_serial.begin(115200);
-
+    m_RHManager.setThisAddress(m_rovInfo.id);
+    Serial.println("This address is : ");
+    Serial.println(m_RHManager.thisAddress());
     m_RHManager.setTimeout(m_rovInfo.timeout);
     m_RHManager.setRetries(m_rovInfo.init_retries);
 
@@ -93,7 +95,7 @@ void Rover::sendManualMsg(char* msg){
     // String RHMessageStr = "";
     StaticJsonDocument<JSON_OBJECT_SIZE(3)> testdoc;
     JsonObject RHMessageObject = testdoc.to<JsonObject>();
-    RHMessageObject["TYPE"] = "Debug";
+    RHMessageObject["TYPE"] = "DEBUG";
     RHMessageObject["MSG"] = msg;
 
     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());

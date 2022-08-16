@@ -49,7 +49,7 @@ void setup() {
   delay(3000);
   rover.initRTC();
   // rover.powerRadio();
-  // rover.initRadio();
+  rover.initRadio();
 
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
