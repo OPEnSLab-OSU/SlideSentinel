@@ -7,27 +7,18 @@
 #include "FeatherTrace.h"
 #include "Rover.h"
 
-// Improve:
-// - Make these vars accessible in their respective object rather than being global,
-//  it's viable right now.
 Rover rover;
+SSModel model;
+// ConManager manager;
+// FSController fsController(SD_CS, SD_RST);
+// SdFat SD;
+// File myFile;
+GNSSController *gnssController;
+static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LOG_FREQ); 
+
 
 void setup() {
   Serial.begin(115200); //functions rely on serial being begun
-  delay(3500);
-  Serial.println("Begginning");
-  delay(3500);
-  Serial.println("Begginning");
-  delay(3500);
-  Serial.println("Begginning");
-  // rover.powerDownRadio();
-  delay(3500);
-  // rover.powerRadio();
-  // Serial.begin(115200);
-  // pinMode(LED_BUILTIN, OUTPUT);
-  // digitalWrite(LED_BUILTIN, LOW);
-  // delay(3500);           //delay to allow screening in
-  // Serial.println("Initializing Setup");
   SPI.begin();
 
 
@@ -43,25 +34,13 @@ void setup() {
 
   Serial1.begin(19200);
 }
+
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
 static State state = DEBUG;
-// GNSSController gnss1(Serial1, 115200, 12,11,30);
-
-bool hasBeenCalled = false;
 
 void loop() {
-  Serial.println("Test");
   delay(1000);
-  // if(!hasBeenCalled){
-  //   // gnss1.init();
-  //   hasBeenCalled = true;
-  // }
-  
-  // if(Serial1.peek() != -1){
-  //   Serial.println(Serial1.read());
-  // }
-
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();
@@ -71,7 +50,7 @@ void loop() {
     }
   }
 
-  /* Start state */
+  /* Starting state. The flow of the program. */
   switch (state) {
     case DEBUG:
       // rover.wake();
@@ -87,14 +66,21 @@ void loop() {
 
     /* Wake up from sleep */
     case WAKE: 
+      rover.debugRTCPrint(); // Turns on RTC for correct timestamp
+      Serial.println("WAKE mode...");
+      Serial.println("Initializing SD card...");
 
-      //Turns on radio and waits 20 seconds to properly initialize
-     // rover.wake();
-      Serial.println("Radio enabled.");
+      // if (!fsController.init()) { // Initializes SD card
+      //   Serial.println("Failed to initialize SD card...");
+      // }
+
+      // if (fsController.check_init()) { // Checks if initialized
+      //   fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->populateGNSS()); // Responsible for creating files 
+      // }
+
       state = HANDSHAKE;
       break;
 
-    /* Request communication from base, then return to sleep or intialize RTK process */
     case HANDSHAKE: //MARK;
       delay(1000);
 
@@ -117,31 +103,9 @@ void loop() {
       // }
       break;
 
-    /* Transition to RTK, turn on GNSS */
     case PREPOLL: MARK;
 
-      // 1. Turn on GNSS
-      // 2. Set and start gnss timer
-      // 3. Set multiplexer so received radio input is piped to GNSS
-      
-      // rover.powerGNSS();
-      // rover.scheduleRTKAlarm(DS3231_A1_Minute);
-      // rover.setMux(Rover::RadioToGNSS);
-      
-      state = POLL;
-      break;
-
-    /* Called continuously, updates GNSS positioning*/
     case POLL: MARK;
-      
-      // 1. Poll GNSS 
-      // 2. Log data if data is at threshold 
-      // 3. Check if timer is done, if so, transition
-
-
-
-      state = UPLOAD;
-      break;
 
     case UPLOAD: MARK;
       

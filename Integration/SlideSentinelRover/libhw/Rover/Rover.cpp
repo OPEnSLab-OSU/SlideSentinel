@@ -20,11 +20,7 @@ Rover::Rover() :    m_max4820(MAX_CS, &SPI),
     m_RHMessage["TYPE"] = "";
     m_RHMessage["MSG"] = "";
 
-    //begin rtc and populate it with the current datetime
-
-    delay(2000);
-    // m_RTC.begin();
-    // m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec    
+    //nowDT = m_RTC.now();
 }
 
 void Rover::initRTC(){
@@ -45,12 +41,11 @@ void Rover::initRadio(){
 
 void Rover::wake(){
     powerRadio();
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 2; i++) {
         Serial.println(i);
         Serial.println(" ");
         delay(1000);
-    }
-      
+    } 
 }
 void Rover::packageData(DataType packType){
     JsonObject RHJson = m_RHMessage.to<JsonObject>();
@@ -64,7 +59,8 @@ void Rover::packageData(DataType packType){
             RHJson["TYPE"] = "UPLOAD";
 
             // Take the message in as an object to create a new GNSS data object
-            m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>());
+            // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
+            m_gnss.populateGNSSMessage();
             break;
         case ALERT:
             RHJson["TYPE"] = "ALERT";
@@ -107,13 +103,12 @@ void Rover::sendManualMsg(char* msg){
 }
 
 void Rover::debugRTCPrint(){
-    delay(5000);
-    Serial.println("Testing RTC...");
     Wire.begin();
-    if(m_RTC.begin()){
-        Serial.println("RTC connected");
-    }else{
-        Serial.println("RTC Failed");
+    if(m_RTC.begin()) {
+        m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
+        Serial.println("RTC connected...");
+    } else {
+        Serial.println("RTC failed...");
     }
 }
 
@@ -159,9 +154,23 @@ void Rover::printRTCTime_Ben() {
     if (myMonth < 10) {
         Serial.print('0');
     }
-    Serial.print(nowDT. month()); Serial.print(':');
+    Serial.print(nowDT.month()); Serial.print(':');
     Serial.println(nowDT.year());
 }
+
+char *Rover::getTimeStamp() {
+    nowDT = m_RTC.now();
+    memset(m_timestamp, '\0', sizeof(char) * 512);
+    sprintf(m_timestamp, "%.2d.%.2d.%.2d.%.2d.%.2d", nowDT.month(), nowDT.day(),
+         nowDT.hour(), nowDT.minute(), nowDT.second());
+  
+    //Serial.println(m_timestamp);
+    return m_timestamp;
+}
+
+// int Rover::test() {
+//     return 10;
+// }
 
 void Rover::timeDelay() {
   byte prSec = 0;

@@ -6,82 +6,85 @@ FSController::FSController(uint8_t cs, uint8_t rst)
     : m_cs(cs), m_rst(rst), m_did_begin(false), m_DATA("data.json"), m_DIAG("diag.json"),
       m_cycle(0), m_spaceMB(0) {}
 
-// NOTE FAT16 can only have 512 entries in root, but can have 65,534 entries in
-// any subdirectory
+
+/* Initializes SD card */
 bool FSController::init() {
-  if (m_did_begin)
-    return true;
-  pinMode(m_cs, OUTPUT);
-  MARK;
-  // set clock rate, open root directory, check if MAIN exists, if not create it
-  if (!m_sd.begin(m_cs, SD_SCK_MHZ(10)) || !m_root.open("/") ||
-      (!m_sd.exists(MAIN) && m_sd.mkdir(MAIN)))
+  pinMode(4, OUTPUT); MARK; // SD card pin is 4
+
+  if (!m_sd.begin(4, SD_SCK_MHZ(10))) { // If the SD isn't inserted then fail
+    Serial.println("Card failed, or not present");
     return false;
-  console.debug("FSController initialized.\n");
-  m_did_begin = true;
+  } 
+  else { 
+    Serial.println("FSController initialized!");
+    m_did_begin = true;
+  }
+
   return true;
 }
 
+
+/* Pass in a char* to write data into SD card */
 void FSController::logData(char *data) {
-  if (!m_logMsg(data, m_DATA))
-    m_logMsg((char *)WRITE_ERR, m_DIAG);
+  if (!m_logMsg(data, m_DATA)) { 
+    m_logMsg((char *)WRITE_ERR, m_DATA);
+  }
 }
 
+/* Pass in a char* to write data into SD card */
 void FSController::logDiag(char *data) {
   if (!m_logMsg(data, m_DIAG))
     m_logMsg((char *)WRITE_ERR, m_DIAG);
 }
 
-// TODO maintian a way to determine if SD failed and reactivley reattempt to
-// reinit()
+/* Creates needed files and only called during WAKE mode */
 bool FSController::setupWakeCycle(char *timestamp, char *format) { MARK;
-  console.debug("Creating new wake cycle directory: ");
-  console.debug(timestamp);
-  console.debug("\n");
+  Serial.println("Creating new wake cycle directory: ");
+  Serial.println(timestamp);
+  Serial.println(format);
   m_curDir = timestamp;
   m_cycles();
 
-  // check if we wok up instantaneously, might occur due to accelerometer
-  if (m_sd.exists(m_curDir) && m_sd.chdir(m_curDir))
-    return true;
+  m_mkFile(m_DATA); // Creates data.json 
+  m_mkFile(m_DIAG); // Creates diag.json
 
-  // reset ptr, enter "/data", cerify timestampped dir does not exists, make
-  // timestamped dir, enter /data/<TIMESTAMP_DIR>, make gnss.csv and log.txt,
-  // set file ptr gnss.csv
-  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.mkdir(m_curDir) &&
-        m_sd.chdir(m_curDir) && m_mkFile(m_DATA) && m_mkFile(m_DIAG)))
-    return false;
-
-  m_file.open(m_DATA, O_WRONLY | O_APPEND);
-  m_write(format);     // write the data header
-  if (!m_file.close()) // close the ptr
+  m_file.open(m_DATA, O_WRONLY | O_APPEND); // Open to write only and append data
+  m_write(format);  // Writes in a certain format
+  if (!m_file.close()) // Close file
     return false;
   return true;
 }
 
+/* Makes a file */
 bool FSController::m_mkFile(const char *name) { MARK;
+  // If it can't open and is closed, fail
   if (!(m_file.open(name, O_WRONLY | O_CREAT | O_EXCL) && m_file.close()))
     return false;
   return true;
 }
 
+/* Sets a file */
 bool FSController::m_setFile(const char *file) { MARK;
-  if (!(m_sd.chdir() && m_sd.chdir(MAIN) && m_sd.chdir(m_curDir) &&
-      m_file.open(file, O_WRONLY | O_APPEND)))
+  // If it can't open then fail
+  if (!(m_file.open(file, O_WRONLY | O_APPEND)))
     return false;
+
   return true;
 }
 
-bool FSController::m_write(char *msg) { MARK; return m_file.println(msg); }
+/* Call in a function to write */
+bool FSController::m_write(char *msg) { MARK; 
+  return m_file.println(msg); 
+}
 
+/* Collects data and writes it to respective file */
 bool FSController::m_logMsg(const char *msg, const char *file) { MARK;
-  console.debug("Writing \"");
-  console.debug(msg);
-  console.debug("\" to file ");
-  console.debug(file);
-  console.debug("\n");
-  if (!(m_setFile(file) && m_write((char *)msg))) {
-    m_file.close();
+  char to_print[MAX_DATA_LEN]; // Allocate maximum space
+  sprintf(to_print, "Writing %s to file %s \n", msg, file);
+  Serial.println(to_print);
+  if (!(m_setFile(file) && m_write((char *)msg))) { // Writes msg to SD card, otherwise fail
+    Serial.println("Failed to write...");
+    m_file.close(); // Close file
     return false;
   }
   m_file.close();

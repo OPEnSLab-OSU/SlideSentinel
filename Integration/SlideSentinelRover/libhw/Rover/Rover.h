@@ -24,6 +24,10 @@ public:
     Rover(int radioType);
     Rover();
     bool listen();
+    /* Debug function for RTC to print out time*/
+    void debugRTCPrint();
+
+    char *getTimeStamp();
 
     /* Data Struct for rover info that gets sent to base. */
     struct RoverInfo {
@@ -125,9 +129,6 @@ public:
     /* initialize rtc */
     void initRTC();
 
-    /* Debug function for RTC to print out time*/
-    void debugRTCPrint();
-
     /* prints time from real time clock*/
     void printRTCTime();
 
@@ -161,6 +162,10 @@ private:
     DateTime nowDT;
     byte prSec = 0;
     GNSSController m_gnss;   //gnss controller that handles data incoming into the feather from piksi
+    char m_timestamp[512];
+
+
+    // GNSSController gnss1(Serial1, 115200, 12,11,30);
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:
