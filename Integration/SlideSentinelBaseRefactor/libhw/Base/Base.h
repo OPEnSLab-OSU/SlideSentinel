@@ -77,7 +77,7 @@ class Base {
 
     private:
         BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
-        MAX4280 m_max4280;                      // Relay driver, used to power on relays controlling GNSS/Radio
+        MAX4820 m_max4820;                      // Relay driver, used to power on relays controlling GNSS/Radio
         SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
         RadioManager m_RManager;                // RadioHead wrapper class for managing radio communication
         SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
