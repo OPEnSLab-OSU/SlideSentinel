@@ -8,31 +8,44 @@
 #include "Rover.h"
 
 Rover rover;
-SSModel model;
 // ConManager manager;
 // FSController fsController(SD_CS, SD_RST);
 // SdFat SD;
 // File myFile;
+// GNSSController *gnssController;
+// static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LOG_FREQ); 
+Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
+void SERCOM1_Handler() { Serial2.IrqHandler(); }
+
+
+static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
+                                        INIT_LOG_FREQ); 
 GNSSController *gnssController;
-static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LOG_FREQ); 
-
-
+                          
 void setup() {
   Serial.begin(115200); //functions rely on serial being begun
-  SPI.begin();
 
+  delay(5000);
 
+    gnssController = &_gnssController;
+    gnssController->init(); //this is the true cause
+    Serial.println("1");
+  // SPI.begin(); could be broken here
+
+    Serial.println("2");
+delay(100);
   // rover.powerDownRadio();
-  delay(3000);
-  rover.initRTC();
+  // delay(3000);
+  // rover.initRTC(); could break here
   // rover.powerRadio();
-  rover.initRadio();
+  // rover.initRadio(); //something breaks here
+    Serial.println("3");
 
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
   //Serial1.begin(115200);
 
-  Serial1.begin(19200);
+  // Serial1.begin(19200);
 }
 
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
@@ -40,7 +53,7 @@ enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };    
 static State state = DEBUG;
 
 void loop() {
-  delay(1000);
+  // delay(50);
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();
@@ -53,13 +66,22 @@ void loop() {
   /* Starting state. The flow of the program. */
   switch (state) {
     case DEBUG:
+    // /Serial.println("*************");
       // rover.wake();
-      rover.powerRadio();
-      delay(1000);
-      Serial.println("Radio enabled.");
+      // rover.powerRadio();
+      // delay(1000);
+      // Serial.println("Radio enabled.");
 
-      rover.sendManualMsg("Testing 123");
-      
+      // rover.sendManualMsg("Testing 123");
+      // delay(10);
+      gnssController->poll();
+      if(gnssController->isNewData()){
+        Serial.println(gnssController->populateGNSS());
+        
+      }else{
+        //Serial.println("No data");
+      }
+     
 
       state = DEBUG;
       break;

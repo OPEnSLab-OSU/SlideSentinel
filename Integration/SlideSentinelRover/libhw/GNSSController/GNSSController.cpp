@@ -68,7 +68,7 @@ uint8_t GNSSController::poll(){
 
   // If we didn't have a clean return code we should know
   if(ret != 0){
-    console.debug(String("Error occurred when processing GNSS Data : " + String(ret) + "\n").c_str());
+   //console.debug(String("Error occurred when processing GNSS Data : " + String(ret) + "\n").c_str());
   }
 
   // Updates local variables from GNSS data
@@ -156,7 +156,7 @@ void GNSSController::populateGNSSMessage() {
   json["RTK Mode"] = getRTKModeString();
   json["Week"] = m_gps_time.wn;
   json["Seconds"] = m_gps_time.tow;
-  json["Latitude"] = String(m_gpsPos.lat);
+  json["Latitude"] = (m_gpsPos.lat);
   json["Longitude"] = String(m_gpsPos.lon);
   json["Height"] = String(m_gpsPos.height);
   json["Satellites"] = m_gpsPos.n_sats;
@@ -167,21 +167,28 @@ void GNSSController::populateGNSSMessage() {
   json["VDOP"] = m_dataPecision.vdop;
 }
 
+bool GNSSController::isNewData(){
+  return (m_gpsPos.lat!=0);
+}
 
 char *GNSSController::populateGNSS() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   doc["GNSS"]["RTK Mode"] = getRTKModeString();
   doc["GNSS"]["Week"] = m_gps_time.wn;
-  doc["GNSS"]["Seconds"] = 11;
-  doc["GNSS"]["Latitude"] = 22.7;
-  doc["GNSS"]["Height"] = 4.6;
-  doc["GNSS"]["Longitude"] = 43.8;
+  doc["GNSS"]["Seconds"] = String(m_gps_time.wn,10);
+
+  //Critical info 
+  doc["GNSS"]["Latitude"] =  String(m_gpsPos.lat,17);
+  doc["GNSS"]["Longitude"] =String(m_gpsPos.lon,17);
+  doc["GNSS"]["Height"] = String(m_gpsPos.height,17);
+ 
   doc["GNSS"]["Satellites"] = m_gpsPos.n_sats;
   doc["GNSS"]["GDOP"] = m_dataPecision.gdop;
   doc["GNSS"]["HDOP"] = m_dataPecision.hdop;
   doc["GNSS"]["PDOP"] = m_dataPecision.pdop;
   doc["GNSS"]["TDOP"] = m_dataPecision.tdop;
   doc["GNSS"]["VDOP"] = m_dataPecision.vdop; 
+  m_resetStructs();
 
   /*
     Stores every GNSS data points in their respective array
@@ -229,6 +236,7 @@ bool GNSSController::m_compareFixMode(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 void GNSSController::m_updateGNSSInformation(){
+ // Serial.println("update gnss info called, sample: " + String(pos_llh.lat) + "");
   m_gpsPos = pos_llh;
   m_rtkBaseline = baseline_ned;
   m_velocity = vel_ned;

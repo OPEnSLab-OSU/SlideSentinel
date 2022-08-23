@@ -112,6 +112,9 @@ class GNSSController : public Controller {
      * Get height
      */ 
     double getHeight() { return m_gpsPos.height; };
+
+    //returns true if new data is recorded (gets wiped when getchar is called)
+    bool isNewData();
    
 
   private:
