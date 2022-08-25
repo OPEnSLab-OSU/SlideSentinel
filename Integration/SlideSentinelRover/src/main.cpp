@@ -30,7 +30,7 @@ void setup() {
     gnssController = &_gnssController;
     gnssController->init(); //this is the true cause
     Serial.println("1");
-  // SPI.begin(); could be broken here
+  SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 
     Serial.println("2");
 delay(100);
@@ -44,7 +44,7 @@ delay(100);
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
   //Serial1.begin(115200);
-
+  rover.powerGNSS();
   // Serial1.begin(19200);
 }
 

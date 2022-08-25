@@ -4,7 +4,7 @@
 #define RST 6
 #define CD 10
 #define SPDT_SEL 14
-#define FORCEOFF_N A5
+#define FORCEOFF_N A5   //for rs232 translator chip
 
 /****** PMController ******/
 #define VCC2_EN 13

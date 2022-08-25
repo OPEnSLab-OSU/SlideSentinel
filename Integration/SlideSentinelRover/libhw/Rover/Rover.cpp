@@ -1,11 +1,13 @@
 #include "Rover.h"
 #include <Wire.h>
+
 // #include <avr/sleep.h>
 
 
 
 /* Ran on first bootup of Main. Pass in */
 Rover::Rover() :    m_max4820(MAX_CS, &SPI), 
+                    m_max3243(FORCEOFF_N),
                     m_multiplex(SPDT_SEL, -1),
                     m_serial(Serial1),
                     m_RHSerialDriver(m_serial),
@@ -28,8 +30,8 @@ void Rover::initRTC(){
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
 
-void Rover::initRadio(){
-    m_serial.begin(115200);
+void Rover::initRHParams(){
+    m_serial.begin(RADIO_BAUD);
     m_RHManager.setThisAddress(m_rovInfo.id);
     Serial.println("This address is : ");
     Serial.println(m_RHManager.thisAddress());
@@ -279,3 +281,9 @@ void Rover::setMux(MuxFormat format){
         Serial.println("Radio ---> GNSS");
     }
 }
+
+void Rover::setRS232(bool enable){
+    (enable) ? m_max3243.enable() : m_max3243.disable(); //ternary operator
+}
+
+

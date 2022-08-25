@@ -1,6 +1,7 @@
 #ifndef _Rover_H_
 #define _Rover_H_
 #include "MAX4820.h"
+#include "MAX3243.h"
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
 #include "network_config_2.0.0.h"
@@ -123,8 +124,8 @@ public:
     */
     void setMux(MuxFormat format);
 
-    /* Initialize RadioHead objects */
-    void initRadio();
+    /* Initialize RadioHead parameters and settings*/
+    void initRHParams();
 
     /* initialize rtc */
     void initRTC();
@@ -146,14 +147,18 @@ public:
 
    
 
-    /* RTC Final Functions */
-
+    /**  Sets the rs232 translator chip (MAX3243) to be enable or disabled. Note, this jumpers MUST be in the Z9-C position for this to work.
+     *  
+    *   @param enable Whether the chip will be enabled or disabled
+    */
+    void setRS232(bool enable);
 
 
     
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
     MAX4820 m_max4820;              //Relay driver, used to power on relays controlling GNSS/Radio
+    MAX3243 m_max3243;              //Translator chip for rs-232 communication
     SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
     HardwareSerial &m_serial;       //Reference to a serial interface object
     RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
@@ -163,6 +168,7 @@ private:
     byte prSec = 0;
     GNSSController m_gnss;   //gnss controller that handles data incoming into the feather from piksi
     char m_timestamp[512];
+
 
 
     // GNSSController gnss1(Serial1, 115200, 12,11,30);
