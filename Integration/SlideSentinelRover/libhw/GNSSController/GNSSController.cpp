@@ -79,23 +79,7 @@ uint8_t GNSSController::poll(){
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-void GNSSController::update(SSModel &model){
-  m_logFreq = model.getProp(LOG_FREQ);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-void GNSSController::status(SSModel &model){
-  model.setPos_llh(m_gpsPos);
-  model.setBaseline_ned(m_rtkBaseline);
-  model.setMsg_vel_ned_t(m_velocity);
-  model.setMsg_dops_t(m_dataPecision);
-  model.setMsg_gps_time_t(m_gps_time);
-  model.setMode(m_rtkMode);
-  model.setProp(LOG_FREQ, m_logFreq);
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 void GNSSController::reset(){
@@ -174,8 +158,8 @@ bool GNSSController::isNewData(){
 char *GNSSController::populateGNSS() {
   StaticJsonDocument<MAX_DATA_LEN> doc;
   doc["GNSS"]["RTK Mode"] = getRTKModeString();
-  doc["GNSS"]["Week"] = m_gps_time.wn;
-  doc["GNSS"]["Seconds"] = String(m_gps_time.wn,10);
+  doc["GNSS"]["Week"] = String(m_gps_time.wn);
+  doc["GNSS"]["Seconds"] = String(m_gps_time.tow);
 
   //Critical info 
   doc["GNSS"]["Latitude"] =  String(m_gpsPos.lat,17);

@@ -27,7 +27,7 @@
    * the Piksi when to poll, and reads the data receievd
    * by the Piksi.
    */
-class GNSSController : public Controller {
+class GNSSController {
   public:
 
     /**
@@ -55,17 +55,6 @@ class GNSSController : public Controller {
      * Poll GNSS Module for updated date
      */ 
     uint8_t poll();
-
-    /**
-     * 
-     */ 
-    void status(SSModel &model) override;
-
-    /**
-     * Update the GNSS logging frequency
-     */ 
-    void update(SSModel &model) override;
-
 
     /**
      * Reset the stored GNSS data

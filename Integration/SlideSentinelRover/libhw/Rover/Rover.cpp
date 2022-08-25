@@ -238,7 +238,7 @@ void Rover::toSleep(){
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
-//prototype
+//prototype TODO fix this poor placement
 uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
 char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
 
