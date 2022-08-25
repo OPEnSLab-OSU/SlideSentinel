@@ -17,8 +17,6 @@ Base::Base() : m_max4820(MAX_CS, &SPI),
  * Listen for a radio request from the Rover with data
  */ 
 bool Base::waitForRequest(){
-        // Reroute data from the radio to the feather
-        setMux(FeatherTxToRadioRx);
 
         Serial.println("[Base] Waiting for data from rovers...");
         // Wait for a packet and if it is not received increase the dropped packet count

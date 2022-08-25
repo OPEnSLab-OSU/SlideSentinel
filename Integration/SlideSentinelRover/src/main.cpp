@@ -37,7 +37,8 @@ delay(100);
   // rover.powerDownRadio();
   // delay(3000);
   // rover.initRTC(); could break here
-  // rover.powerRadio();
+  rover.powerRadio();
+  rover.initRHParams();
   // rover.initRadio(); //something breaks here
     Serial.println("3");
 
@@ -45,6 +46,7 @@ delay(100);
 
   //Serial1.begin(115200);
   rover.powerGNSS();
+  rover.setRS232(true);
   // Serial1.begin(19200);
 }
 
