@@ -25,32 +25,29 @@ GNSSController *gnssController;
 void setup() {
   Serial.begin(115200); //functions rely on serial being begun
 
+  Serial.println("1");
   delay(5000);
+  gnssController = &_gnssController;
+  gnssController->init(); //this is the true cause
 
-    gnssController = &_gnssController;
-    gnssController->init(); //this is the true cause
-    Serial.println("1");
   SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 
-    Serial.println("2");
-delay(100);
+  Serial.println("2");
+  delay(100);
   // rover.powerDownRadio();
   // delay(3000);
-  // rover.initRTC(); could break here
-  // rover.powerRadio();
-  // rover.initRadio(); //something breaks here
-    Serial.println("3");
 
+  Serial.println("3");
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
   //Serial1.begin(115200);
-  rover.powerGNSS();
+
   // Serial1.begin(19200);
 }
 
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
-static State state = DEBUG;
+static State state = WAKE;
 
 void loop() {
   // delay(50);
@@ -64,34 +61,30 @@ void loop() {
   }
 
   /* Starting state. The flow of the program. */
-  switch (state) {
-    case DEBUG:
-    // /Serial.println("*************");
-      // rover.wake();
-      // rover.powerRadio();
-      // delay(1000);
-      // Serial.println("Radio enabled.");
 
-      // rover.sendManualMsg("Testing 123");
-      // delay(10);
-      gnssController->poll();
-      if(gnssController->isNewData()){
-        Serial.println(gnssController->populateGNSS());
-        
-      }else{
-        //Serial.println("No data");
-      }
-     
-
-      state = DEBUG;
-      break;
-
-    /* Wake up from sleep */
-    case WAKE: 
-      rover.debugRTCPrint(); // Turns on RTC for correct timestamp
+  switch(state) {
+    case WAKE:
       Serial.println("WAKE mode...");
-      Serial.println("Initializing SD card...");
 
+      /****** RADIO *******/
+      rover.powerRadio();
+      rover.initRHParams();
+
+      /******* GNSS *******/
+      // delay(10);
+      // gnssController->poll();
+      // if(gnssController->isNewData()){
+      //   Serial.println(gnssController->populateGNSS());   
+      // }
+      // else{
+      //   Serial.println("No data");
+      // }
+
+
+      /******* RTC *******/
+      rover.debugRTCPrint(); // Turns on RTC for correct timestamp
+
+      // /******* SD CARD ********/      
       // if (!fsController.init()) { // Initializes SD card
       //   Serial.println("Failed to initialize SD card...");
       // }
@@ -100,67 +93,45 @@ void loop() {
       //   fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->populateGNSS()); // Responsible for creating files 
       // }
 
+
       state = HANDSHAKE;
       break;
-
-    case HANDSHAKE: //MARK;
-      delay(1000);
-
-      Serial.println("I'm in handshake");
-      rover.sendManualMsg("Hello");
-
-      // 1. Send message to base, radiohead will tell us if it receives it
-      // 2. Decide on going to sleep with or without a modified timer, or initialize RTK process
-      rover.packageData(Rover::DataType::REQUEST);
-      // if(rover.transmit()){
-
-      //   Serial.println("Contact established... transitioning to poll");
-      //   state = POLL;
-
-      // }else{
-
-      //   Serial.println("Unable to communicate with base.");
-      state = SLEEP;  //transistion to sleep upon failed communication
-
-      // }
-      break;
-
-    case PREPOLL: MARK;
-
-    case POLL: MARK;
-
-    case UPLOAD: MARK;
-      
-      // 1. Turn off GNSS
-      // 2. Send data to base
+    case HANDSHAKE:
       rover.packageData(Rover::DataType::UPLOAD);
       if(rover.transmit()){
-        Serial.println("WARNING: Unsure if base received transmission");
+        Serial.println("Message sent successfully!");
+      }
+      else {
+        delay(500);
+        state = HANDSHAKE;
       }
 
-      state = SLEEP;
+      state = PREPOLL;
       break;
-
-    case SLEEP: MARK;
-
-      // 1. Turn off everything
-      // 2. Set wake alarm
-      // 3. Wait for interrupt
-      rover.powerDownGNSS();
-      rover.powerDownRadio();
-
-      // rover.scheduleSleepAlarm();
-      rover.scheduleAlarm(15*60); //15 minute alarm
-      rover.attachAlarmInterrupt();
-
-     
-      rover.toSleep();
-      
-      
-      Serial.println("Transitioning to WAKE...");
-      // state = WAKE;
-      state=DEBUG;
-      
+    case PREPOLL:
+      // rover.scheduleAlarm(600); // 10 minute timer 
+      rover.powerGNSS();
+      rover.setRS232(true);
+      rover.setMux(Rover::RadioToGNSS); // Inits multiplexer
+      state = POLL;
       break;
+    case POLL:
+      gnssController->poll();
+      if(gnssController->isNewData()){
+        Serial.println(gnssController->populateGNSS());   
+      }
+      // else{
+      //   Serial.println("No data");
+      // }
+
+
+      state = POLL;
+      break;
+    // case UPLOAD: 
+    //   state = SLEEP;
+    //   break;
+    // case SLEEP: 
+    //   state = WAKE;
+    //   break;
   }
 }
