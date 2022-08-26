@@ -36,25 +36,20 @@ void setup() {
   delay(100);
   // rover.powerDownRadio();
   // delay(3000);
-<<<<<<< HEAD
-=======
+
   // rover.initRTC(); could break here
   rover.powerRadio();
   rover.initRHParams();
   // rover.initRadio(); //something breaks here
     Serial.println("3");
->>>>>>> fe35a69d19dc3702d63f0dfc4b37b4370bfb051f
 
   Serial.println("3");
   // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
 
   //Serial1.begin(115200);
-<<<<<<< HEAD
 
-=======
   rover.powerGNSS();
   rover.setRS232(true);
->>>>>>> fe35a69d19dc3702d63f0dfc4b37b4370bfb051f
   // Serial1.begin(19200);
 }
 
