@@ -111,10 +111,10 @@ void loop() {
       }
       else {
         delay(500);
-        state = HANDSHAKE;
+        //state = HANDSHAKE;
       }
 
-      state = PREPOLL;
+      //state = PREPOLL;
       break;
     case PREPOLL:
       // rover.scheduleAlarm(600); // 10 minute timer 
