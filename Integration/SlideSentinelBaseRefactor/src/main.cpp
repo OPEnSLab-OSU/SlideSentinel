@@ -47,7 +47,7 @@ void loop(){
 
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
-                base.setMux(Base::MuxFormat::RTCMOutToRadioRx);
+               // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);
                 //at this point, base should be emitting corrections
             }
             break;
