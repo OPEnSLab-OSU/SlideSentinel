@@ -58,6 +58,8 @@ bool GNSSController::init(){
  * 0 - no data collected
  * 1 - data collected
  * 2 - data collected, quality RTK fix reached, terminate polling to save power
+ * 
+ * NOTE: MUST BE CALLED AS FREQUENTLY AS POSSIBLE (<15ms), see github issue for more info
  */
 uint8_t GNSSController::poll(){
   // Read data from the GNSS module

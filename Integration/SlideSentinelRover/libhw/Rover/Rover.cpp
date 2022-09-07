@@ -62,7 +62,7 @@ void Rover::packageData(DataType packType){
 
             // Take the message in as an object to create a new GNSS data object
             // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
-            m_gnss.populateGNSSMessage();
+            RHJson["MSG"]=m_gnss.populateGNSSMessage();
             break;
         case ALERT:
             RHJson["TYPE"] = "ALERT";
@@ -88,6 +88,9 @@ bool Rover::transmit(){
     //will block while waiting on timeout, should be 2-4 seconds by default
     return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
 }
+
+
+
 
 void Rover::sendManualMsg(char* msg){
     // String RHMessageStr = "";
@@ -230,6 +233,21 @@ void Rover::attachAlarmInterrupt(){
     attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     //@will richards. attached twice because it works?     
 }
 
+void startFeatherTimer(){
+    this.startTime = millis();
+}
+
+void setFeatherTimerLength(unsigned long milliseconds){
+    this.featherTimerLength = milliseconds;
+}
+
+bool isFeatherTimerDone(){
+    if((unsigned long)(millis() - this.startTime) >= this.featherTimerLength){ //calculate if current time exceeds the set timer 
+        return true;
+    }else{
+        return false;
+    }
+}
 void Rover::toSleep(){
     /* Standard sleep code for microcontrollers */
     digitalWrite(LED_BUILTIN, LOW);

@@ -107,27 +107,37 @@ void loop() {
     case HANDSHAKE:
       rover.packageData(Rover::DataType::UPLOAD);
       if(rover.transmit()){
-        Serial.println("Message sent successfully!");
+        if(rover.getMessageType()=="POLLRESPONSE"){
+          state = PREPOLL;
+        }else{
+          Serial.println("Message sent successfully, but unsuccesful response");
+        }  
       }
-      else {
-        delay(500);
-        //state = HANDSHAKE;
-      }
+      
+      state = SLEEP;
 
       //state = PREPOLL;
       break;
     case PREPOLL:
       // rover.scheduleAlarm(600); // 10 minute timer 
       rover.powerGNSS();
-      rover.setRS232(true);
+      //rover.setRS232(true); //not needed?
       rover.setMux(Rover::RadioToGNSS); // Inits multiplexer
+      rover.startFeatherTimer();
+      rover.setFeatherTimerLength(1000*60*10); //convert to seconds->minutes->chosen length
       state = POLL;
       break;
+
     case POLL:
-      gnssController->poll();
-      if(gnssController->isNewData()){
-        Serial.println(gnssController->populateGNSS());   
+      if(!rover.isFeatherTimerDone()){//check if timer is completed
+        gnssController->poll();
+        if(gnssController->isNewData()){
+          Serial.println(gnssController->populateGNSS());   
+        }
+      }else{
+        state = UPLOAD;
       }
+      
       // else{
       //   Serial.println("No data");
       // }
@@ -135,11 +145,22 @@ void loop() {
 
       state = POLL;
       break;
-    // case UPLOAD: 
-    //   state = SLEEP;
-    //   break;
-    // case SLEEP: 
-    //   state = WAKE;
-    //   break;
+    case UPLOAD: 
+      rover.packageData(Rover::DataType::UPLOAD);
+      if(rover.transmit()){
+        Serial.println("Data uploaded successfully!!!");
+      }else{
+        Serial.println("Catastrophic upload failure...");
+      }
+      state = SLEEP;
+      break;
+    case SLEEP: 
+      rover.powerDownGNSS();
+      rover.powerDownRadio();
+      rover.scheduleSleepAlarm();
+      rover.attachAlarmInterrupt();
+      rover.toSleep();
+      state = WAKE;
+      break;
   }
 }

@@ -77,6 +77,12 @@ public:
     /* Serialize and send JSON packet to Base*/
     bool transmit();
 
+    /* Wait temporarily and receive a message*/
+    bool waitAndReceive();
+
+    /* Returns most recent message type*/
+    char* getMessageType();
+
     /* Package data for transmit */
     void packageData(DataType packType);
 
@@ -139,10 +145,29 @@ public:
     /* Sleep and wake from interrupt*/
     void toSleep();
 
+/***FEATHER TIMER FUNCTIONS******************************************************************************************************************************************/
+
+    /*track start time*/
+    void startFeatherTimer();
+
+    /** Sets the timer duration
+     * 
+     * @param milliseconds The duration in milliseconds the timer will be set to
+    */
+    void setFeatherTimerLength(int milliseconds);
+
+    /** Returns true if the feather timer duration has exceeded the set timer.
+     *  Note: This timer expects the timer length to be set prior to calling this.
+     *  TDL: doxygen return format?
+    */
+    bool isFeatherTimerDone();
+/***DEBUG FUNCTIONS******************************************************************************************************************************************/
+
     void printRTCTime_Ben();
     void timeDelay();
     byte bcdSecond(RTC_DS3231);
     void rtc_alarm();
+    
 
 
    
@@ -166,9 +191,13 @@ private:
     RTC_DS3231 m_RTC;               //Real time clock object
     DateTime nowDT;
     byte prSec = 0;
+    uint8_t recvBuffer[RH_MAX_MESSAGE_LEN];                     // Buffer that the recieved message will be written into
     GNSSController m_gnss;   //gnss controller that handles data incoming into the feather from piksi
     char m_timestamp[512];
 
+    /* RTK Poll Variables*/
+    unsigned long startTime;
+    unsigned long featherTimerLength;
 
 
     // GNSSController gnss1(Serial1, 115200, 12,11,30);
