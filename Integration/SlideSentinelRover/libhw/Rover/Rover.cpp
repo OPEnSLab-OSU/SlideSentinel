@@ -107,6 +107,9 @@ void Rover::sendManualMsg(char* msg){
     // Serial.println(status);
 }
 
+String Rover::getMessageType(){
+    
+}
 void Rover::debugRTCPrint(){
     Wire.begin();
     if(m_RTC.begin()) {

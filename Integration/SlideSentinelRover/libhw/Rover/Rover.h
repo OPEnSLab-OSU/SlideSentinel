@@ -81,7 +81,7 @@ public:
     bool waitAndReceive();
 
     /* Returns most recent message type*/
-    char* getMessageType();
+    String getMessageType();
 
     /* Package data for transmit */
     void packageData(DataType packType);

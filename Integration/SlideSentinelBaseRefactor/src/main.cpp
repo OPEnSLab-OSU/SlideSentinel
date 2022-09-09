@@ -44,9 +44,13 @@ void loop(){
         case WAIT: MARK;
             // Default operating mode, in this mode we simply wait for data to be received from the rovers
             if(base.waitForRequest()){
-
+                
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
+                if(base.getMessageType() == "POLLREQUEST"){
+                    Serial.println("POLL HAS BEEN REQUESTED");
+
+                }
                // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);
                 //at this point, base should be emitting corrections
             }

@@ -45,6 +45,9 @@ class Base {
         /* Wait for data to be sent from a rover to the base */
         bool waitForRequest();
 
+        /* returns the message type*/
+        String getMessageType();
+
         /* Initialize the components of the base */
         bool initBase();
 

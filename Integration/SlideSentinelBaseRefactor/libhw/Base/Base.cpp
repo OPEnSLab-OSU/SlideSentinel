@@ -94,6 +94,15 @@ void Base::printMostRecentPacket(){
     Serial.println("*************************");
 }
 
+/** 
+ * Returns the messages'type 
+ * 
+*/
+String Base::getMessageType(){
+    
+    return m_RManager.getRoverPacket()["TYPE"];
+}
+
 /**
  * Power on the radio to transmit data
  */ 
