@@ -2,10 +2,17 @@
 
 RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){
-                                    m_RHManager.setTimeout(INIT_TIMEOUT);
-                                    m_RHManager.setRetries(INIT_RETRIES);
-                                    m_RHManager.init();
+  
+
+                                    
                                }
+void RadioManager::initRadio(){
+    Serial1.begin(115200);
+    m_RHManager.setTimeout(INIT_TIMEOUT);
+    m_RHManager.setRetries(INIT_RETRIES);
+    m_RHManager.setThisAddress(CLIENT_ADDR);
+    m_RHManager.init();
+}
 
 /**
  * Overwrite the recvBuffer with null bytes to clear it before new data is written to it

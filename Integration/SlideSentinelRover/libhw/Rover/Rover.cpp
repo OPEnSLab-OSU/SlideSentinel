@@ -16,6 +16,7 @@ Rover::Rover() :    m_max4820(MAX_CS, &SPI),
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;
     m_rovInfo.timeout = INIT_TIMEOUT;
+    //
     //now JSONData
     // m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     // m_RHMessage["TYPE"] = "";
@@ -31,6 +32,9 @@ void Rover::initRTC(){
 
 void Rover::initRHParams(){
     Serial.println("This address is : ");
+    this->setRS232(true);
+    m_RadioManager.initRadio();
+
     // Serial.println(m_RHManager.thisAddress());
    // m_RHManager.setTimeout(m_rovInfo.timeout);
     // m_RHManager.setRetries(m_rovInfo.init_retries);
@@ -85,7 +89,7 @@ bool Rover::transmit(){
 
 //     //will block while waiting on timeout, should be 2-4 seconds by default
 //     return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
-return true;
+// return true;
 }
 
 bool Rover::waitAndReceive(){

@@ -24,7 +24,6 @@ GNSSController *gnssController;
                           
 void setup() {
   Serial.begin(115200); //functions rely on serial being begun
-
   Serial.println("1");
   delay(5000);
   gnssController = &_gnssController;
@@ -113,14 +112,15 @@ void loop() {
       rover.packageData(Rover::DataType::REQUEST);
       if(rover.transmit()){
         if(rover.getMessageType()=="POLLRESPONSE"){ //waits for pollresponse
+          Serial.println("Inner loop");
           state = PREPOLL;
         }else{
           Serial.println("Message sent successfully, but unsuccesful response");
         }  
       }
+      Serial.println("Transitioning to handshake");
       
-      state = SLEEP;
-
+      state = HANDSHAKE;
       //state = PREPOLL;
       break;
     case PREPOLL:
