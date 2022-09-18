@@ -3,7 +3,7 @@
 #include <RH_Serial.h>
 #include <ArduinoJson.h>
 
-#include "network_config.h"
+#include "network_config_2.0.0.h""
 
 
 class RadioManager{
