@@ -196,7 +196,7 @@ private:
     /* RTK Poll Variables*/
     unsigned long startTime;
     unsigned long featherTimerLength;
-    DynamicJsonDocument m_RHMessage;  
+    DynamicJsonDocument m_JSONData;  
     GNSSController m_gnss;
 
     /*  A message consists of an: ID, TYPE, MSG

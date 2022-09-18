@@ -78,6 +78,10 @@ void loop() {
       rover.powerRadio();
       rover.initRHParams();
 
+      rover.setFeatherTimerLength(20*1000);
+      rover.startFeatherTimer();
+      while(!rover.isFeatherTimerDone());
+      
       /******* GNSS *******/
       // delay(10);
       // gnssController->poll();
