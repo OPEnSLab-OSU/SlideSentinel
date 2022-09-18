@@ -11,11 +11,12 @@ Rover::Rover() :    m_max4820(MAX_CS, &SPI),
                     m_multiplex(SPDT_SEL, -1),
                     m_RadioManager(),
                     m_gnss(Serial1, 115200, 12, 11, 30),
-                    m_RHMessage(1024) {
+                    m_JSONData(1024) {
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
     m_rovInfo.init_retries = INIT_RETRIES;
     m_rovInfo.timeout = INIT_TIMEOUT;
+    //now JSONData
     // m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     // m_RHMessage["TYPE"] = "";
     // m_RHMessage["MSG"] = "";
@@ -46,12 +47,12 @@ void Rover::wake(){
     } 
 }
 void Rover::packageData(DataType packType){
-    JsonObject RHJson = m_RHMessage.to<JsonObject>();
+    JsonObject RHJson = m_JSONData.to<JsonObject>();
 
     switch(packType){
         case REQUEST: 
             RHJson["TYPE"] = "REQUEST";
-            RHJson["MSG"] = "REQUEST";
+            RHJson["MSG"] = "RTK_REQUEST";
             break;
         case UPLOAD:
             RHJson["TYPE"] = "UPLOAD";
@@ -86,8 +87,9 @@ bool Rover::transmit(){
 return true;
 }
 
-
-
+bool Rover::waitAndReceive(){
+    return m_RadioManager.waitForPacket();
+}
 
 void Rover::sendManualMsg(char* msg){
 //     // String RHMessageStr = "";
