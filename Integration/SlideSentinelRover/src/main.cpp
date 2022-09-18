@@ -110,9 +110,9 @@ void loop() {
       state = HANDSHAKE;
       break;
     case HANDSHAKE:
-      rover.packageData(Rover::DataType::UPLOAD);
+      rover.packageData(Rover::DataType::REQUEST);
       if(rover.transmit()){
-        if(rover.getMessageType()=="POLLRESPONSE"){
+        if(rover.getMessageType()=="POLLRESPONSE"){ //waits for pollresponse
           state = PREPOLL;
         }else{
           Serial.println("Message sent successfully, but unsuccesful response");

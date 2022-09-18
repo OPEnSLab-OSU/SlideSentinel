@@ -108,7 +108,7 @@ void Rover::sendManualMsg(char* msg){
 }
 
 String Rover::getMessageType(){
-    
+    return m_RadioManager.getRoverPacket()["TYPE"];
 }
 void Rover::debugRTCPrint(){
     Wire.begin();
