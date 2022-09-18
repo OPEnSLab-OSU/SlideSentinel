@@ -31,7 +31,7 @@ void RadioManager::clearSerial(){
 bool RadioManager::sendPacket(String message, int addr){
     char messageArray[255];
     message.toCharArray(messageArray, 255);
-    return m_RHManager.sendToWait(((uint8_t*)messageArray, message.length(), addr));
+    return m_RHManager.sendtoWait((uint8_t*)messageArray, message.length(), addr);
 }
 
 /**

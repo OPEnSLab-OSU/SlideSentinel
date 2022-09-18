@@ -81,7 +81,8 @@ void loop() {
       rover.setFeatherTimerLength(20*1000);
       rover.startFeatherTimer();
       while(!rover.isFeatherTimerDone());
-      
+      Serial.println("Radio warmup completed");
+
       /******* GNSS *******/
       // delay(10);
       // gnssController->poll();

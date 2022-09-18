@@ -70,17 +70,18 @@ void Rover::packageData(DataType packType){
 }
 
 bool Rover::transmit(){
-
+    
 //     //TDL: Conditionally enable max3243
-//     setMux(RadioToFeather);
-//     delay(5);
+    setMux(RadioToFeather);
+    delay(5);
+    String processedRHMessage;
+    serializeJson(m_JSONData, processedRHMessage);
+    Serial.println(processedRHMessage);
 
 //     //serialize json object into a string format
-//     char processedRHMessage[255];
-//     serializeJson(m_RHMessage, processedRHMessage);
-//     Serial.println(processedRHMessage);
 //     // ast string to a uint8_t* so radiohead can send it
 //     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+    return m_RadioManager.sendPacket(processedRHMessage, SERVER_ADDR);
 
 //     //will block while waiting on timeout, should be 2-4 seconds by default
 //     return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
