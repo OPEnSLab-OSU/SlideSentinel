@@ -4,7 +4,7 @@
 /* Ran on first bootup of Main*/
 Base::Base() : m_max4820(MAX_CS, &SPI),
                m_multiplexer(SPDT_SEL, -1),
-               m_RManager(),
+               m_RadioManager(),
                m_sdManager(SD_CS, 10){
     
     m_baseInfo.id = SERVER_ADDR;
@@ -20,7 +20,7 @@ bool Base::waitForRequest(){
 
         Serial.println("[Base] Waiting for data from rovers...");
         // Wait for a packet and if it is not received increase the dropped packet count
-        if(!m_RManager.waitForPacket()){
+        if(!m_RadioManager.waitForPacket()){
 
             // Increase the dropped packet count by one
             m_baseDiagnostics.setDroppedPkts(m_baseDiagnostics.droppedPkts() + 1);
@@ -28,13 +28,19 @@ bool Base::waitForRequest(){
             return false;
         }
 
-        return m_RManager.readHeader();
+        return m_RadioManager.readHeader();
 }
 
 /**
  * Initialize all aspects of the base, currently checks the sd if it's been initialized
  */ 
 bool Base::initBase(){
+
+    // Switch the mux to communicate with the radio
+    setMux(FeatherTxToRadioRx);
+
+    // Initialize the radio
+    m_RadioManager.initRadio();
 
     // Attempt to initialize the SD card
     if(!m_sdManager.initSD()){
@@ -89,8 +95,8 @@ void Base::printDiagnostics(){
  */ 
 void Base::printMostRecentPacket(){
     Serial.println("\n**** Rover Packet ****");
-    Serial.println("Rover Addr: " + String(m_RManager.getMostRecentRover()));
-    serializeJsonPretty(m_RManager.getRoverPacket(), Serial);
+    Serial.println("Rover Addr: " + String(m_RadioManager.getMostRecentRover()));
+    serializeJsonPretty(m_RadioManager.getRoverPacket(), Serial);
     Serial.println("*************************");
 }
 
@@ -100,7 +106,11 @@ void Base::printMostRecentPacket(){
 */
 String Base::getMessageType(){
     
-    return m_RManager.getRoverPacket()["TYPE"];
+    return m_RadioManager.getRoverPacket()["TYPE"];
+}
+
+String Base::getMessage(){
+    return m_RadioManager.getRoverPacket()["MSG"];
 }
 
 /**
