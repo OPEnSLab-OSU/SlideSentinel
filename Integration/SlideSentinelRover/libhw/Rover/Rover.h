@@ -11,7 +11,7 @@
 #include <RHReliableDatagram.h>
 
 #include <ArduinoJson.h>
-#include <GNSSController.h>
+#include "GNSSController.h"
 #include "SPI.h"
 #include <RTClib.h>
 #include "RadioManager.h"
@@ -196,9 +196,8 @@ private:
     /* RTK Poll Variables*/
     unsigned long startTime;
     unsigned long featherTimerLength;
-
-
-    // GNSSController gnss1(Serial1, 115200, 12,11,30);
+    DynamicJsonDocument m_RHMessage;  
+    GNSSController m_gnss;
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

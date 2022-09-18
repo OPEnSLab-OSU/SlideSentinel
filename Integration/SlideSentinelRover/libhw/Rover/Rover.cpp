@@ -9,16 +9,13 @@
 Rover::Rover() :    m_max4820(MAX_CS, &SPI), 
                     m_max3243(FORCEOFF_N),
                     m_multiplex(SPDT_SEL, -1),
-                    m_serial(Serial1),
                     m_RadioManager(),
-                    // m_RHSerialDriver(m_serial),
                     m_gnss(Serial1, 115200, 12, 11, 30),
-                    // m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
-                    // m_RHMessage(1024) {
-    // m_rovInfo.id = CLIENT_ADDR;
-    // m_rovInfo.serverAddr = SERVER_ADDR;
-    // m_rovInfo.init_retries = INIT_RETRIES;
-    // m_rovInfo.timeout = INIT_TIMEOUT;
+                    m_RHMessage(1024) {
+    m_rovInfo.id = CLIENT_ADDR;
+    m_rovInfo.serverAddr = SERVER_ADDR;
+    m_rovInfo.init_retries = INIT_RETRIES;
+    m_rovInfo.timeout = INIT_TIMEOUT;
     // m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
     // m_RHMessage["TYPE"] = "";
     // m_RHMessage["MSG"] = "";
@@ -31,16 +28,14 @@ void Rover::initRTC(){
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
 
-// void Rover::initRHParams(){
-//     m_serial.begin(RADIO_BAUD);
-//     m_RHManager.setThisAddress(m_rovInfo.id);
-//     Serial.println("This address is : ");
-//     Serial.println(m_RHManager.thisAddress());
-//     m_RHManager.setTimeout(m_rovInfo.timeout);
-//     m_RHManager.setRetries(m_rovInfo.init_retries);
+void Rover::initRHParams(){
+    Serial.println("This address is : ");
+    // Serial.println(m_RHManager.thisAddress());
+    m_RHManager.setTimeout(m_rovInfo.timeout);
+    m_RHManager.setRetries(m_rovInfo.init_retries);
 
-//     m_RHManager.init();
-// }
+    m_RHManager.init();
+}
 
 void Rover::wake(){
     powerRadio();
@@ -63,7 +58,7 @@ void Rover::packageData(DataType packType){
 
             // Take the message in as an object to create a new GNSS data object
             // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
-            RHJson["MSG"]=m_gnss.populateGNSSMessage();
+            RHJson["MSG"]=m_gnss.populateGNSS();
             break;
         case ALERT:
             RHJson["TYPE"] = "ALERT";
@@ -73,40 +68,40 @@ void Rover::packageData(DataType packType){
     }
 }
 
-bool Rover::transmit(){
+// bool Rover::transmit(){
 
-    //TDL: Conditionally enable max3243
-    setMux(RadioToFeather);
-    delay(5);
+//     //TDL: Conditionally enable max3243
+//     setMux(RadioToFeather);
+//     delay(5);
 
-    //serialize json object into a string format
-    char processedRHMessage[255];
-    serializeJson(m_RHMessage, processedRHMessage);
-    Serial.println(processedRHMessage);
-    // ast string to a uint8_t* so radiohead can send it
-    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+//     //serialize json object into a string format
+//     char processedRHMessage[255];
+//     serializeJson(m_RHMessage, processedRHMessage);
+//     Serial.println(processedRHMessage);
+//     // ast string to a uint8_t* so radiohead can send it
+//     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
 
-    //will block while waiting on timeout, should be 2-4 seconds by default
-    return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
-}
-
-
+//     //will block while waiting on timeout, should be 2-4 seconds by default
+//     return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
+// }
 
 
-void Rover::sendManualMsg(char* msg){
-    // String RHMessageStr = "";
-    StaticJsonDocument<JSON_OBJECT_SIZE(3)> testdoc;
-    JsonObject RHMessageObject = testdoc.to<JsonObject>();
-    RHMessageObject["TYPE"] = "DEBUG";
-    RHMessageObject["MSG"] = msg;
 
-    // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
-    char processedRHMessage[255];
-    serializeJson(RHMessageObject, processedRHMessage);
-    Serial.println(processedRHMessage);
-    m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
-    // Serial.println(status);
-}
+
+// void Rover::sendManualMsg(char* msg){
+//     // String RHMessageStr = "";
+//     StaticJsonDocument<JSON_OBJECT_SIZE(3)> testdoc;
+//     JsonObject RHMessageObject = testdoc.to<JsonObject>();
+//     RHMessageObject["TYPE"] = "DEBUG";
+//     RHMessageObject["MSG"] = msg;
+
+//     // uint8_t* processedRHMessage = reinterpret_cast<uint8_t*>((char *)RHMessageStr.c_str());
+//     char processedRHMessage[255];
+//     serializeJson(RHMessageObject, processedRHMessage);
+//     Serial.println(processedRHMessage);
+//     m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
+//     // Serial.println(status);
+// }
 
 String Rover::getMessageType(){
     
@@ -167,15 +162,15 @@ void Rover::printRTCTime_Ben() {
     Serial.println(nowDT.year());
 }
 
-char *Rover::getTimeStamp() {
-    nowDT = m_RTC.now();
-    memset(m_timestamp, '\0', sizeof(char) * 512);
-    sprintf(m_timestamp, "%.2d.%.2d.%.2d.%.2d.%.2d", nowDT.month(), nowDT.day(),
-         nowDT.hour(), nowDT.minute(), nowDT.second());
+// char *Rover::getTimeStamp() {
+//     nowDT = m_RTC.now();
+//     memset(m_timestamp, '\0', sizeof(char) * 512);
+//     sprintf(m_timestamp, "%.2d.%.2d.%.2d.%.2d.%.2d", nowDT.month(), nowDT.day(),
+//          nowDT.hour(), nowDT.minute(), nowDT.second());
   
-    //Serial.println(m_timestamp);
-    return m_timestamp;
-}
+//     //Serial.println(m_timestamp);
+//     return m_timestamp;
+// }
 
 // int Rover::test() {
 //     return 10;
@@ -237,15 +232,15 @@ void Rover::attachAlarmInterrupt(){
     attachInterrupt(digitalPinToInterrupt(RTC_INT), fire_int, LOW);     //@will richards. attached twice because it works?     
 }
 
-void startFeatherTimer(){
+void Rover::startFeatherTimer(){
     this.startTime = millis();
 }
 
 void setFeatherTimerLength(unsigned long milliseconds){
-    this.featherTimerLength = milliseconds;
+    Rover::this.featherTimerLength = milliseconds;
 }
 
-bool isFeatherTimerDone(){
+bool Rover::isFeatherTimerDone(){
     if((unsigned long)(millis() - this.startTime) >= this.featherTimerLength){ //calculate if current time exceeds the set timer 
         return true;
     }else{
@@ -264,14 +259,14 @@ void Rover::toSleep(){
 uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
 char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
 
-bool Rover::listen(){
-    if(m_RHManager.available()){
-        if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
-            Serial.println(m_buf);
-            return true;
-    }
-    return false;
-}
+// bool Rover::listen(){
+//     if(m_RHManager.available()){
+//         if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
+//             Serial.println(m_buf);
+//             return true;
+//     }
+//     return false;
+// }
 
 void Rover::powerRadio(){
     Serial.println("Powering radio on.");
