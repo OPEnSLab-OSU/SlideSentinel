@@ -31,10 +31,10 @@ void Rover::initRTC(){
 void Rover::initRHParams(){
     Serial.println("This address is : ");
     // Serial.println(m_RHManager.thisAddress());
-    m_RHManager.setTimeout(m_rovInfo.timeout);
-    m_RHManager.setRetries(m_rovInfo.init_retries);
+   // m_RHManager.setTimeout(m_rovInfo.timeout);
+    // m_RHManager.setRetries(m_rovInfo.init_retries);
 
-    m_RHManager.init();
+    // m_RHManager.init();
 }
 
 void Rover::wake(){
@@ -68,7 +68,7 @@ void Rover::packageData(DataType packType){
     }
 }
 
-// bool Rover::transmit(){
+bool Rover::transmit(){
 
 //     //TDL: Conditionally enable max3243
 //     setMux(RadioToFeather);
@@ -83,12 +83,13 @@ void Rover::packageData(DataType packType){
 
 //     //will block while waiting on timeout, should be 2-4 seconds by default
 //     return m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(m_RHMessage), SERVER_ADDR);
-// }
+return true;
+}
 
 
 
 
-// void Rover::sendManualMsg(char* msg){
+void Rover::sendManualMsg(char* msg){
 //     // String RHMessageStr = "";
 //     StaticJsonDocument<JSON_OBJECT_SIZE(3)> testdoc;
 //     JsonObject RHMessageObject = testdoc.to<JsonObject>();
@@ -101,7 +102,7 @@ void Rover::packageData(DataType packType){
 //     Serial.println(processedRHMessage);
 //     m_RHManager.sendtoWait((uint8_t*)processedRHMessage, measureJson(RHMessageObject), SERVER_ADDR);
 //     // Serial.println(status);
-// }
+}
 
 String Rover::getMessageType(){
     
@@ -233,15 +234,15 @@ void Rover::attachAlarmInterrupt(){
 }
 
 void Rover::startFeatherTimer(){
-    this.startTime = millis();
+    this->startTime = millis();
 }
 
-void setFeatherTimerLength(unsigned long milliseconds){
-    Rover::this.featherTimerLength = milliseconds;
+void Rover::setFeatherTimerLength(int milliseconds){
+    this->featherTimerLength = milliseconds;
 }
 
 bool Rover::isFeatherTimerDone(){
-    if((unsigned long)(millis() - this.startTime) >= this.featherTimerLength){ //calculate if current time exceeds the set timer 
+    if((unsigned long)(millis() - this->startTime) >= this->featherTimerLength){ //calculate if current time exceeds the set timer 
         return true;
     }else{
         return false;
