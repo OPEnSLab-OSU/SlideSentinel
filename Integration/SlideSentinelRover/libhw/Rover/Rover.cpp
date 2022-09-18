@@ -10,17 +10,18 @@ Rover::Rover() :    m_max4820(MAX_CS, &SPI),
                     m_max3243(FORCEOFF_N),
                     m_multiplex(SPDT_SEL, -1),
                     m_serial(Serial1),
-                    m_RHSerialDriver(m_serial),
+                    m_RadioManager(),
+                    // m_RHSerialDriver(m_serial),
                     m_gnss(Serial1, 115200, 12, 11, 30),
-                    m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
-                    m_RHMessage(1024) {
-    m_rovInfo.id = CLIENT_ADDR;
-    m_rovInfo.serverAddr = SERVER_ADDR;
-    m_rovInfo.init_retries = INIT_RETRIES;
-    m_rovInfo.timeout = INIT_TIMEOUT;
-    m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
-    m_RHMessage["TYPE"] = "";
-    m_RHMessage["MSG"] = "";
+                    // m_RHManager(m_RHSerialDriver, CLIENT_ADDR),
+                    // m_RHMessage(1024) {
+    // m_rovInfo.id = CLIENT_ADDR;
+    // m_rovInfo.serverAddr = SERVER_ADDR;
+    // m_rovInfo.init_retries = INIT_RETRIES;
+    // m_rovInfo.timeout = INIT_TIMEOUT;
+    // m_RHMessage["ID"] = m_rovInfo.id; //example using dynamic json document to set information TBD
+    // m_RHMessage["TYPE"] = "";
+    // m_RHMessage["MSG"] = "";
 
     //nowDT = m_RTC.now();
 }
@@ -30,16 +31,16 @@ void Rover::initRTC(){
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
 
-void Rover::initRHParams(){
-    m_serial.begin(RADIO_BAUD);
-    m_RHManager.setThisAddress(m_rovInfo.id);
-    Serial.println("This address is : ");
-    Serial.println(m_RHManager.thisAddress());
-    m_RHManager.setTimeout(m_rovInfo.timeout);
-    m_RHManager.setRetries(m_rovInfo.init_retries);
+// void Rover::initRHParams(){
+//     m_serial.begin(RADIO_BAUD);
+//     m_RHManager.setThisAddress(m_rovInfo.id);
+//     Serial.println("This address is : ");
+//     Serial.println(m_RHManager.thisAddress());
+//     m_RHManager.setTimeout(m_rovInfo.timeout);
+//     m_RHManager.setRetries(m_rovInfo.init_retries);
 
-    m_RHManager.init();
-}
+//     m_RHManager.init();
+// }
 
 void Rover::wake(){
     powerRadio();

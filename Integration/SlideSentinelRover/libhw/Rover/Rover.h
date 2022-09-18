@@ -14,6 +14,7 @@
 #include <GNSSController.h>
 #include "SPI.h"
 #include <RTClib.h>
+#include "RadioManager.h"
 /**
  * @brief The Rover class is responsible for controlling all subparts of the rover.
  *  
@@ -185,15 +186,12 @@ private:
     MAX4820 m_max4820;              //Relay driver, used to power on relays controlling GNSS/Radio
     MAX3243 m_max3243;              //Translator chip for rs-232 communication
     SN74LVC2G53 m_multiplex;        //Multiplexer used for redirecting information from radio rx to GNSS and radio rx to Feather
-    HardwareSerial &m_serial;       //Reference to a serial interface object
-    RH_Serial m_RHSerialDriver;             //Driver class for radio communication. Uses serial pins for feather.
-    RHReliableDatagram m_RHManager;         //RadioHead communication manager class
+    RadioManager m_RadioManager;         //In charge of all radio communications
     RTC_DS3231 m_RTC;               //Real time clock object
     DateTime nowDT;
     byte prSec = 0;
-    uint8_t recvBuffer[RH_MAX_MESSAGE_LEN];                     // Buffer that the recieved message will be written into
-    GNSSController m_gnss;   //gnss controller that handles data incoming into the feather from piksi
-    char m_timestamp[512];
+
+    
 
     /* RTK Poll Variables*/
     unsigned long startTime;
@@ -208,7 +206,7 @@ private:
             TYPE: Message type, such as REQUEST, UPLOAD
             MSG: data upload, eg: "152.21312,12.12312, etc"
      */
-    DynamicJsonDocument m_RHMessage;    //document that will contain all information sent to the base
+  
 
 
     

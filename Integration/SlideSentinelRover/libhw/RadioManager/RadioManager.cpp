@@ -1,4 +1,6 @@
 #include "RadioManager.h"
+#include "network_config_2.0.0.h"
+#include "pcb_2.0.0.h"
 
 RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){
