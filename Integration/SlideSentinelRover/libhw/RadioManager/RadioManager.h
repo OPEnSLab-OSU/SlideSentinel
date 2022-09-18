@@ -3,7 +3,7 @@
 #include <RH_Serial.h>
 #include <ArduinoJson.h>
 
-#include "network_config_2.0.0.h"
+#include "network_config.h"
 
 
 class RadioManager{
@@ -19,7 +19,7 @@ class RadioManager{
         bool waitForPacket();
 
         /* Send a packet to a specified client address */
-        bool sendPacket();
+        bool sendPacket(String message, int addr);
 
         /* Initialize the Serial and the Radio interface */  
         void initRadio();

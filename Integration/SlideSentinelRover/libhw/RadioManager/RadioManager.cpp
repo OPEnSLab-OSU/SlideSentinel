@@ -1,12 +1,10 @@
 #include "RadioManager.h"
-#include "network_config_2.0.0.h"
-#include "pcb_2.0.0.h"
 
 RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){
-                                   m_RHManager.setTimeout(INIT_TIMEOUT);
+                                    m_RHManager.setTimeout(INIT_TIMEOUT);
                                     m_RHManager.setRetries(INIT_RETRIES);
-                                m_RHManager.init();
+                                    m_RHManager.init();
                                }
 
 /**
@@ -23,6 +21,17 @@ void RadioManager::clearSerial(){
     while(Serial1.available()){
         Serial1.read();
     }
+}
+
+/**
+ * Sends a specified message to a given address
+ * @param message Message to transmit to radio
+ * @param addr Address to send to
+ */ 
+bool RadioManager::sendPacket(String message, int addr){
+    char messageArray[255];
+    message.toCharArray(messageArray, 255);
+    return m_RHManager.sendToWait(((uint8_t*)messageArray, message.length(), addr));
 }
 
 /**
