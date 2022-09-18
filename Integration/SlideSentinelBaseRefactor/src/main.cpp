@@ -10,7 +10,6 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    Serial1.begin(115200);
     delay(3500); // Wait for data to propigate
 
     Serial.println("[Main] Initializing Setup...");
@@ -19,10 +18,9 @@ void setup(){
     SPI.begin();
 
     // Initialize the components used by the base
-    base.initBase();
-    base.setMux(Base::MuxFormat::FeatherTxToRadioRx);
     base.powerRadio();
     base.powerGNSS();
+    base.initBase();
 }
 
 // Enum to track the currrent state the Base is in, default to waiting for data
@@ -32,7 +30,7 @@ static State state = WAIT;
 void loop(){
 
     // Reinit the SD card if necessary
-    base.checkSD();
+    //base.checkSD();
 
     // Checks if there are requests to print debug information
     base.debugInformation();
@@ -47,8 +45,8 @@ void loop(){
                 
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
-                if(base.getMessageType() == "POLLREQUEST"){
-                    Serial.println("POLL HAS BEEN REQUESTED");
+                if(base.getMessageType() == "REQUEST"){
+                    Serial.println(base.getMessage());
 
                 }
                // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);
