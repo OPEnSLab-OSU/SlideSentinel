@@ -4,6 +4,7 @@
 #include "MAX3243.h"
 #include "SN74LVC2G53.h"
 #include "pcb_2.0.0.h"
+#include "config.h"
 #include "network_config_2.0.0.h"
 
 #include <HardwareSerial.h>

@@ -8,15 +8,8 @@
 #include "Rover.h"
 
 Rover rover;
-// ConManager manager;
-// FSController fsController(SD_CS, SD_RST);
-// SdFat SD;
-// File myFile;
-// GNSSController *gnssController;
-// static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LOG_FREQ); 
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
-
 
 static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
                                         INIT_LOG_FREQ); 
@@ -31,35 +24,17 @@ void setup() {
 
   SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 
-  Serial.println("2");
-  delay(100);
-  // rover.powerDownRadio();
-  // delay(3000);
-
-  // rover.initRTC(); could break here
   rover.powerRadio();
-  // rover.initRover();
-  // rover.initRadio(); //something breaks here
-    Serial.println("3");
-
-  Serial.println("3");
-  // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
-
-  //Serial1.begin(115200);
 
   rover.powerGNSS();
-    Serial1.begin(115200);
-
-  // rover.setRS232(true);
-  // Serial1.begin(19200);
+  Serial1.begin(115200);
 }
 
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
 
-static State state = WAKE;
+static State state = DEBUG;
 
 void loop() {
-  // delay(50);
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();
@@ -69,9 +44,11 @@ void loop() {
     }
   }
 
-  /* Starting state. The flow of the program. */
-
   switch(state) {
+    case DEBUG:
+      // if(rover.sd)
+      delay(500);
+      break;
     case WAKE:
       Serial.println("WAKE mode...");
 
@@ -99,16 +76,6 @@ void loop() {
 
       /******* RTC *******/
       rover.debugRTCPrint(); // Turns on RTC for correct timestamp
-
-      // /******* SD CARD ********/      
-      // if (!fsController.init()) { // Initializes SD card
-      //   Serial.println("Failed to initialize SD card...");
-      // }
-
-      // if (fsController.check_init()) { // Checks if initialized
-      //   fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->populateGNSS()); // Responsible for creating files 
-      // }
-
 
       state = HANDSHAKE;
       break;
@@ -157,11 +124,6 @@ void loop() {
       }else{
         state = UPLOAD;
       }
-      
-      // else{
-      //   Serial.println("No data");
-      // }
-
 
       state = POLL;
       break;

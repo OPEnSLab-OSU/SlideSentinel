@@ -34,7 +34,7 @@ void Rover::initRTC(){
  * Initialize the rover
  */ 
 bool Rover::initRover(){
-    setRS232(true);
+    setRS232(IS_RS232);
     m_RadioManager.initRadio();
     return true;
 }
@@ -279,18 +279,6 @@ void Rover::toSleep(){
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
-//prototype TODO fix this poor placement
-uint8_t len = RH_SERIAL_MAX_MESSAGE_LEN;
-char m_buf[RH_SERIAL_MAX_MESSAGE_LEN];
-
-// bool Rover::listen(){
-//     if(m_RHManager.available()){
-//         if (m_RHManager.recvfromAckTimeout((uint8_t *)m_buf, &len, m_rovInfo.init_retries, 0))
-//             Serial.println(m_buf);
-//             return true;
-//     }
-//     return false;
-// }
 
 void Rover::powerRadio(){
     Serial.println("Powering radio on.");
