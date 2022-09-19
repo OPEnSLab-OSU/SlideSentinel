@@ -6,12 +6,13 @@ RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
 /**
  * Initialize the radio
  */ 
-void RadioManager::initRadio(){
+bool RadioManager::initRadio(){
     Serial1.begin(115200);
+    Serial1.println("exit");
     delay(50);
     m_RHManager.setTimeout(INIT_TIMEOUT);
     m_RHManager.setRetries(INIT_RETRIES);
-    m_RHManager.init();
+    return m_RHManager.init();
 }
 
 /**

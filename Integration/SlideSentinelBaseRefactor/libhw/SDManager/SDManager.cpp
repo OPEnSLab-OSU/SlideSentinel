@@ -10,22 +10,29 @@
 
 #include "SDManager.h"
 
-SDManager::SDManager(int csPin, int spiSpeed): csPin(csPin),spiSpeed(spiSpeed){}
+SDManager::SDManager(int csPin): csPin(csPin){ }
 
 /**
- * Initialize the SD card, this is seperated from the constructor to give more control
+ * Initialize the SD card, this is separated from the constructor to give more control
  */ 
 bool SDManager::initSD(){
 
-    // Print out an initialization header
-    Serial.println("\n-----------------------------SD Manager------------------------------");
-
-    pinMode(csPin, OUTPUT);
+    pinMode(csPin, OUTPUT); 
 
     // Attempt to open SPI communication with the SD card and then try to open the root of the SD card
-    if(!m_sd.begin(csPin, SD_SCK_HZ(spiSpeed)) || !m_sdRoot.open("/")){
+    if(!m_sd.begin(csPin, SPI_HALF_SPEED)){
         Serial.println("[SD Manager] Failed to initialize SD Card!");
         return false;
+    }
+    else{
+        Serial.println("[SD Manager] SD Card Initialized!");
+    }
+
+    if(!m_sdRoot.open("/")){
+        Serial.println("[SD Manager] Failed to open root directory!");
+    }
+    else{
+        Serial.println("[SD Manager] Successfully opened root directory!");
     }
 
     // Check if the default log folder doesn't exists on the SD card
@@ -52,9 +59,6 @@ bool SDManager::initSD(){
     Serial.println("[SD Manager] Total Capacity: " + String(getTotalSize()) + "MB");
     Serial.println("[SD Manager] Free Space:     " + String(getFreeSpace()) + "MB");
 
-    // Print out an ending seperator to conclude the SD manager segment of initialization
-    Serial.println("\n---------------------------------------------------------------------");
-
     return true;
 }
 
@@ -63,16 +67,35 @@ bool SDManager::initSD(){
  */ 
 bool SDManager::createLogDirectories(){
     String roverInstance = "";
+    String logFolder = "/" + String(SD_LOG_FOLDER);
     for(int roverNum = 0; roverNum < NUM_ROVERS; roverNum++){
         roverInstance = "ROVER" + String(roverNum);
         Serial.println("[SD Manager] Creating directory for : " + roverInstance);
+
+        if(m_sd.chdir(logFolder.c_str(), true), true){
+            Serial.println("[SD Manager] Successfully opened log folder!");
+
+            // Make and open the log folder
+            m_sd.mkdir(roverInstance.c_str());
+            m_sd.chdir(roverInstance.c_str(), true);
+
+            createFile(PROPERTIES_FILE);
+            createFile(DIAGNOSTIC_FILE);
+            createFile(DATA_FILE);
+            createFile(ERROR_FILE);
+            
+        }
+        else{
+            Serial.println("[SD Manager] Failed to open log folder!");
+        }
+    
         
         /* Change to SD Root, Open Default Log folder, Create the rover folders*/
-        if(!(m_sd.chdir() && m_sd.chdir(SD_LOG_FOLDER) && m_sd.mkdir(roverInstance.c_str()) && m_sd.chdir(roverInstance) &&
-             createFile(PROPERTIES_FILE) && createFile(DIAGNOSTIC_FILE) && createFile(DATA_FILE) && createFile(ERROR_FILE))){
-            Serial.println("[SD Manager] Failed to create logging files!");
-            return false;
-        }
+        // if(!(m_sd.chdir() && m_sd.chdir(SD_LOG_FOLDER) && m_sd.mkdir(roverInstance.c_str()) && m_sd.chdir(roverInstance) &&
+        //      createFile(PROPERTIES_FILE) && createFile(DIAGNOSTIC_FILE) && createFile(DATA_FILE) && createFile(ERROR_FILE))){
+        //     Serial.println("[SD Manager] Failed to create logging files!");
+        //     return false;
+        // }
     }
 
     // Finally return to the base logging directory
@@ -86,7 +109,7 @@ bool SDManager::log(const int roverNum, const char* message, const char* file){
 
     // Rover instance to track data from an individual rover
     String roverFolder = "ROVER" + String(roverNum);
-    if(!m_sd.chdir(roverFolder.c_str()) && !writeLine(file, message)){
+    if(!m_sd.chdir(roverFolder.c_str(), true) && !writeLine(file, message)){
         Serial.println("[SD Manager] Failed to log to file: " + String(file));
         return false;
     }
@@ -159,8 +182,9 @@ int SDManager::getTotalSize(){
  */ 
 bool SDManager::returnToLogDir(){
     
+    String logFolder = "/" + String(SD_LOG_FOLDER);
     // Return to the root directory and move into the logging directory to prepare for logging
-    if( !(m_sd.chdir() && !m_sd.chdir(SD_LOG_FOLDER))){
+    if(!m_sd.chdir(logFolder.c_str(), true)){
         Serial.println("[SD Manager] Failed to open log folder!");
         return false;
     }
@@ -178,7 +202,7 @@ bool SDManager::createFile(const char* fileName){
 /**
  * Append a line of text to the end of a given file
  */ 
-bool SDManager::writeLine(const char* fileName, const char* messsage){
+bool SDManager::writeLine(const char* fileName, const char* message){
 
     // Open the for writting and append all writes to the end
     if(!m_file.open(fileName, O_WRONLY | O_APPEND)){
@@ -187,7 +211,7 @@ bool SDManager::writeLine(const char* fileName, const char* messsage){
     }
 
     // Write the message to the file
-    if(m_file.println(messsage) <= 0){
+    if(m_file.println(message) <= 0){
         Serial.println("[SD Manager] Nothing written to file!");
         return false;
     }

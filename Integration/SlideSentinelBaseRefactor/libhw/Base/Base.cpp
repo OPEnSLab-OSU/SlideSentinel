@@ -41,19 +41,20 @@ bool Base::waitAndReceive(int milliseconds){
  */ 
 bool Base::initBase(){
 
+    // Attempt to initialize the SD card
+    if(!m_sdManager.initSD()){
+        return false;
+    }
+
     // Switch the mux to communicate with the radio
     setMux(FeatherTxToRadioRx);
 
-
-
     // Initialize the radio
-    m_RadioManager.initRadio();
-
-    // Attempt to initialize the SD card
-    if(!m_sdManager.initSD()){
-
+    if(!m_RadioManager.initRadio())
         return false;
-    }
+    
+
+    
 
     return true;
 }
@@ -117,6 +118,7 @@ bool Base::transmit(){
  */ 
 void Base::checkSD(){
     if(!m_sdManager.checkSD()){
+        Serial.println("[Base] SD not initialized retrying...");
         m_sdManager.initSD();
     }
 }
@@ -215,6 +217,20 @@ void Base::setMux(MuxFormat format){
     }else if(format == FeatherTxToRadioRx){
         m_multiplexer.comY2();
     }
-    
+}
 
+void Base::startFeatherTimer(){
+    this->startTime = millis();
+}
+
+void Base::setFeatherTimerLength(int milliseconds){
+    this->featherTimerLength = milliseconds;
+}
+
+bool Base::isFeatherTimerDone(){
+    if((unsigned long)(millis() - this->startTime) >= this->featherTimerLength){ //calculate if current time exceeds the set timer 
+        return true;
+    }else{
+        return false;
+    }
 }
