@@ -30,16 +30,12 @@ void Rover::initRTC(){
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
 
-void Rover::initRHParams(){
-    Serial.println("This address is : ");
-    this->setRS232(true);
+/**
+ * Initialize the rover
+ */ 
+bool Rover::initRover(){
+    setRS232(true);
     m_RadioManager.initRadio();
-
-    // Serial.println(m_RHManager.thisAddress());
-   // m_RHManager.setTimeout(m_rovInfo.timeout);
-    // m_RHManager.setRetries(m_rovInfo.init_retries);
-
-    // m_RHManager.init();
 }
 
 void Rover::wake(){

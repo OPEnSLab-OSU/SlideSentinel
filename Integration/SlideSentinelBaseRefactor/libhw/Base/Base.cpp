@@ -5,7 +5,8 @@
 Base::Base() : m_max4820(MAX_CS, &SPI),
                m_multiplexer(SPDT_SEL, -1),
                m_RadioManager(),
-               m_sdManager(SD_CS, 10){
+               m_sdManager(SD_CS, 10),
+               m_JSONData(1024){
     
     m_baseInfo.id = SERVER_ADDR;
     m_baseInfo.init_retries = INIT_RETRIES;
@@ -57,10 +58,49 @@ bool Base::initBase(){
     return true;
 }
 
+/**
+ * Package data into a Json document to send to the Rover
+ */ 
+void Base::packageData(DataType packType){
+    JsonObject RHJson = m_JSONData.to<JsonObject>();
+
+    switch(packType){
+        case REQUEST: 
+            RHJson["TYPE"] = "REQUEST";
+            RHJson["MSG"] = "RTK_REQUEST";
+            break;
+        case UPLOAD:
+            RHJson["TYPE"] = "UPLOAD";
+
+            // Take the message in as an object to create a new GNSS data object
+            // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
+            RHJson["MSG"]= "PLACEHOLDER";
+            break;
+        case ALERT:
+            RHJson["TYPE"] = "ALERT";
+            RHJson["MSG"] = "UNSPECIFIED_ALERT";
+            break;
+
+    }
+}
+
+
+/**
+ * Transmit the packaged data to the rover
+ */ 
 bool Base::transmit(){
+
+    // Set the serial Mux to talk to the Radio
     setMux(FeatherTxToRadioRx);
     delay(5);
-    return m_RadioManager.sendPacket("Hello World", m_RadioManager.getMostRecentRover());
+
+    // Serialize the Json to string
+    String processedRHMessage;
+    serializeJson(m_JSONData, processedRHMessage);
+    Serial.println(processedRHMessage);
+
+    // Send the packet to the rover that just requested data
+    return m_RadioManager.sendPacket(processedRHMessage, m_RadioManager.getMostRecentRover());
 }
 
 /**

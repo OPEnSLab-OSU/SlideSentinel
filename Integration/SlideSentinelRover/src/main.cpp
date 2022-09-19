@@ -38,7 +38,7 @@ void setup() {
 
   // rover.initRTC(); could break here
   rover.powerRadio();
-  rover.initRHParams();
+  rover.initRover();
   // rover.initRadio(); //something breaks here
     Serial.println("3");
 
@@ -75,7 +75,7 @@ void loop() {
 
       /****** RADIO *******/
       rover.powerRadio();
-      rover.initRHParams();
+      rover.initRover();
 
       rover.setFeatherTimerLength(20*1000);
       rover.startFeatherTimer();

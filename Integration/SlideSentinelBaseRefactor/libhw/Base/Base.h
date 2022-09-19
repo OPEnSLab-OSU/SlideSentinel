@@ -18,6 +18,19 @@
 class Base {
 
     public:
+
+        /* 
+            Different Ways to Package Data for transmit
+            REQUEST - Notify base that rover is awaiting instructions
+            UPLOAD - Upload polled data to base
+            ALERT - High priority message such as accelerometer trip
+        */
+        enum DataType{
+            REQUEST,
+            UPLOAD,
+            ALERT
+        };
+
         Base();
 
         /* Data Struct for rover info that gets sent to base. */
@@ -57,6 +70,9 @@ class Base {
         /* Transmit data to the rover*/
         bool transmit();
 
+        /* Package data for transmit */
+        void packageData(DataType packType);
+
         /* Print the current diagnostic information about the base station */
         void printDiagnostics();
 
@@ -90,6 +106,8 @@ class Base {
         SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
         RadioManager m_RadioManager;                // RadioHead wrapper class for managing radio communication
         SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
+
+        DynamicJsonDocument m_JSONData;
         
         Diagnostics  m_baseDiagnostics;         // Diagnostics  to track debug information about the base
         Diagnostics *m_roverDiagnostics;        // Pointer array of rover diagnostic information

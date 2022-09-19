@@ -131,8 +131,8 @@ public:
     */
     void setMux(MuxFormat format);
 
-    /* Initialize RadioHead parameters and settings*/
-    void initRHParams();
+    /* Initialize modules that the base uses*/
+    bool initRover();
 
     /* initialize rtc */
     void initRTC();
