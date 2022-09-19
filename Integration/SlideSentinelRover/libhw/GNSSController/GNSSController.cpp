@@ -157,8 +157,8 @@ bool GNSSController::isNewData(){
   return (m_gpsPos.lat!=0);
 }
 
-char *GNSSController::populateGNSS() {
-  StaticJsonDocument<MAX_DATA_LEN> doc;
+String GNSSController::populateGNSS() {
+  doc.clear();
   doc["GNSS"]["RTK Mode"] = getRTKModeString();
   doc["GNSS"]["Week"] = String(m_gps_time.wn);
   doc["GNSS"]["Seconds"] = String(m_gps_time.tow);
@@ -190,10 +190,12 @@ char *GNSSController::populateGNSS() {
       .
     }
   */
-
-  //serializeJson(doc, Serial);
-  String temp = (doc.as<JsonObject>())["GNSS"];
-  return (char *)temp.c_str();
+  String temp = "";
+  serializeJson(doc, temp);
+  Serial.println(temp);
+  // String temp = (doc.as<JsonObject>())["GNSS"].as<String>();
+  return temp;
+  //return (char *)temp.c_str();
 }
 
 

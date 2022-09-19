@@ -7,51 +7,46 @@
 #include "FeatherTrace.h"
 #include "Rover.h"
 
-Rover rover;
-// ConManager manager;
-// FSController fsController(SD_CS, SD_RST);
-// SdFat SD;
-// File myFile;
-// GNSSController *gnssController;
-// static GNSSController _gnssController(Serial1, 115200, GNSS_RX, GNSS_TX, INIT_LOG_FREQ); 
+
+
+/* Ran on first bootup of Main. Pass in */
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
 
+Rover rover(Serial2);
 
-static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
-                                        INIT_LOG_FREQ); 
-GNSSController *gnssController;
+// static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
+//                                         INIT_LOG_FREQ); 
+// GNSSController *gnssController;
                           
 void setup() {
+  rover.setMux(Rover::MuxFormat::RadioToFeather);
+  rover.setRS232(true);
   Serial.begin(115200); //functions rely on serial being begun
   Serial.println("1");
+  Serial1.begin(115200);
+  Serial1.println("exit");
+  /*Radio Debug*/
+  // while(true){
+  //   if(Serial1.available()){
+  //     Serial.print((char)Serial1.read());
+  //   }else{
+  //     Serial1.println("Ping");
+  //   }
+  // }
+  /*End Radio Debug*/
   delay(5000);
-  gnssController = &_gnssController;
-  gnssController->init(); //this is the true cause
+  // gnssController = &_gnssController;
+  // gnssController->init(); //this is the true cause
 
   SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 
-  Serial.println("2");
-  delay(100);
-  // rover.powerDownRadio();
-  // delay(3000);
-
-  // rover.initRTC(); could break here
   rover.powerRadio();
-  // rover.initRover();
-  // rover.initRadio(); //something breaks here
-    Serial.println("3");
-
-  Serial.println("3");
-  // SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
-
-  //Serial1.begin(115200);
 
   rover.powerGNSS();
-    Serial1.begin(115200);
+  Serial1.begin(115200);
+  rover.initRover();
 
-  // rover.setRS232(true);
-  // Serial1.begin(19200);
 }
 
 enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };        //enums for rover state
@@ -59,7 +54,6 @@ enum State { WAKE, DEBUG, HANDSHAKE, PREPOLL, UPDATE, POLL, UPLOAD, SLEEP };    
 static State state = WAKE;
 
 void loop() {
-  // delay(50);
   /* Print out rover diagnostic information if 1 has been typed */
   if (Serial.available()) {
     char cmd = Serial.read();
@@ -69,16 +63,19 @@ void loop() {
     }
   }
 
-  /* Starting state. The flow of the program. */
-
   switch(state) {
+    case DEBUG:
+      // if(rover.sd)
+      delay(500);
+      break;
     case WAKE:
+      digitalWrite(LED_BUILTIN,HIGH);
+
       Serial.println("WAKE mode...");
 
       /****** RADIO *******/
       rover.powerRadio();
       rover.setMux(Rover::MuxFormat::RadioToFeather);
-      rover.initRover();
 
       rover.setFeatherTimerLength(10*1000);
       rover.startFeatherTimer();
@@ -100,16 +97,6 @@ void loop() {
       /******* RTC *******/
       rover.debugRTCPrint(); // Turns on RTC for correct timestamp
 
-      // /******* SD CARD ********/      
-      // if (!fsController.init()) { // Initializes SD card
-      //   Serial.println("Failed to initialize SD card...");
-      // }
-
-      // if (fsController.check_init()) { // Checks if initialized
-      //   fsController.setupWakeCycle(rover.getTimeStamp(), gnssController->populateGNSS()); // Responsible for creating files 
-      // }
-
-
       state = HANDSHAKE;
       break;
     case HANDSHAKE:
@@ -118,7 +105,8 @@ void loop() {
         if(rover.waitAndReceive()){
           if(rover.getMessageType() == "INIT_RTK_TYPE"){
             Serial.println("Successfully transitioning to rtk mode");
-            // state = PREPOLL;
+            state = PREPOLL;
+            break;
           }else{
             Serial.println("Unexpected response to rtk request...");
             Serial.println("******************************");
@@ -140,33 +128,32 @@ void loop() {
       break;
     case PREPOLL:
       // rover.scheduleAlarm(600); // 10 minute timer 
+      rover.setFeatherTimerLength(1000*20);
       rover.powerGNSS();
-      //rover.setRS232(true); //not needed?
       rover.setMux(Rover::RadioToGNSS); // Inits multiplexer
       rover.startFeatherTimer();
-      rover.setFeatherTimerLength(1000*60*10); //convert to seconds->minutes->chosen length
+      // rover.setFeatherTimerLength(1000*60*10); //convert to seconds->minutes->chosen length
       state = POLL;
       break;
 
     case POLL:
       if(!rover.isFeatherTimerDone()){//check if timer is completed
-        gnssController->poll();
-        if(gnssController->isNewData()){
-          Serial.println(gnssController->populateGNSS());   
-        }
+        // gnssController->poll();
+        rover.poll();
+        // if(gnssController->isNewData()){
+        //   Serial.println(gnssController->populateGNSS());   
+        // }
       }else{
         state = UPLOAD;
+        break;
       }
-      
-      // else{
-      //   Serial.println("No data");
-      // }
-
 
       state = POLL;
       break;
     case UPLOAD: 
+      rover.setMux(Rover::MuxFormat::RadioToFeather);
       rover.packageData(Rover::DataType::UPLOAD);
+      Serial.println("Uploading");
       if(rover.transmit()){
         Serial.println("Data uploaded successfully!!!");
       }else{
@@ -177,7 +164,10 @@ void loop() {
     case SLEEP: 
       rover.powerDownGNSS();
       rover.powerDownRadio();
-      rover.scheduleSleepAlarm();
+      // rover.scheduleSleepAlarm();
+      rover.scheduleAlarm(20);
+      digitalWrite(LED_BUILTIN,LOW);
+
       rover.attachAlarmInterrupt();
       rover.toSleep();
       state = WAKE;
