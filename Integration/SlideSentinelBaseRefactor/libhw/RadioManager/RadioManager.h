@@ -22,7 +22,7 @@ class RadioManager{
         bool sendPacket(String message, int addr);
 
         /* Initialize the Serial and the Radio interface */  
-        void initRadio();
+        bool initRadio();
 
         /* Return the address of the most recent rover packet */
         int getMostRecentRover();

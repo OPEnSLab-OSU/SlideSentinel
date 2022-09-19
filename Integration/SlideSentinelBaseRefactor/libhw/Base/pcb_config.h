@@ -12,7 +12,7 @@
 #define BAT_PIN 15
 
 /****** SDManager ******/
-#define SD_CS 18  				// A4
+#define SD_CS 10  				// 10
 #define SD_RST 16 				// A2
 
 /****** IMUController ******/

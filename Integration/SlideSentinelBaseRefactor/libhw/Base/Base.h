@@ -102,6 +102,23 @@ class Base {
 
         /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
         void setMux(MuxFormat format);
+        
+        /** FEATHER TIMER FUNCTIONS **/
+
+        /*track start time*/
+        void startFeatherTimer();
+
+        /** Sets the timer duration
+         * 
+         * @param milliseconds The duration in milliseconds the timer will be set to
+        */
+        void setFeatherTimerLength(int milliseconds);
+
+        /** Returns true if the feather timer duration has exceeded the set timer.
+         *  Note: This timer expects the timer length to be set prior to calling this.
+         *  TDL: doxygen return format?
+        */
+        bool isFeatherTimerDone();
 
     private:
         BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
@@ -114,6 +131,10 @@ class Base {
         
         Diagnostics  m_baseDiagnostics;         // Diagnostics  to track debug information about the base
         Diagnostics *m_roverDiagnostics;        // Pointer array of rover diagnostic information
+
+        /* RTK Poll Variables*/
+        unsigned long startTime;
+        unsigned long featherTimerLength;
 
      
     };

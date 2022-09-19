@@ -26,7 +26,7 @@
 
 class SDManager{
     public:
-        SDManager(int csPin, int spiSpeed);
+        SDManager(int csPin);
 
         /*Check if the SD card is active*/
         bool checkSD();
