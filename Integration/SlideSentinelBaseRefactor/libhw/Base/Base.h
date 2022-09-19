@@ -56,7 +56,7 @@ class Base {
         };
 
         /* Wait for data to be sent from a rover to the base */
-        bool waitForRequest();
+        bool waitAndReceive(int milliseconds = INIT_TIMEOUT);
 
         /* returns the message type*/
         String getMessageType();
@@ -72,6 +72,9 @@ class Base {
 
         /* Package data for transmit */
         void packageData(DataType packType);
+
+        /* Package data for transmit using arbitrary data */
+        void packageData(String type, String body);
 
         /* Print the current diagnostic information about the base station */
         void printDiagnostics();
