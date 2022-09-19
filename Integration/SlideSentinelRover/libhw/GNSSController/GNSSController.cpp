@@ -159,21 +159,21 @@ bool GNSSController::isNewData(){
 
 String GNSSController::populateGNSS() {
   doc.clear();
-  doc["GNSS"]["RTK Mode"] = getRTKModeString();
-  doc["GNSS"]["Week"] = String(m_gps_time.wn);
-  doc["GNSS"]["Seconds"] = String(m_gps_time.tow);
+  doc["RTK Mode"] = getRTKModeString();
+  doc["Week"] = String(m_gps_time.wn);
+  doc["Seconds"] = String(m_gps_time.tow);
 
   //Critical info 
-  doc["GNSS"]["Latitude"] =  String(m_gpsPos.lat,17);
-  doc["GNSS"]["Longitude"] =String(m_gpsPos.lon,17);
-  doc["GNSS"]["Height"] = String(m_gpsPos.height,17);
+  doc["Latitude"] =  String(m_gpsPos.lat,17);
+  doc["Longitude"] =String(m_gpsPos.lon,17);
+  doc["Height"] = String(m_gpsPos.height,17);
  
-  doc["GNSS"]["Satellites"] = m_gpsPos.n_sats;
-  doc["GNSS"]["GDOP"] = m_dataPecision.gdop;
-  doc["GNSS"]["HDOP"] = m_dataPecision.hdop;
-  doc["GNSS"]["PDOP"] = m_dataPecision.pdop;
-  doc["GNSS"]["TDOP"] = m_dataPecision.tdop;
-  doc["GNSS"]["VDOP"] = m_dataPecision.vdop; 
+  // doc["GNSS"]["Satellites"] = m_gpsPos.n_sats;
+  // doc["GNSS"]["GDOP"] = m_dataPecision.gdop;
+  // doc["GNSS"]["HDOP"] = m_dataPecision.hdop;
+  // doc["GNSS"]["PDOP"] = m_dataPecision.pdop;
+  // doc["GNSS"]["TDOP"] = m_dataPecision.tdop;
+  // doc["GNSS"]["VDOP"] = m_dataPecision.vdop; 
   m_resetStructs();
 
   /*
