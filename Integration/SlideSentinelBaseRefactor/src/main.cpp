@@ -10,7 +10,7 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    delay(3500); // Wait for data to propigate
+    while(!Serial); // Wait for data to propigate
 
     Serial.println("[Main] Initializing Setup...");
 
@@ -46,7 +46,7 @@ void loop(){
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
                 if(base.getMessageType() == "REQUEST"){
-                    Serial.println(base.getMessage());
+                    base.transmit();
 
                 }
                // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);

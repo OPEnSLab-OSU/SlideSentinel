@@ -27,8 +27,12 @@ bool Base::waitForRequest(){
             Serial.println("[Base] Packet was not received in the expected interval!");
             return false;
         }
+        else{
+            Serial.println("[Base] Packet Received!");
+            //printMostRecentPacket();
+        }
 
-        return m_RadioManager.readHeader();
+       return m_RadioManager.readHeader();
 }
 
 /**
@@ -38,6 +42,8 @@ bool Base::initBase(){
 
     // Switch the mux to communicate with the radio
     setMux(FeatherTxToRadioRx);
+
+
 
     // Initialize the radio
     m_RadioManager.initRadio();
@@ -49,6 +55,12 @@ bool Base::initBase(){
     }
 
     return true;
+}
+
+bool Base::transmit(){
+    setMux(FeatherTxToRadioRx);
+    delay(5);
+    return m_RadioManager.sendPacket("Hello World", m_RadioManager.getMostRecentRover());
 }
 
 /**
@@ -84,7 +96,7 @@ void Base::printDiagnostics(){
     Serial.println("\tBase ID: " + String(m_baseInfo.id));
     Serial.println("\tRetry Count: " + String(m_baseInfo.init_retries));
     Serial.println("\tRadio Baud Rate: " + String(m_baseInfo.radioBaud));
-    Serial.println("*************************");
+    Serial.println("\n*************************");
 
     // Print out the diagnostics to serial
     m_baseDiagnostics.print_serial();
@@ -97,7 +109,7 @@ void Base::printMostRecentPacket(){
     Serial.println("\n**** Rover Packet ****");
     Serial.println("Rover Addr: " + String(m_RadioManager.getMostRecentRover()));
     serializeJsonPretty(m_RadioManager.getRoverPacket(), Serial);
-    Serial.println("*************************");
+    Serial.println("\n*************************");
 }
 
 /** 

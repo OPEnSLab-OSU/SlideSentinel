@@ -53,6 +53,9 @@ class Base {
 
         /* Initialize the components of the base */
         bool initBase();
+        
+        /* Transmit data to the rover*/
+        bool transmit();
 
         /* Print the current diagnostic information about the base station */
         void printDiagnostics();
