@@ -4,13 +4,17 @@
 // #include <avr/sleep.h>
 
 
+// static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
+//                                         INIT_LOG_FREQ); 
+// GNSSController *gnssController;
 
-/* Ran on first bootup of Main. Pass in */
-Rover::Rover() :    m_max4820(MAX_CS, &SPI), 
+
+
+Rover::Rover(Uart& ser) :    m_max4820(MAX_CS, &SPI), 
                     m_max3243(FORCEOFF_N),
                     m_multiplex(SPDT_SEL, -1),
                     m_RadioManager(),
-                    m_gnss(Serial1, 115200, 12, 11, 30),
+                    m_gnss(ser, GNSS_BAUD, GNSS_RX, GNSS_TX, INIT_LOG_FREQ),
                     m_JSONData(1024) {
     m_rovInfo.id = CLIENT_ADDR;
     m_rovInfo.serverAddr = SERVER_ADDR;
@@ -36,6 +40,7 @@ void Rover::initRTC(){
 bool Rover::initRover(){
     setRS232(IS_RS232);
     m_RadioManager.initRadio();
+    m_gnss.init();
     return true;
 }
 
@@ -47,9 +52,20 @@ void Rover::wake(){
         delay(1000);
     } 
 }
+void Rover::poll(){
+    m_gnss.poll();
+    if(m_gnss.isNewData()){
+        m_gnss.populateGNSS();
+        Serial.println(this->rtkMsg);
 
+    }
+     // if(gnssController->isNewData()){
+        //   Serial.println(gnssController->populateGNSS());   
+        // }
+}
 void Rover::packageData(DataType packType){
     JsonObject RHJson = m_JSONData.to<JsonObject>();
+    
 
     switch(packType){
         case REQUEST: 
@@ -61,7 +77,8 @@ void Rover::packageData(DataType packType){
 
             // Take the message in as an object to create a new GNSS data object
             // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
-            RHJson["MSG"]=m_gnss.populateGNSS();
+            // RHJson["MSG"]=m_gnss.populateGNSS();
+            RHJson["MSG"]=m_gnss.doc.as<JsonObject>();
             break;
         case ALERT:
             RHJson["TYPE"] = "ALERT";

@@ -25,7 +25,7 @@ class Rover {
 
 public:
     Rover(int radioType);
-    Rover();
+    Rover(Uart& ser);
     bool listen();
     /* Debug function for RTC to print out time*/
     void debugRTCPrint();
@@ -187,6 +187,9 @@ public:
     void setRS232(bool enable);
 
 
+    void poll();
+
+
     
 private:
     RoverInfo m_rovInfo;            //Rover info that is sent over during handshake, like rover ID
@@ -205,6 +208,9 @@ private:
     unsigned long featherTimerLength;
     DynamicJsonDocument m_JSONData;  
     GNSSController m_gnss;
+
+    /*RTK Variable*/
+    String rtkMsg;
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

@@ -75,7 +75,7 @@ class GNSSController {
     void populateGNSSMessage();
 
     void populateGNSSMessage_Ben(JsonDocument &doc);
-    char *populateGNSS();
+    String populateGNSS();
 
     /* Replacing SSModel */
     char *toData(int);
@@ -104,6 +104,8 @@ class GNSSController {
 
     //returns true if new data is recorded (gets wiped when getchar is called)
     bool isNewData();
+    
+    StaticJsonDocument<MAX_DATA_LEN> doc;
    
 
   private:
@@ -138,6 +140,7 @@ class GNSSController {
     Properties m_props; ///< Object stores all property data.
     uint8_t m_mode;                    ///< data
 
+    
 };
 
 #endif // _GNSSCONTROLLER_H_
