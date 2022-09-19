@@ -1,15 +1,6 @@
 #include "Rover.h"
 #include <Wire.h>
 
-// #include <avr/sleep.h>
-
-
-// static GNSSController _gnssController(Serial2, GNSS_BAUD, GNSS_RX, GNSS_TX,
-//                                         INIT_LOG_FREQ); 
-// GNSSController *gnssController;
-
-
-
 Rover::Rover(Uart& ser) :    m_max4820(MAX_CS, &SPI), 
                     m_max3243(FORCEOFF_N),
                     m_multiplex(SPDT_SEL, -1),
@@ -55,14 +46,8 @@ void Rover::wake(){
 void Rover::poll(){
     m_gnss.poll();
     if(m_gnss.isNewData()){
-        rtkMsg =m_gnss.populateGNSS();
-        
-        Serial.println(this->rtkMsg);
-
+        m_gnss.populateGNSS();
     }
-     // if(gnssController->isNewData()){
-        //   Serial.println(gnssController->populateGNSS());   
-        // }
 }
 void Rover::packageData(DataType packType){
     JsonObject RHJson = m_JSONData.to<JsonObject>();
@@ -74,11 +59,11 @@ void Rover::packageData(DataType packType){
             RHJson["MSG"] = "RTK_REQUEST";
             break;
         case UPLOAD:
-            //RHJson["TYPE"] = "UPLOAD";
+            RHJson["TYPE"] = "UPLOAD";
 
             // Take the message in as an object to create a new GNSS data object
             // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
-            RHJson = m_gnss.doc.as<JsonObject>();
+            RHJson["MSG"] = m_gnss.getGNSSData().as<JsonObject>();
             // RHJson["MSG"]=m_gnss.doc.as<JsonObject>();
             // RHJson["MSG"]="{\"TYPE\":\"UPLOAD\",\"MSG\":{\"GNSS\":{\"RTK Mode\":\"Fixed RTK\",\"Week\":\"1878\",\"Seconds\":\"338500\",\"Latitude\":\"37.77436774537944331\",\"Longitude\":\"-122.41794334486179707\",\"Height\":\"-5.60492941271920575\",\"Satellites\":9,\"GDOP\":180,\"HDOP\":160,\"PDOP\":190,\"TDOP\":170,\"VDOP\":150}}}";
             break;

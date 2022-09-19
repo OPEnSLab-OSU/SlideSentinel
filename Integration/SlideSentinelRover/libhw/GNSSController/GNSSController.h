@@ -10,8 +10,6 @@
 
 //#include "SwiftController.h"
 
-
-
 #include "Console.h"
 #include "FeatherTrace.h"
 #include "Controller.h"
@@ -75,7 +73,10 @@ class GNSSController {
     void populateGNSSMessage();
 
     void populateGNSSMessage_Ben(JsonDocument &doc);
-    String populateGNSS();
+
+    /* Populate the JSON document with GNSS data*/
+    void populateGNSS();
+
 
     /* Replacing SSModel */
     char *toData(int);
@@ -83,8 +84,6 @@ class GNSSController {
     void m_clear();
     int getProp(int);
     char temp[512];
-
-
 
 
     /**
@@ -104,14 +103,15 @@ class GNSSController {
 
     //returns true if new data is recorded (gets wiped when getchar is called)
     bool isNewData();
-    
-    StaticJsonDocument<MAX_DATA_LEN> doc;
-   
+
+    StaticJsonDocument<MAX_DATA_LEN> getGNSSData();
 
   private:
 
     /* Serial Communication */
     HardwareSerial& m_serial;             // Serial interface to communicate with the GNSS module
+
+    StaticJsonDocument<MAX_DATA_LEN> doc; // Doc to store the JSON GNSS data
 
     uint32_t m_baudRate;                  // Serial baud rate to communicate at
     uint8_t m_rx;                         // RX Pin to communicate over
