@@ -16,7 +16,7 @@ class RadioManager{
         bool readHeader();    
 
         /* Wait the given timeout length for a new packet to arrive from the rovers */ 
-        bool waitForPacket();
+        bool waitForPacket(int milliseconds);
 
         /* Send a packet to a specified client address */
         bool sendPacket(String message, int addr);

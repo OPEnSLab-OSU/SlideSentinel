@@ -79,13 +79,19 @@ public:
     bool transmit();
 
     /* Wait temporarily and receive a message*/
-    bool waitAndReceive();
+    bool waitAndReceive(int milliseconds = INIT_TIMEOUT);
 
     /* Returns most recent message type*/
     String getMessageType();
 
+    /* Returns most recent message body*/
+    String getMessageBody();
+
     /* Package data for transmit */
     void packageData(DataType packType);
+
+    /* Manual package data for transmit */
+    void packageData(String type, String message);
 
     /* Send a test message */
     void sendManualMsg(char* msg);

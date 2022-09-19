@@ -38,7 +38,7 @@ void setup() {
 
   // rover.initRTC(); could break here
   rover.powerRadio();
-  rover.initRover();
+  // rover.initRover();
   // rover.initRadio(); //something breaks here
     Serial.println("3");
 
@@ -48,7 +48,9 @@ void setup() {
   //Serial1.begin(115200);
 
   rover.powerGNSS();
-  rover.setRS232(true);
+    Serial1.begin(115200);
+
+  // rover.setRS232(true);
   // Serial1.begin(19200);
 }
 
@@ -75,11 +77,13 @@ void loop() {
 
       /****** RADIO *******/
       rover.powerRadio();
+      rover.setMux(Rover::MuxFormat::RadioToFeather);
       rover.initRover();
 
-      rover.setFeatherTimerLength(20*1000);
+      rover.setFeatherTimerLength(10*1000);
       rover.startFeatherTimer();
       while(!rover.isFeatherTimerDone());
+      // delay(5000);
       Serial.println("Radio warmup completed");
 
       /******* GNSS *******/
@@ -111,12 +115,23 @@ void loop() {
     case HANDSHAKE:
       rover.packageData(Rover::DataType::REQUEST);
       if(rover.transmit()){
-        if(rover.getMessageType()=="POLLRESPONSE"){ //waits for pollresponse
-          Serial.println("Inner loop");
-          state = PREPOLL;
+        if(rover.waitAndReceive()){
+          if(rover.getMessageType() == "INIT_RTK_TYPE"){
+            Serial.println("Successfully transitioning to rtk mode");
+            // state = PREPOLL;
+          }else{
+            Serial.println("Unexpected response to rtk request...");
+            Serial.println("******************************");
+            Serial.println(rover.getMessageType());
+            Serial.println(rover.getMessageBody());
+            Serial.println("******************************");
+          }
         }else{
-          Serial.println("Message sent successfully, but unsuccesful response");
-        }  
+          Serial.println("No message receieved after rtk request... Transitioning to sleep");
+          delay(1000);
+          // state = SLEEP;
+        }
+          
       }
       Serial.println("Transitioning to handshake");
       

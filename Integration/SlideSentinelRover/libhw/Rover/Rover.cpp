@@ -36,6 +36,7 @@ void Rover::initRTC(){
 bool Rover::initRover(){
     setRS232(true);
     m_RadioManager.initRadio();
+    return true;
 }
 
 void Rover::wake(){
@@ -46,6 +47,7 @@ void Rover::wake(){
         delay(1000);
     } 
 }
+
 void Rover::packageData(DataType packType){
     JsonObject RHJson = m_JSONData.to<JsonObject>();
 
@@ -69,6 +71,13 @@ void Rover::packageData(DataType packType){
     }
 }
 
+/*Arbitrary messages for type and message, manual*/
+void Rover::packageData(String type, String message){
+    JsonObject RHJson = m_JSONData.to<JsonObject>();
+    RHJson["TYPE"] = type;
+    RHJson["MSG"] = message;
+}
+
 bool Rover::transmit(){
     
 //     //TDL: Conditionally enable max3243
@@ -88,8 +97,14 @@ bool Rover::transmit(){
 // return true;
 }
 
-bool Rover::waitAndReceive(){
-    return m_RadioManager.waitForPacket();
+bool Rover::waitAndReceive(int milliseconds){
+    if(!m_RadioManager.waitForPacket(milliseconds)){
+        Serial.println("[Rover] No Packet Received!");
+        return false;
+    }
+    
+    Serial.println("[Rover] Packet Received!");
+    return m_RadioManager.readHeader();
 }
 
 void Rover::sendManualMsg(char* msg){
@@ -110,6 +125,11 @@ void Rover::sendManualMsg(char* msg){
 String Rover::getMessageType(){
     return m_RadioManager.getRoverPacket()["TYPE"];
 }
+
+String Rover::getMessageBody(){
+    return m_RadioManager.getRoverPacket()["MSG"];
+}
+
 void Rover::debugRTCPrint(){
     Wire.begin();
     if(m_RTC.begin()) {
