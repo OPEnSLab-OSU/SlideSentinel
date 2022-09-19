@@ -24,13 +24,13 @@ void setup(){
 }
 
 // Enum to track the currrent state the Base is in, default to waiting for data
-enum State {HANDSHAKE, UPDATE, POLL, UPLOAD, WAIT};
-static State state = WAIT;
+enum State {HANDSHAKE, UPDATE, POLL, UPLOAD, WAIT, DEBUG};
+static State state = DEBUG;
 
 void loop(){
 
     // Reinit the SD card if necessary
-    //base.checkSD();
+    base.checkSD();
 
     // Checks if there are requests to print debug information
     base.debugInformation();
@@ -38,15 +38,26 @@ void loop(){
     // Main control loop managing which state the base currently exists in
     switch (state)
     {
+        case DEBUG:
+            break;
+
         /* Wait for data from the rovers*/
         case WAIT: MARK;
             // Default operating mode, in this mode we simply wait for data to be received from the rovers
-            if(base.waitForRequest()){
+            if(base.waitAndReceive()){
                 
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
                 if(base.getMessageType() == "REQUEST"){
-                    base.transmit();
+                    base.packageData("INIT_RTK_TYPE", "");
+                    
+                    if(base.transmit()){
+                        Serial.println("[Main] Transmit successful! Polling RTK...");
+                        //state = POLL;
+                    }
+                    else{
+                        Serial.println("[Main] Failed to transmit RTK initialization command!");
+                    }
 
                 }
                // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);

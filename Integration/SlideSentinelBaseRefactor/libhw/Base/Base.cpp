@@ -17,11 +17,11 @@ Base::Base() : m_max4820(MAX_CS, &SPI),
 /**
  * Listen for a radio request from the Rover with data
  */ 
-bool Base::waitForRequest(){
+bool Base::waitAndReceive(int milliseconds){
 
         Serial.println("[Base] Waiting for data from rovers...");
         // Wait for a packet and if it is not received increase the dropped packet count
-        if(!m_RadioManager.waitForPacket()){
+        if(!m_RadioManager.waitForPacket(milliseconds)){
 
             // Increase the dropped packet count by one
             m_baseDiagnostics.setDroppedPkts(m_baseDiagnostics.droppedPkts() + 1);
@@ -84,6 +84,15 @@ void Base::packageData(DataType packType){
     }
 }
 
+/**
+ * Package data into a Json document using arbitrary type and message
+ */ 
+void Base::packageData(String type, String message){
+    JsonObject RHJson = m_JSONData.to<JsonObject>();
+    RHJson["TYPE"] = type;
+    RHJson["MSG"] = message;
+}
+
 
 /**
  * Transmit the packaged data to the rover
@@ -97,7 +106,7 @@ bool Base::transmit(){
     // Serialize the Json to string
     String processedRHMessage;
     serializeJson(m_JSONData, processedRHMessage);
-    Serial.println(processedRHMessage);
+    //Serial.println(processedRHMessage);
 
     // Send the packet to the rover that just requested data
     return m_RadioManager.sendPacket(processedRHMessage, m_RadioManager.getMostRecentRover());

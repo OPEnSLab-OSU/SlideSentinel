@@ -44,13 +44,13 @@ bool RadioManager::sendPacket(String message, int addr){
 /**
  * Wait for a packet from the rover
  */ 
-bool RadioManager::waitForPacket(){
+bool RadioManager::waitForPacket(int milliseconds){
     clearSerial(); // Clear the serial buffer to wash out any remaining junk
     clearBuffer(); // Clear out the buffer that we are gonna write the data to
 
     uint8_t messageSize = RH_SERIAL_MAX_MESSAGE_LEN;
     //Serial.println(fromAddr);
-    return m_RHManager.recvfromAckTimeout((uint8_t *)recvBuffer, &messageSize, INIT_TIMEOUT, &fromAddr);
+    return m_RHManager.recvfromAckTimeout((uint8_t *)recvBuffer, &messageSize, milliseconds, &fromAddr);
 }
 
 /**
