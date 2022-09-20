@@ -104,7 +104,8 @@ class GNSSController {
     //returns true if new data is recorded (gets wiped when getchar is called)
     bool isNewData();
 
-    StaticJsonDocument<MAX_DATA_LEN> getGNSSData();
+    String getGNSSData();
+    void addContentToJsonObj(JsonObject json);
 
   private:
 
@@ -140,6 +141,8 @@ class GNSSController {
     Properties m_props; ///< Object stores all property data.
     uint8_t m_mode;                    ///< data
 
+
+    
     
 };
 

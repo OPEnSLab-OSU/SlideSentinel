@@ -47,6 +47,7 @@ void Rover::poll(){
     m_gnss.poll();
     if(m_gnss.isNewData()){
         m_gnss.populateGNSS();
+        Serial.println(m_gnss.getGNSSData());
     }
 }
 void Rover::packageData(DataType packType){
@@ -63,7 +64,9 @@ void Rover::packageData(DataType packType){
 
             // Take the message in as an object to create a new GNSS data object
             // m_gnss.populateGNSSMessage(RHJson["MSG"].as<JsonObject>()); premerge 8/16
-            RHJson["MSG"] = m_gnss.getGNSSData().as<JsonObject>();
+            RHJson["MSG"] = serialized(m_gnss.getGNSSData());
+            // m_gnss.addContentToJsonObj(RHJson);
+            
             // RHJson["MSG"]=m_gnss.doc.as<JsonObject>();
             // RHJson["MSG"]="{\"TYPE\":\"UPLOAD\",\"MSG\":{\"GNSS\":{\"RTK Mode\":\"Fixed RTK\",\"Week\":\"1878\",\"Seconds\":\"338500\",\"Latitude\":\"37.77436774537944331\",\"Longitude\":\"-122.41794334486179707\",\"Height\":\"-5.60492941271920575\",\"Satellites\":9,\"GDOP\":180,\"HDOP\":160,\"PDOP\":190,\"TDOP\":170,\"VDOP\":150}}}";
             break;

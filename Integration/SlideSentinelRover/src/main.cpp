@@ -24,8 +24,8 @@ void setup() {
   rover.setRS232(true);
   Serial.begin(115200); //functions rely on serial being begun
   Serial.println("1");
-  Serial1.begin(115200);
-  Serial1.println("exit");
+  // Serial1.begin(115200);
+  // Serial1.println("exit");
   /*Radio Debug*/
   // while(true){
   //   if(Serial1.available()){
@@ -44,7 +44,7 @@ void setup() {
   rover.powerRadio();
 
   rover.powerGNSS();
-  Serial1.begin(115200);
+  // Serial1.begin(115200);
   rover.initRover();
 
 }
@@ -152,6 +152,7 @@ void loop() {
       break;
     case UPLOAD: 
       rover.setMux(Rover::MuxFormat::RadioToFeather);
+      delay(50);
       rover.packageData(Rover::DataType::UPLOAD);
       Serial.println("Uploading");
       if(rover.transmit()){

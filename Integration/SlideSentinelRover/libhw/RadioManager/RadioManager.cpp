@@ -7,11 +7,13 @@ RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                     
                                }
 void RadioManager::initRadio(){
+    Serial1.begin(115200);    //initialize serial line for radio, critical
     m_RHManager.setTimeout(INIT_TIMEOUT);
     m_RHManager.setRetries(INIT_RETRIES);
     m_RHManager.setThisAddress(CLIENT_ADDR);
     m_RHManager.init();
     Serial.println("[Radio] Radio Initialized");
+    Serial1.println("exit");
 }
 
 /**

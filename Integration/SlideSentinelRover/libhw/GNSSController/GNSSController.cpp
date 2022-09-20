@@ -157,6 +157,23 @@ bool GNSSController::isNewData(){
   return (m_gpsPos.lat!=0);
 }
 
+/*DEPRECATED*/
+void GNSSController::addContentToJsonObj(JsonObject json){
+  // json["RTK Mode"] = doc["RTK Mode"].as<String>();
+  // json["Week"] = doc["Week"].as<String>();
+  // json["Seconds"] = doc["Seconds"].as<String>();
+
+  // Critical info 
+  // json["Latitude"] = doc["Latitude"].as<String>();
+  // json["Longitude"] = doc["Longitude"].as<String>();
+  json["Height"] = doc["Height"].as<String>();
+
+  json["Latitude"] = doc["Latitude"].as<String>();
+
+
+}
+
+
 void GNSSController::populateGNSS() {
   doc.clear();
   doc["RTK Mode"] = getRTKModeString();
@@ -167,7 +184,15 @@ void GNSSController::populateGNSS() {
   doc["Latitude"] =  String(m_gpsPos.lat,17);
   doc["Longitude"] =String(m_gpsPos.lon,17);
   doc["Height"] = String(m_gpsPos.height,17);
+ 
+  doc["Satellites"] = String(m_gpsPos.n_sats);
+  doc["GDOP"] = String(m_dataPecision.gdop);
+  doc["HDOP"] = String(m_dataPecision.hdop);
+  doc["PDOP"] = String(m_dataPecision.pdop);
+  // doc["TDOP"] = String(m_dataPecision.tdop);
+  // doc["VDOP"] = String(m_dataPecision.vdop); 
   m_resetStructs();
+
 
   /*
     Stores every GNSS data points in their respective array
@@ -183,6 +208,8 @@ void GNSSController::populateGNSS() {
       .
     }
   */
+  // serializeJson(doc, Serial);
+  
 }
 
 
@@ -245,8 +272,10 @@ void GNSSController::m_resetStructs(){
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-StaticJsonDocument<MAX_DATA_LEN> GNSSController::getGNSSData(){
-  return doc;
+String GNSSController::getGNSSData(){
+    String temp ="";
+    serializeJson(doc, temp);
+    return temp;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
