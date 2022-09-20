@@ -152,6 +152,7 @@ void loop() {
       break;
     case UPLOAD: 
       rover.setMux(Rover::MuxFormat::RadioToFeather);
+      delay(50);
       rover.packageData(Rover::DataType::UPLOAD);
       Serial.println("Uploading");
       if(rover.transmit()){
