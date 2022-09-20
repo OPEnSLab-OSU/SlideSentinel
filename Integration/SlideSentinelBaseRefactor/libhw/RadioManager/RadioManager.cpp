@@ -37,8 +37,8 @@ void RadioManager::clearSerial(){
  * @param addr Address to send to
  */ 
 bool RadioManager::sendPacket(String message, int addr){
-    char messageArray[255];
-    message.toCharArray(messageArray, 255);
+    char messageArray[RH_SERIAL_MAX_MESSAGE_LEN];
+    message.toCharArray(messageArray, RH_SERIAL_MAX_MESSAGE_LEN);
     return m_RHManager.sendtoWait((uint8_t*)messageArray, message.length(), addr);
 }
 
@@ -59,9 +59,8 @@ bool RadioManager::waitForPacket(int milliseconds){
  */ 
 bool RadioManager::readHeader(){
     // Clear the current JSON buffer, and then write to it
-
     parsedDoc.clear();
- 
+
     // Serialize the values received from the radio into the JSON document given the capacity of the buffer
     auto error = deserializeJson(parsedDoc, (char* )recvBuffer, sizeof(recvBuffer));
    

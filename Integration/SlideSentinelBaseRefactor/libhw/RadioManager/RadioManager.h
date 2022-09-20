@@ -29,7 +29,7 @@ class RadioManager{
 
         /* Serialize the JSON packet received from the rover and return it*/
         StaticJsonDocument<RH_SERIAL_MAX_MESSAGE_LEN> getRoverPacket();
-        uint8_t recvBuffer[RH_MAX_MESSAGE_LEN];                     // Buffer that the recieved message will be written into
+        uint8_t recvBuffer[RH_SERIAL_MAX_MESSAGE_LEN];              // Buffer that the recieved message will be written into
 
     private:
 

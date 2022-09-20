@@ -5,7 +5,7 @@
 Base::Base() : m_max4820(MAX_CS, &SPI),
                m_multiplexer(SPDT_SEL, -1),
                m_RadioManager(),
-               m_sdManager(SD_CS, 10),
+               m_sdManager(SD_CS),
                m_JSONData(1024){
     
     m_baseInfo.id = SERVER_ADDR;
@@ -30,10 +30,10 @@ bool Base::waitAndReceive(int milliseconds){
         }
         else{
             Serial.println("[Base] Packet Received!");
-            //printMostRecentPacket();
+            // printMostRecentPacket();
         }
-
-       return m_RadioManager.readHeader();
+        m_RadioManager.readHeader();
+       return true;
 }
 
 /**

@@ -10,7 +10,8 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    while(!Serial); // Wait for data to propigate
+    while(!Serial); // Wait for data to propagate
+    //delay(6000);
 
     Serial.println("[Main] Initializing Setup...");
 
@@ -38,9 +39,14 @@ void loop(){
     // Main control loop managing which state the base currently exists in
     switch (state)
     {
+        // Send and receive dummy data
         case DEBUG:
-            base.checkSD();
-            delay(1000);
+            while(true){
+                if(Serial1.available())
+                    Serial.print((char)Serial1.read());
+                else
+                    Serial1.println("Pong");
+            }
             break;
 
         /* Wait for data from the rovers*/
@@ -84,6 +90,7 @@ void loop(){
             else{
                 Serial.println("Entering Upload State!");
                 base.setMux(Base::MuxFormat::FeatherTxToRadioRx);
+                delay(50);
                 state = UPLOAD;
             }
 
@@ -92,7 +99,7 @@ void loop(){
         case UPLOAD: MARK;
             if(base.waitAndReceive()){
                 Serial.println("[Main] Transitioning back to Wait");
-                //Serial.println(base.getMessage());
+                base.printMostRecentPacket();
                 state = WAIT;
             }else{
                 state = UPLOAD;
