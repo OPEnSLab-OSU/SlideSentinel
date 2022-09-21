@@ -10,8 +10,8 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    while(!Serial); // Wait for data to propagate
-    //delay(6000);
+    //while(!Serial); // Wait for data to propagate
+    delay(6000);
 
     Serial.println("[Main] Initializing Setup...");
 
@@ -70,8 +70,6 @@ void loop(){
                     }
 
                 }
-               // base.setMux(Base::MuxFormat::RTCMOutToRadioRx);
-                //at this point, base should be emitting corrections
             }
             break;
         
@@ -97,7 +95,7 @@ void loop(){
             break;
         
         case UPLOAD: MARK;
-            if(base.waitAndReceive()){
+            if(base.waitAndReceive() && base.getMessageType() == "UPLOAD"){
                 base.printMostRecentPacket();
                 base.logToSD();
                 Serial.println("[Main] Transitioning back to Wait");
