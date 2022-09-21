@@ -21,6 +21,8 @@ Rover::Rover(Uart& ser) :    m_max4820(MAX_CS, &SPI),
 }
 
 void Rover::initRTC(){
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; //enable deep sleep mode
+    pinMode(RTC_INT,INPUT_PULLUP);
     m_RTC.begin();
     m_RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));//set date-time manualy:yr,mo,dy,hr,mn,sec   
 }
@@ -29,6 +31,7 @@ void Rover::initRTC(){
  * Initialize the rover
  */ 
 bool Rover::initRover(){
+    initRTC();
     setRS232(IS_RS232);
     m_RadioManager.initRadio();
     m_gnss.init();

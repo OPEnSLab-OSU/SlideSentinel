@@ -174,17 +174,19 @@ void GNSSController::addContentToJsonObj(JsonObject json){
 }
 
 
+
 void GNSSController::populateGNSS() {
   doc.clear();
+  
+
+  //Critical info 
   doc["RTK Mode"] = getRTKModeString();
   doc["Week"] = String(m_gps_time.wn);
   doc["Seconds"] = String(m_gps_time.tow);
-
-  //Critical info 
   doc["Latitude"] =  String(m_gpsPos.lat,17);
   doc["Longitude"] =String(m_gpsPos.lon,17);
   doc["Height"] = String(m_gpsPos.height,17);
- 
+ //end critical Info
   doc["Satellites"] = String(m_gpsPos.n_sats);
   doc["GDOP"] = String(m_dataPecision.gdop);
   doc["HDOP"] = String(m_dataPecision.hdop);

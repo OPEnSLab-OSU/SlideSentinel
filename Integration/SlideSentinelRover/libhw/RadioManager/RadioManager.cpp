@@ -38,8 +38,8 @@ void RadioManager::clearSerial(){
  * @param addr Address to send to
  */ 
 bool RadioManager::sendPacket(String message, int addr){
-    char messageArray[255];
-    message.toCharArray(messageArray, 255);
+    char messageArray[RH_SERIAL_MAX_MESSAGE_LEN];
+    message.toCharArray(messageArray, RH_SERIAL_MAX_MESSAGE_LEN);
     return m_RHManager.sendtoWait((uint8_t*)messageArray, message.length(), addr);
 }
 

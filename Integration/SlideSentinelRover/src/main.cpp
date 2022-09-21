@@ -65,6 +65,20 @@ void loop() {
 
   switch(state) {
     case DEBUG:
+      rover.setMux(Rover::MuxFormat::RadioToGNSS);
+      
+      rover.setFeatherTimerLength(10*1000);
+      rover.startFeatherTimer();
+      while(!rover.isFeatherTimerDone()){
+        rover.poll();
+      }
+      rover.setMux(Rover::MuxFormat::RadioToFeather);
+      rover.packageData(Rover::DataType::UPLOAD);
+      // rover.packageData("Test","");
+      // Serial1.println("fdsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaklj;;;;;;;;;;;;;;;;;;;;;;;sadffffffffffffffffffffffffffffffffffffffffffffffffffffffffsadlf;kjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjfdsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaklj;;;;;;;;;;;;;;;;;;;;;;;sadffffffffffffffffffffffffffffffffffffffffffffffffffffffffsadlf;kjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj");
+      rover.transmit();
+
+      
       // if(rover.sd)
       delay(500);
       break;
@@ -77,10 +91,12 @@ void loop() {
       rover.powerRadio();
       rover.setMux(Rover::MuxFormat::RadioToFeather);
 
-      rover.setFeatherTimerLength(10*1000);
+      rover.setFeatherTimerLength(20*1000);
       rover.startFeatherTimer();
       while(!rover.isFeatherTimerDone());
       // delay(5000);
+      Serial1.println("exit");  //ensure radio is out of programming mode
+
       Serial.println("Radio warmup completed");
 
       /******* GNSS *******/
@@ -166,7 +182,7 @@ void loop() {
       rover.powerDownGNSS();
       rover.powerDownRadio();
       // rover.scheduleSleepAlarm();
-      rover.scheduleAlarm(20);
+      rover.scheduleAlarm(15);
       digitalWrite(LED_BUILTIN,LOW);
 
       rover.attachAlarmInterrupt();
