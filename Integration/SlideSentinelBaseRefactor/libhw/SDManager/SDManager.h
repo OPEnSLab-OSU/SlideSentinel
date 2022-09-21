@@ -15,7 +15,7 @@
 #include "config.h"
 
 // Name of the folder we will log data to on the base
-#define SD_LOG_FOLDER "rover"
+#define SD_LOG_FOLDER "rovers"
 
 #define PROPERTIES_FILE "props.json"
 #define DIAGNOSTIC_FILE "diag.json"
@@ -38,7 +38,7 @@ class SDManager{
         bool logRoverDiagnostics(int roverNum, Diagnostics diagnostics);
 
         // Log the data from the rovers to the SD card
-        bool logData(int roverNum, char* data);
+        bool logData(int roverNum, JsonObject json);
 
         // Get the current amount of free space on the SD card
         int getFreeSpace();
@@ -61,7 +61,7 @@ class SDManager{
         bool log(const int roverNum, const char* message, const char* file);
 
         /* Creates the required number of log directories*/
-        bool createLogDirectories();
+        bool createLogDirectory(int roverAddress);
 
         /* Create a file on the SD card with the given name*/
         bool createFile(const char* fileName);
@@ -71,6 +71,9 @@ class SDManager{
 
         /* Return to the original logging directory after having altered some log*/
         bool returnToLogDir();
+
+        /* Check if a directory exists*/
+        bool directoryExists(const char* dir);
 
         
        

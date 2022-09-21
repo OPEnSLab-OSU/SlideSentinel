@@ -98,8 +98,9 @@ void loop(){
         
         case UPLOAD: MARK;
             if(base.waitAndReceive()){
-                Serial.println("[Main] Transitioning back to Wait");
                 base.printMostRecentPacket();
+                base.logToSD();
+                Serial.println("[Main] Transitioning back to Wait");
                 state = WAIT;
             }else{
                 state = UPLOAD;

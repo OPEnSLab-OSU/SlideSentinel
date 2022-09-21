@@ -30,10 +30,8 @@ bool Base::waitAndReceive(int milliseconds){
         }
         else{
             Serial.println("[Base] Packet Received!");
-            // printMostRecentPacket();
         }
-        m_RadioManager.readHeader();
-       return true;
+        return m_RadioManager.readHeader();
 }
 
 /**
@@ -107,7 +105,6 @@ bool Base::transmit(){
     // Serialize the Json to string
     String processedRHMessage;
     serializeJson(m_JSONData, processedRHMessage);
-    //Serial.println(processedRHMessage);
 
     // Send the packet to the rover that just requested data
     return m_RadioManager.sendPacket(processedRHMessage, m_RadioManager.getMostRecentRover());
@@ -123,6 +120,14 @@ void Base::checkSD(){
     }
 }
 
+bool Base::logToSD(){
+    // Verify the SD card is connected first
+    checkSD();
+
+    // Log the message to a given rover
+    return m_sdManager.logData(m_RadioManager.getMostRecentRover(), m_RadioManager.getRoverPacket()["MSG"].as<JsonObject>());
+
+}
 /**
  * Reads bytes in from the Serial bus to print out requested data
  */ 
@@ -170,10 +175,6 @@ void Base::printMostRecentPacket(){
 String Base::getMessageType(){
     
     return m_RadioManager.getRoverPacket()["TYPE"];
-}
-
-String Base::getMessage(){
-    return m_RadioManager.getRoverPacket()["MSG"];
 }
 
 /**

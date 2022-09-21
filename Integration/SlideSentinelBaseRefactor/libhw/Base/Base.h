@@ -85,6 +85,9 @@ class Base {
         /* Check the current status of the SD card and reinitialize it if necessary */
         void checkSD();
 
+        /* Logs the most recently received packet to the SD card */
+        bool logToSD();
+        
         /* Waits for input over serial to output debug information about the base */
         void debugInformation();
 
