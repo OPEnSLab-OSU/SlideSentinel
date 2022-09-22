@@ -4,14 +4,27 @@
 
 Base base;
 
+// TODO: Move to main and use a serial setter
+Uart SatCommSerial(&sercom1, IRIDIUM_RX, IRIDIUM_TX, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+
 void setup(){
     // Turn on the builtin led on the board
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    //while(!Serial); // Wait for data to propagate
-    delay(6000);
+    while(!Serial); // Wait for data to propagate
+    SatCommSerial.begin(19200);
+
+    while(true){
+        if(SatCommSerial.available() > 0){
+            Serial.print((char)SatCommSerial.read());
+        }
+        else{
+            SatCommSerial.print("AT\r");
+        }
+    }
+    //delay(6000);
 
     Serial.println("[Main] Initializing Setup...");
 
@@ -19,19 +32,17 @@ void setup(){
     SPI.begin();
 
     // Initialize the components used by the base
+    base.setSatCommSerial(SatCommSerial);
     base.powerRadio();
     base.powerGNSS();
     base.initBase();
 }
 
 // Enum to track the currrent state the Base is in, default to waiting for data
-enum State {HANDSHAKE, UPDATE, PREPOLL, POLL, UPLOAD, WAIT, DEBUG};
-static State state = WAIT;
+enum State {HANDSHAKE, UPDATE, PREPOLL, POLL, UPLOAD, WAIT, RADIO_DEBUG, SATCOMM_DEBUG};
+static State state = SATCOMM_DEBUG;
 
 void loop(){
-
-    // Reinit the SD card if necessary
-    //base.checkSD();
 
     // Checks if there are requests to print debug information
     base.debugInformation();
@@ -39,16 +50,6 @@ void loop(){
     // Main control loop managing which state the base currently exists in
     switch (state)
     {
-        // Send and receive dummy data
-        case DEBUG:
-            while(true){
-                if(Serial1.available())
-                    Serial.print((char)Serial1.read());
-                else
-                    Serial1.println("Pong");
-            }
-            break;
-
         /* Wait for data from the rovers*/
         case WAIT: MARK;
             base.checkSD();
@@ -108,5 +109,35 @@ void loop(){
         /* Transition to RTK fix mode */
         case UPDATE: MARK;
             break;
+
+         // Send and receive dummy data
+        case RADIO_DEBUG:
+            while(true){
+                if(Serial1.available())
+                    Serial.print((char)Serial1.read());
+                else
+                    Serial1.println("Pong");
+            }
+            break;
+
+         // Send and receive dummy data
+        case SATCOMM_DEBUG:
+            while(true){
+                // Wait for signal and once acquired update time
+                if(base.getSatComm().waitForSignal()){
+                    base.getSatComm().updateSystemTime();
+                    Serial.println("Updated Time: " + base.getSatComm().getCurrentTimeString());
+                }
+                delay(1000);
+            }
+           
+            break;
     }
+}
+
+/**
+ * Serial interrupt handler
+ */ 
+void SERCOM1_Handler(){
+    SatCommSerial.IrqHandler();
 }

@@ -11,18 +11,9 @@
 #pragma once
 
 #include <IridiumSBD.h>
+#include <time.h>
 #include "wiring_private.h"
 #include "pcb_config.h"
-
-// TODO: Move to main and use a serial setter
-Uart SatCommSerial(&sercom1, IRIDIUM_RX, IRIDIUM_TX, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-
-/**
- * Serial interrupt handler
- */ 
-void SERCOM1_Handler(){
-    SatCommSerial.IrqHandler();
-}
 
 class SatComm{
     
@@ -46,24 +37,30 @@ class SatComm{
          */
         bool waitForSignal();
 
-        /**
-         * Ring ISR for when a message is received 
-         */ 
-        static void handleRing(){
-            detachInterrupt(RING_PIN);
-            didRing = true;
-        };
+        /* Update the system time */
+        void updateSystemTime();
 
+        /* Get the time recorded at the last update*/
+        tm getCurrentTime() { return currentTime; };
+
+        /* Print the current time in UTC*/
+        String getCurrentTimeString();
+
+        /**
+         * Set the serial to be used by the satcomm
+         */ 
+        void setSerial(Uart& serial) { SatCommSerial = &serial; };
 
     private:
+        Uart* SatCommSerial = nullptr;
         IridiumSBD* m_modem = nullptr;
+
+        // Time received from the modem
+        tm currentTime = {};
 
         /* Get the current verison of the SatComm modem*/
         String getFirmwareVersion();
 
-        // Sets if the ring interrupt was triggered
-        static volatile bool didRing;
-        
         // Map numbers to stringified error codes
         String initializationErrorCodes[14] = {"ISBD_SUCCESS", "ISBD_ALREADY_AWAKE", "ISBD_SERIAL_FAILURE", "ISBD_PROTOCOL_ERROR", "ISBD_CANCELLED", "ISBD_NO_MODEM_DETECTED", "ISBD_SBDIX_FATAL_ERROR", "ISBD_SENDRECEIVE_TIMEOUT", "ISBD_RX_OVERFLOW", "ISBD_REENTRANT", "ISBD_IS_ASLEEP", "ISBD_NO_SLEEP_PIN", "ISBD_NO_NETWORK", "ISBD_MSG_TOO_LONG"};
 };

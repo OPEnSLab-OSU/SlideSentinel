@@ -45,13 +45,15 @@ bool Base::initBase(){
     }
 
     // Switch the mux to communicate with the radio
-    setMux(FeatherTxToRadioRx);
+   // setMux(FeatherTxToRadioRx);
 
     // Initialize the radio
-    if(!m_RadioManager.initRadio())
-        return false;
+   // if(!m_RadioManager.initRadio())
+   //     return false;
     
-
+    // Initialize the SatComm driver
+    if(!m_satComm.initSatComm())
+        return false;
     
 
     return true;

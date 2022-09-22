@@ -249,6 +249,7 @@ int IridiumSBD::internalBegin()
       return ISBD_ALREADY_AWAKE;
 
    power(true); // power on
+   Serial.println("[SatComm] Powering on device...");
 
    bool modemAlive = false;
 
@@ -261,6 +262,7 @@ int IridiumSBD::internalBegin()
    for (unsigned long start = millis(); !modemAlive && millis() - start < 1000UL * ISBD_STARTUP_MAX_TIME;)
    {
       send(F("AT\r"));
+      Serial.println("[SatComm] Sending AT Command...");
       modemAlive = waitForATResponse();
       if (cancelled())
          return ISBD_CANCELLED;
@@ -541,6 +543,7 @@ bool IridiumSBD::noBlockWait(int seconds)
 bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char *prompt, const char *terminator)
 {
    diagprint(F("Waiting for response "));
+   Serial.println("[SatComm] Waiting for response...");
    diagprint(terminator);
    diagprint(F("\r\n"));
 
@@ -560,6 +563,7 @@ bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char 
       while (filteredavailable() > 0)
       {
          char c = filteredread();
+         Serial.print(c);
          if (prompt)
          {
             switch (promptState)
@@ -605,7 +609,9 @@ bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char 
          {
             matchTerminatorPos = c == terminator[0] ? 1 : 0;
          }
+         Serial.println("[SatComm] Retrying AT Request...");
       } // while (stream.available() > 0)
+      
    } // timer loop
    return false;
 }

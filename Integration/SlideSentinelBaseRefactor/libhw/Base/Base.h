@@ -107,6 +107,16 @@ class Base {
         /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
         void setMux(MuxFormat format);
         
+        /**
+         * Set the SatComm's Serial to the given value
+         */ 
+        void setSatCommSerial(Uart& serial) { m_satComm.setSerial(serial); Serial.println("[Base] SatComm Serial Bus Assigned!"); };
+
+        /**
+         * Expose the SatComm driver to main
+         */ 
+        SatComm& getSatComm() { return m_satComm; };
+
         /** FEATHER TIMER FUNCTIONS **/
 
         /*track start time*/
@@ -130,6 +140,7 @@ class Base {
         SN74LVC2G53 m_multiplexer;              // Multiplexer for redirecting data from the radio to GNSS and the Feather
         RadioManager m_RadioManager;                // RadioHead wrapper class for managing radio communication
         SDManager m_sdManager;                  // SdFat manager class that allows for easy reliable communication with SD cards
+        SatComm m_satComm;                      // SatComm manager to allow for control of the sat comm
 
         DynamicJsonDocument m_JSONData;
         
