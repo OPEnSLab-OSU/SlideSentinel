@@ -6,6 +6,13 @@
 #define SPDT_SEL 14
 #define FORCEOFF_N A5
 
+/****** SatComm ******/
+#define IRIDIUM_RX 13
+#define IRIDIUM_TX 11
+#define IRIDIUM_BAUD 19200
+#define RING_PIN A3
+#define NET_AV_PIN A5
+
 /****** PMController ******/
 #define VCC2_EN 13
 #define MAX_CS 9

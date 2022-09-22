@@ -6,6 +6,7 @@
 #include "network_config.h"
 #include "RadioManager.h"
 #include "SDManager.h"
+#include "SatComm.h"
 
 #include <RHReliableDatagram.h>
 #include <RH_Serial.h>
