@@ -13,7 +13,13 @@
 #include <IridiumSBD.h>
 #include <time.h>
 #include "wiring_private.h"
-#include "pcb_config.h"
+
+#if defined(BASE_BUILD)
+    #include "base_pcb_config.h"
+#elif defined(ROVER_BUILD)
+    #include "rover_pcb_config.h"
+#endif
+
 
 class SatComm{
     

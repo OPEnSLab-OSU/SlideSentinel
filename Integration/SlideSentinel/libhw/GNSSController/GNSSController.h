@@ -1,11 +1,14 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include "wiring_private.h" // Pin peripheral
 #include "HardwareSerial.h"
+#include "navigation.h"
 
 #define FIX_MODE_MASK 0b00000111
 #define FIX_MODE_CLR 0b11111000
+#define MAX_DATA_LEN 1000
 
 #include "FeatherTrace.h"
 

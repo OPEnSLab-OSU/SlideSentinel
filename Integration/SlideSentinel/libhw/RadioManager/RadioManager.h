@@ -3,7 +3,11 @@
 #include <RH_Serial.h>
 #include <ArduinoJson.h>
 
-#include "network_config.h"
+#if defined(BASE_BUILD)
+    #include "../Base/base_network_config.h"
+#elif defined(ROVER_BUILD)
+    #include "../Rover/rover_network_config.h"
+#endif
 
 
 class RadioManager{

@@ -45,17 +45,16 @@ bool Base::initBase(){
     }
 
     // Switch the mux to communicate with the radio
-   // setMux(RadioToFeather);
+    setMux(RadioToFeather);
 
     // Initialize the radio
-   // if(!m_RadioManager.initRadio())
-   //     return false;
+    if(!m_RadioManager.initRadio())
+        return false;
     
     // Initialize the SatComm driver
     if(!m_satComm.initSatComm())
         return false;
     
-
     return true;
 }
 
@@ -115,11 +114,19 @@ bool Base::transmit(){
 /**
  * Check if the SD card is initialized if not reinitialize it
  */ 
-void Base::checkSD(){
+bool Base::checkSD(bool reinit){
     if(!m_sdManager.checkSD()){
-        Serial.println("[Base] SD not initialized retrying...");
-        m_sdManager.initSD();
+        if(reinit){
+            Serial.println("[Base] SD not initialized retrying...");
+            
+            // If that fails to initialze we return false
+            if(!m_sdManager.initSD()){
+                return false;
+            }
+        }
+        return false;
     }
+    return true;
 }
 
 bool Base::logToSD(){
@@ -130,6 +137,37 @@ bool Base::logToSD(){
     return m_sdManager.logData(m_RadioManager.getMostRecentRover(), m_RadioManager.getRoverPacket()["MSG"].as<JsonObject>());
 
 }
+
+/**
+ * Reads bytes in from the Serial bus to print out requested data
+ */ 
+void Base::debugInformation(){
+
+    // Check for user input on serial to request information about the base
+    if(Serial.available()){
+        char cmd = Serial.read();
+        if(cmd == '1'){
+            printDiagnostics();
+        }
+    }
+}
+
+/**
+ * Print the base's diagnostic and just general information to the serial bus
+ */ 
+void Base::printDiagnostics(){
+
+    //Print Basic Configuration Information
+    Serial.println("\n**** Configuration ****");
+    Serial.println("\tBase ID: " + String(m_baseInfo.id));
+    Serial.println("\tRetry Count: " + String(m_baseInfo.init_retries));
+    Serial.println("\tRadio Baud Rate: " + String(m_baseInfo.radioBaud));
+    Serial.println("\n*************************");
+
+    // Print out the diagnostics to serial
+    m_baseDiagnostics.print_serial();
+}
+
 
 /**
  * Print out the most recent rover packet 

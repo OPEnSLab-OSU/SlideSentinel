@@ -29,3 +29,11 @@
 #define RTC_INT 5
 #define INIT_WAKETIME 10            // minutes
 #define INIT_SLEEPTIME 15       	// minutes
+
+/****** SatComm ******/
+#define IRIDIUM_RX 13
+#define IRIDIUM_TX 11
+#define IRIDIUM_BAUD 19200
+#define RING_PIN A3
+#define NET_AV_PIN A5
+#define SATCOMM_ONOFF 9

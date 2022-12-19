@@ -9,6 +9,7 @@
 #include "GNSSController.h"
 #include "RadioManager.h"
 #include "SPI.h"
+#include "Diagnostics.h"
 
 #include <HardwareSerial.h>
 #include <RH_Serial.h>

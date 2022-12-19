@@ -12,7 +12,7 @@
 #include <SdFat.h>
 
 #include "Diagnostics.h"
-#include "config.h"
+#include "rover_config.h"
 
 // Name of the folder we will log data to on the base
 #define SD_LOG_FOLDER "rovers"

@@ -83,8 +83,11 @@ class Base {
         /* Print out the most recent rover packet received by the base */
         void printMostRecentPacket();
 
-        /* Check the current status of the SD card and reinitialize it if necessary */
-        void checkSD();
+        /**
+         * Check the current status of the SD card and reinitialize it if necessary '
+         * @param reinit Specifies if the SD card should just be checked or if it fails it should attempt to reinit
+         * */
+        bool checkSD(bool reinit = true);
 
         /* Logs the most recently received packet to the SD card */
         bool logToSD();

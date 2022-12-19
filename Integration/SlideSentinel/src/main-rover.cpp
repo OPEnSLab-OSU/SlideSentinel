@@ -1,6 +1,3 @@
-#include "config_2.0.0.h"
-#include "network_config_2.0.0.h"
-// #include "pcb_2.0.0.h"
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>

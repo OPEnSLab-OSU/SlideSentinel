@@ -8,6 +8,7 @@
 ///
 ///////////////////////////////////////////////////////////////////////////////
 #include "SatComm.h"
+#include "base_pcb_config.h"
 
 SatComm::SatComm(){}
 
@@ -39,10 +40,6 @@ bool SatComm::initSatComm(){
     // Set the RX and TX pins to be in sercom mode
     pinPeripheral(IRIDIUM_RX, PIO_SERCOM);
     pinPeripheral(IRIDIUM_TX, PIO_SERCOM);
-
-    if(SatCommSerial){
-        Serial.println("[SatComm] Serial Interface has been started!");
-    }
 
     delay(50);
 
