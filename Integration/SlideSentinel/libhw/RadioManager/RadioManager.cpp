@@ -50,7 +50,6 @@ bool RadioManager::waitForPacket(int milliseconds){
     clearBuffer(); // Clear out the buffer that we are gonna write the data to
 
     uint8_t messageSize = RH_SERIAL_MAX_MESSAGE_LEN;
-    //Serial.println(fromAddr);
     return m_RHManager.recvfromAckTimeout((uint8_t *)recvBuffer, &messageSize, milliseconds, &fromAddr);
 }
 

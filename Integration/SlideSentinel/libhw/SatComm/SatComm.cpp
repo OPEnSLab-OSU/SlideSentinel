@@ -49,7 +49,7 @@ bool SatComm::initSatComm(){
     int result; 
     
     result = m_modem->begin();
-    if(result != ISBD_SUCCESS || result != ISBD_ALREADY_AWAKE){
+    if(result != 0){
         Serial.println("[SatComm] Failed to initialize SatComm! Error: " + initializationErrorCodes[result]);
         return false;
     }
@@ -72,13 +72,14 @@ bool SatComm::initSatComm(){
  */ 
 bool SatComm::waitForSignal(){
     int signalQuality = 0;
+    Serial.println("[SatComm] Waiting for signal...");
 
     // If the board thinks we have a signal it will output HIGH on this pin
     if(digitalRead(NET_AV_PIN)){
         int err = m_modem->getSignalQuality(signalQuality);
 
         // Did we successfully get a signal strength
-        if(err != ISBD_SUCCESS){
+        if(err != 0){
             Serial.println("[SatComm] Failed to read signal quality! Error: " + initializationErrorCodes[err]);
             return false;
         }else if(signalQuality > 0){
@@ -125,6 +126,30 @@ String SatComm::getCurrentTimeString(){
 }
 
 /**
+ * Transmit our binary data to the satellite 
+ */
+bool SatComm::transmit(JsonObject json){
+
+    // Minify the JSON and convert it to uint8_t array
+    String minified = minifyJson(json);
+    uint8_t data[50];
+    minified.getBytes(data, 50);
+    size_t packetSize = 50;
+
+    // Upload the data!
+    int result = m_modem->sendSBDBinary(data, packetSize);
+
+    if(result != ISBD_SUCCESS){
+        Serial.println("[SatComm] Failed to transmit data! Error: " + initializationErrorCodes[result]);
+        return false;
+    }
+    else{
+         Serial.println("[SatComm] Successfully transmitted data!");
+         return true;
+    }
+}
+
+/**
  * Get the current firmware version running on the device
  */ 
 void SatComm::updateSystemTime(){
@@ -146,5 +171,52 @@ void SatComm::updateSystemTime(){
     }
     else{
         Serial.print("[SatComm] Retrieved system time from SatComm! Current Time: " + getCurrentTimeString());
+    }
+}
+
+/**
+ * Create a minified 50 character string to send over SatComm
+ */
+String SatComm::minifyJson(JsonObject json){
+    String minifiedString = "";
+
+    // Loop over the first 10 of the latitude cause we will just remove the period later
+    for(int i = 0; i < 10; i++){
+        minifiedString += json["Latitude"].as<String>()[i];
+    }
+    minifiedString += ",";
+    
+    // Start at 1 to skip the negative sign
+    for(int i = 1; i < 11; i++){
+        minifiedString += json["Longitude"].as<String>()[i];
+    }
+    minifiedString += ",";
+
+    // Replace the decimal place with nothing
+    minifiedString.replace(".", "");
+
+    // If there are less than 0 satellites we want to 0 pad so the packet is always the same length
+    if(json["Satellites"].as<int>() < 10)
+        minifiedString += "0";
+    minifiedString += String(json["Satellites"].as<int>());
+    minifiedString += ",";
+
+    // Weeks since epoch 
+    minifiedString += String(json["Week"].as<int>());
+    minifiedString += ",";
+
+    // GPS Time
+    minifiedString += String(json["Time"].as<int>());
+    minifiedString += ",";
+
+    // H Accuracy
+    for(int i = 0; i < 5; i++){
+        minifiedString += json["H Accuracy"].as<String>()[i];
+    }
+    minifiedString += ",";
+
+    // V Accuracy
+    for(int i = 0; i < 4; i++){
+        minifiedString += json["V Accuracy"].as<String>()[i];
     }
 }

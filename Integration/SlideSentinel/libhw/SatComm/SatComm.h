@@ -11,6 +11,7 @@
 #pragma once
 
 #include <IridiumSBD.h>
+#include <ArduinoJson.h>
 #include <time.h>
 #include "wiring_private.h"
 
@@ -46,6 +47,9 @@ class SatComm{
         /* Update the system time */
         void updateSystemTime();
 
+        /* Transmit the data from the Rockblock to the Satellite */
+        bool transmit(JsonObject json);
+
         /* Get the time recorded at the last update*/
         tm getCurrentTime() { return currentTime; };
 
@@ -66,6 +70,9 @@ class SatComm{
 
         /* Get the current verison of the SatComm modem*/
         String getFirmwareVersion();
+
+        /* Take the given JSON packet and minify it to only use 1 credit of SatComm transmission*/
+        String minifyJson(JsonObject json);
 
         // Map numbers to stringified error codes
         String initializationErrorCodes[14] = {"ISBD_SUCCESS", "ISBD_ALREADY_AWAKE", "ISBD_SERIAL_FAILURE", "ISBD_PROTOCOL_ERROR", "ISBD_CANCELLED", "ISBD_NO_MODEM_DETECTED", "ISBD_SBDIX_FATAL_ERROR", "ISBD_SENDRECEIVE_TIMEOUT", "ISBD_RX_OVERFLOW", "ISBD_REENTRANT", "ISBD_IS_ASLEEP", "ISBD_NO_SLEEP_PIN", "ISBD_NO_NETWORK", "ISBD_MSG_TOO_LONG"};

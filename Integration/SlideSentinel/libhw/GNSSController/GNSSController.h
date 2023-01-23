@@ -108,6 +108,9 @@ class GNSSController {
     /* Get a stringified representation of the JSON document */
     String getGNSSData();
 
+    /* Returns a reference to the JSON data */
+    JsonObject getJSON();
+
     /* If we have a true RTK fix ie. we have had a fix for 2 consecutive polls with the same number of satellites */
     bool hasFix();
 

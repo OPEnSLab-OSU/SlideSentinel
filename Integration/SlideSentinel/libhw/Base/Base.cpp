@@ -139,6 +139,13 @@ bool Base::logToSD(){
 }
 
 /**
+ * Uploads the data from the base to the satellite
+*/
+bool Base::uploadToSatComm(){
+   return m_satComm.transmit(m_RadioManager.getRoverPacket()["MSG"].as<JsonObject>());
+}
+
+/**
  * Reads bytes in from the Serial bus to print out requested data
  */ 
 void Base::debugInformation(){

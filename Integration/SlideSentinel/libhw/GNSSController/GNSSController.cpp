@@ -117,7 +117,11 @@ bool GNSSController::isNewData(){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 bool GNSSController::hasFix(){
-  return (lastPoll.numSatellites == m_gpsPos.n_sats && lastPoll.rtkMode == m_rtkMode);
+  // Check if the current mode is a fix before continuing
+  if(m_getRTKMode() == 4){
+    return (lastPoll.numSatellites == m_gpsPos.n_sats && lastPoll.rtkMode == m_rtkMode);
+  }
+  return false;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -126,22 +130,21 @@ void GNSSController::populateGNSS() {
   doc.clear();
   
   //Critical info 
-  doc["RTK Mode"] = getRTKModeString();
-  doc["Week"] = String(m_gps_time.wn);
-  doc["Seconds"] = String(m_gps_time.tow);
+  doc["RTK Mode"] = m_getRTKMode();
+  doc["Week"] = m_gps_time.wn;
+  doc["Seconds"] = m_gps_time.tow;
   doc["Latitude"] =  String(m_gpsPos.lat,17);
   doc["Longitude"] =String(m_gpsPos.lon,17);
   doc["H Accuracy"] =  String(m_gpsPos.h_accuracy,17);
   doc["V Accuracy"] =String(m_gpsPos.v_accuracy,17);
   doc["Height"] = String(m_gpsPos.height,17);
-  doc["Satellites"] = String(m_gpsPos.n_sats);
-  doc["PDOP"] = String(m_dataPecision.pdop);
+  doc["Satellites"] = m_gpsPos.n_sats;
+  doc["PDOP"] = m_dataPecision.pdop;
   m_resetStructs();
 
   // Store the number of satellites and the current RTK mode in a struct representing the last cycle of data received
   lastPoll.numSatellites = m_gpsPos.n_sats;
   lastPoll.rtkMode = m_rtkMode;
-
 
   /*
     Stores every GNSS data points in their respective array
@@ -223,4 +226,11 @@ String GNSSController::getGNSSData(){
     return temp;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+JsonObject GNSSController::getJSON(){
+    return doc.as<JsonObject>();
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
 

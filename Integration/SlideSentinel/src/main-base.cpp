@@ -14,10 +14,7 @@ void setup(){
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
     while(!Serial); // Wait for data to propagate
-    SatCommSerial.begin(19200);
-
     
-
     Serial.println("[Main] Initializing Setup...");
 
     // Start SPI
@@ -38,7 +35,7 @@ void setup(){
  * UPLOAD - Receive RTK data and log it to SD / Print to serial
  * */ 
 enum State {WAIT, PREPOLL, POLL, UPLOAD, RADIO_DEBUG, SATCOMM_DEBUG, SATCOMM_INIT};
-static State state = SATCOMM_DEBUG;
+static State state = WAIT;
 
 void loop(){
 
@@ -102,6 +99,7 @@ void loop(){
             if(base.waitAndReceive() && base.getMessageType() == "UPLOAD"){
                 base.printMostRecentPacket();
                 base.logToSD();
+                base.uploadToSatComm();
                 Serial.println("[Main] Transitioning back to Wait");
                 state = WAIT;
             }else{

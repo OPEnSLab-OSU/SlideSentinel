@@ -109,6 +109,9 @@ class Base {
 
         /* Sets the mutliplexer to Radio->Feather or Radio->GNSS depending on success of Base contact */
         void setMux(MuxFormat format);
+
+        /* Upload data to satellite */
+        bool uploadToSatComm();
         
         /**
          * Set the SatComm's Serial to the given value

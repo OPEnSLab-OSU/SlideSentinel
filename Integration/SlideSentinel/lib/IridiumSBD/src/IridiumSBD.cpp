@@ -17,7 +17,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 Lesser General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public
+You should have received a copy of the GNUf Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
@@ -262,7 +262,6 @@ int IridiumSBD::internalBegin()
    for (unsigned long start = millis(); !modemAlive && millis() - start < 1000UL * ISBD_STARTUP_MAX_TIME;)
    {
       send(F("AT\r"));
-      Serial.println("[SatComm] Sending AT Command...");
       modemAlive = waitForATResponse();
       if (cancelled())
          return ISBD_CANCELLED;
@@ -543,7 +542,6 @@ bool IridiumSBD::noBlockWait(int seconds)
 bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char *prompt, const char *terminator)
 {
    diagprint(F("Waiting for response "));
-   Serial.println("[SatComm] Waiting for response...");
    diagprint(terminator);
    diagprint(F("\r\n"));
 
@@ -563,7 +561,6 @@ bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char 
       while (filteredavailable() > 0)
       {
          char c = filteredread();
-         Serial.print(c);
          if (prompt)
          {
             switch (promptState)
@@ -609,7 +606,6 @@ bool IridiumSBD::waitForATResponse(char *response, int responseSize, const char 
          {
             matchTerminatorPos = c == terminator[0] ? 1 : 0;
          }
-         Serial.println("[SatComm] Retrying AT Request...");
       } // while (stream.available() > 0)
       
    } // timer loop
