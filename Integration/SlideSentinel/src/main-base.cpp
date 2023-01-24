@@ -74,7 +74,7 @@ void loop(){
         // Wait for 10 minutes to allow time for the rover to get an RTK fix
         case PREPOLL: MARK;
             Serial.println("[Main] Entering Prepoll, waiting for roughly 10 minutes before continuing...");
-            base.setFeatherTimerLength(1000*60*10);
+            base.setFeatherTimerLength(1000*10);
             base.setMux(Base::MuxFormat::RadioToGNSS);
             base.startFeatherTimer();
             state = POLL;

@@ -68,26 +68,29 @@ bool SatComm::initSatComm(){
 }
 
 /**
- * Return the status of the signal connection
+ * Waits up to 15 seconds for a signal to be acquired
  */ 
 bool SatComm::waitForSignal(){
     int signalQuality = 0;
-    Serial.println("[SatComm] Waiting for signal...");
+    Serial.println("[SatComm] Waiting for signal, this may take up to 15 seconds...");
+    int startTime = millis();
 
     // If the board thinks we have a signal it will output HIGH on this pin
-    if(digitalRead(NET_AV_PIN)){
-        int err = m_modem->getSignalQuality(signalQuality);
+    while(millis() > startTime+15000){
+        if(digitalRead(NET_AV_PIN)){
+            int err = m_modem->getSignalQuality(signalQuality);
 
-        // Did we successfully get a signal strength
-        if(err != 0){
-            Serial.println("[SatComm] Failed to read signal quality! Error: " + initializationErrorCodes[err]);
-            return false;
-        }else if(signalQuality > 0){
-            Serial.println("[SatComm] Modem acquired a satellite signal! Signal Strength: " + String(signalQuality));
-            return true;
+            // Did we successfully get a signal strength
+            if(err != 0){
+                Serial.println("[SatComm] Failed to read signal quality! Error: " + initializationErrorCodes[err]);
+                return false;
+            }else if(signalQuality > 0){
+                Serial.println("[SatComm] Modem acquired a satellite signal! Signal Strength: " + String(signalQuality));
+                return true;
+            }
         }
     }
-
+    Serial.println("[SatComm] Unable to locate signal");
     return false;
 }
 
