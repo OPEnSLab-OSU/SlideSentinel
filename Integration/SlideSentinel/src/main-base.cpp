@@ -93,7 +93,6 @@ void loop(){
                 delay(50);
                 state = UPLOAD;
             }
-
             break;
         
         // In the upload state we wait for data and check if the data is an upload if so we print the packet and log the data to SDss
