@@ -213,8 +213,6 @@ String SatComm::minifyJson(JsonObject json){
     minifiedString.replace(".", "");
 
     // If there are less than 0 satellites we want to 0 pad so the packet is always the same length
-    if(json["Satellites"].as<int>() < 10)
-        minifiedString += "0";
     minifiedString += String(json["Satellites"].as<int>());
     minifiedString += ",";
 
