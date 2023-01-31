@@ -45,7 +45,7 @@ class SatComm{
         bool waitForSignal();
 
         /* Update the system time */
-        void updateSystemTime();
+        bool updateSystemTime();
 
         /* Transmit the data from the Rockblock to the Satellite */
         bool transmit(JsonObject json);

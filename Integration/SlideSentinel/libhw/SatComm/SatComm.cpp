@@ -62,8 +62,15 @@ bool SatComm::initSatComm(){
     // If we got no version from the firmware check we failed to initialize
     if(firmwareVersion.length() <= 0) return false;
 
-
     Serial.println("[SatComm] Firmware Version: " + firmwareVersion);
+
+    // Wait for a signal to see if we can get a satellite connection
+    if(!waitForSignal()) return false;
+
+    // Attempt to update the system time
+    if(!updateSystemTime()) return false;
+
+    Serial.println("[SatComm] Initialization Complete!");
     return true;
 }
 
@@ -76,7 +83,7 @@ bool SatComm::waitForSignal(){
     int startTime = millis();
 
     // If the board thinks we have a signal it will output HIGH on this pin
-    while(millis() > startTime+15000){
+    while(millis() < startTime+10000){
         if(digitalRead(NET_AV_PIN)){
             int err = m_modem->getSignalQuality(signalQuality);
 
@@ -132,30 +139,35 @@ String SatComm::getCurrentTimeString(){
  * Transmit our binary data to the satellite 
  */
 bool SatComm::transmit(JsonObject json){
+    if(waitForSignal()){
+        // Minify the JSON and convert it to uint8_t array
+        String minified = minifyJson(json);
+        uint8_t data[50];
+        minified.getBytes(data, 50);
+        size_t packetSize = 50;
 
-    // Minify the JSON and convert it to uint8_t array
-    String minified = minifyJson(json);
-    uint8_t data[50];
-    minified.getBytes(data, 50);
-    size_t packetSize = 50;
+        // Upload the data!
+        int result = m_modem->sendSBDBinary(data, packetSize);
 
-    // Upload the data!
-    int result = m_modem->sendSBDBinary(data, packetSize);
-
-    if(result != ISBD_SUCCESS){
-        Serial.println("[SatComm] Failed to transmit data! Error: " + initializationErrorCodes[result]);
-        return false;
+        if(result != ISBD_SUCCESS){
+            Serial.println("[SatComm] Failed to transmit data! Error: " + initializationErrorCodes[result]);
+            return false;
+        }
+        else{
+            Serial.println("[SatComm] Successfully transmitted data!");
+            return true;
+        }
     }
-    else{
-         Serial.println("[SatComm] Successfully transmitted data!");
-         return true;
-    }
+
+    Serial.println("[SatComm] Unable to acquire signal to transmit data");
+    return false;
+
 }
 
 /**
  * Get the current firmware version running on the device
  */ 
-void SatComm::updateSystemTime(){
+bool SatComm::updateSystemTime(){
     
     int retry_count = 0;
     int result;
@@ -171,9 +183,11 @@ void SatComm::updateSystemTime(){
     // Check if we failed to get the firmware version
     if(result != ISBD_SUCCESS){
         Serial.println("[SatComm] Failed to get system time from SatComm! Error: " + initializationErrorCodes[result]);
+        return false;
     }
     else{
         Serial.print("[SatComm] Retrieved system time from SatComm! Current Time: " + getCurrentTimeString());
+        return true;
     }
 }
 
