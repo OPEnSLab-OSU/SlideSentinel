@@ -43,8 +43,8 @@ void Rover::wake(){
 bool Rover::poll(){
 
     // If we have a fix we don't need to continue polling
-    //if(m_gnss.hasFix())
-    //    return true;
+    if(m_gnss.hasFix())
+        return true;
 
     // Poll data from the GNSS
     m_gnss.poll();
@@ -88,7 +88,7 @@ void Rover::packageData(String type, String message){
     RHJson["MSG"] = message;
 }
 
-/* Transmit packaged data to the basen*/
+/* Transmit packaged data to the base*/
 bool Rover::transmit(){
     
     //TDL: Conditionally enable max3243

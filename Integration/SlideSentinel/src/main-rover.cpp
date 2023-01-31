@@ -120,7 +120,6 @@ void loop() {
       break;
     case PREPOLL:
       
-
       // Set a timer for 20 seconds and power the GNSS on
       rover.setFeatherTimerLength(1000*20);
       rover.powerGNSS();
@@ -134,9 +133,8 @@ void loop() {
 
       // Poll GNSS data until timer is done then transition to upload
       if(!rover.isFeatherTimerDone()){
-        if(rover.poll()){
-          state = UPLOAD;
-        }
+        // Poll until the timer is done, this will stop getting new data when a fix is acquired we just want to keep everything in sync
+        rover.poll();
       }else{
         state = UPLOAD;
         break;
