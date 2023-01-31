@@ -1,5 +1,4 @@
 #include "Diagnostics.h"
-#include <Plog.h>
 
 Diagnostics::Diagnostics() { clear(); }
 
@@ -28,18 +27,6 @@ void Diagnostics::read(char *buf) {
   setDroppedPkts(json[SS_DIAG][DROPPED_PKTS]);
   setErrCount(json[SS_DIAG][ERR_COUNT]);
   setConvergenceTime(json[SS_DIAG][CONV_TIME]);
-}
-
-void Diagnostics::print() {
-  LOGD << "**** DIAGNOSTICS ****";
-  LOGD << "\tIMU Flag: " << imu();
-  LOGD << "\tBattery Voltage: " << bat();
-  LOGD << "\tSD Space: " << space();
-  LOGD << "\tWake Cycles: " << cycles();
-  LOGD << "\tDropped Packets: " << droppedPkts();
-  LOGD << "\tError Count: " << errCount();
-  LOGD << "\tConvergence Time: " << convergenceTime();
-  LOGD << "*************************";
 }
 
 void Diagnostics::print_serial(){
