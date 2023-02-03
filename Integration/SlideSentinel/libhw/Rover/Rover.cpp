@@ -41,13 +41,12 @@ void Rover::wake(){
     } 
 }
 bool Rover::poll(){
+    // Poll data from the GNSS
+    m_gnss.poll();
 
     // If we have a fix we don't need to continue polling
     if(m_gnss.hasFix())
         return true;
-
-    // Poll data from the GNSS
-    m_gnss.poll();
 
     // If not a fix check if we have new data and then set the current values to the values of lastPoll
     if(m_gnss.isNewData()){

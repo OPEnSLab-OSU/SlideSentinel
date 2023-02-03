@@ -101,7 +101,7 @@ void loop(){
             if(base.waitAndReceive() && base.getMessageType() == "UPLOAD"){
                 base.printMostRecentPacket();
                 base.logToSD();
-                base.uploadToSatComm();
+               // base.uploadToSatComm();
                 Serial.println("[Main] Transitioning back to Wait");
                 state = WAIT;
             }else{

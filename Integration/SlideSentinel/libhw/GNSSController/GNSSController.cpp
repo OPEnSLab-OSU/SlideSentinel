@@ -140,7 +140,7 @@ void GNSSController::populateGNSS() {
   doc["Height"] = String(m_gpsPos.height,17);
   doc["Satellites"] = m_gpsPos.n_sats;
   doc["PDOP"] = m_dataPecision.pdop;
-  m_resetStructs();
+  
 
   // Store the number of satellites and the current RTK mode in a struct representing the last cycle of data received
   lastPoll.numSatellites = m_gpsPos.n_sats;

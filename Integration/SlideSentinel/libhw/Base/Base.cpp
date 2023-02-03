@@ -51,10 +51,10 @@ bool Base::initBase(){
     if(!m_RadioManager.initRadio()) return false;
     
     // Initialize the SatComm driver
-    if(!m_satComm.initSatComm()) return false;
+   // if(!m_satComm.initSatComm()) return false;
     
     // Wait for a satellite signal to be detected
-    if(!m_satComm.waitForSignal()) return false;
+    //if(!m_satComm.waitForSignal()) return false;
     
     return true;
 }
