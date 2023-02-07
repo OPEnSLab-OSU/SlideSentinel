@@ -254,3 +254,15 @@ bool Base::isFeatherTimerDone(){
         return false;
     }
 }
+
+void Base::waitForSerial(int timeout){
+    long startMillis = millis();
+
+    // Pause if the Serial is not open and we want to wait
+    while(!Serial){
+        // If it has been 20 seconds break out of the loop
+        if(millis() >= (startMillis+timeout)){
+            break;
+        }
+    }
+};

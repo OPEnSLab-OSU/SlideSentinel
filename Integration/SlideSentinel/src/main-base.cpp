@@ -13,7 +13,7 @@ void setup(){
     pinMode(LED_BUILTIN, HIGH);
 
     Serial.begin(115200); // Start our monitor serial at 115200 baud
-    while(!Serial); // Wait for data to propagate
+    base.waitForSerial(); // Wait 10 seconds for the serial monitor to open
     
     Serial.println("[Main] Initializing Setup...");
 

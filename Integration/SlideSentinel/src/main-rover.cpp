@@ -17,8 +17,8 @@ void setup() {
   rover.setMux(Rover::MuxFormat::RadioToFeather);
 
   Serial.begin(115200); 
+  rover.waitForSerial();
   Serial.println("1");
-  delay(5000);
 
   SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 

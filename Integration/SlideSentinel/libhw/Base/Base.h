@@ -140,6 +140,12 @@ class Base {
         */
         bool isFeatherTimerDone();
 
+        /**
+         * QOL Feature waits a set timeout for the serial to be opened before just continuing as normal
+         * @param timeout Maximum time to wait before continuing 
+        */
+        void waitForSerial(int timeout = 10000);
+
     private:
         BaseInfo m_baseInfo;                    // Base info that is sent back to the rover during handshake
         MAX4820 m_max4820;                      // Relay driver, used to power on relays controlling GNSS/Radio

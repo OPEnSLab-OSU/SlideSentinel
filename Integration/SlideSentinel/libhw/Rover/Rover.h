@@ -188,6 +188,12 @@ public:
     /* Poll the GNSS Controller for a fix */
     bool poll();
 
+    /**
+     * QOL Feature waits a set timeout for the serial to be opened before just continuing as normal
+     * @param timeout Maximum time to wait before continuing 
+    */
+    void waitForSerial(int timeout = 10000);
+
 
     
 private:
