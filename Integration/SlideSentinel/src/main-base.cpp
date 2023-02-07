@@ -2,9 +2,15 @@
 #include "FeatherTrace.h"
 #include <Arduino.h>
 
+/* If set to true shorten times to match that of a GNSS sim fix */
+#define SIMULATION_MODE true
+
+/* When set to false we will not try to communicate via the SatComm*/
+#define SATCOMM_ENABLED false
+
 Base base;
 
-// TODO: Move to main and use a serial setter
+// SatComm Software Serial
 Uart SatCommSerial(&sercom1, IRIDIUM_RX, IRIDIUM_TX, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 
 void setup(){
@@ -76,7 +82,11 @@ void loop(){
             Serial.println("[Main] Entering Prepoll, waiting for roughly 10 minutes before continuing...");
 
             // Start listening for data 1 second before the rover should start transmitting 9.75 mins=585000
-            base.setFeatherTimerLength(585000);
+            #if SIMULATION_MODE == true 
+                base.setFeatherTimerLength(9000);
+            #else
+                base.setFeatherTimerLength(585000);
+            #endif
             base.setMux(Base::MuxFormat::RadioToGNSS);
             base.startFeatherTimer();
             state = POLL;
@@ -101,7 +111,12 @@ void loop(){
             if(base.waitAndReceive() && base.getMessageType() == "UPLOAD"){
                 base.printMostRecentPacket();
                 base.logToSD();
-               // base.uploadToSatComm();
+
+                // Upload to satcomm if enabled
+                #if SATCOMM_ENABLED == true
+                    base.uploadToSatComm();
+                #endif
+
                 Serial.println("[Main] Transitioning back to Wait");
                 state = WAIT;
             }else{

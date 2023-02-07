@@ -4,6 +4,8 @@
 #include "FeatherTrace.h"
 #include "Rover.h"
 
+// If set to true shorten times to match that of a GNSS sim fix
+#define SIMULATION_MODE true
 
 /* Initialize the Rover class to use Serial2 as its communication */
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -120,8 +122,13 @@ void loop() {
       break;
     case PREPOLL:
       
-      // Set a timer for 20 seconds and power the GNSS on 10 minutes
+      // Set a timer for 20 seconds and power the GNSS on 10 minutes, or if sim just 10
+      #if SIMULATION_MODE == true 
+      rover.setFeatherTimerLength(10000);
+      #else
       rover.setFeatherTimerLength(1000*60*10);
+      #endif
+      
       rover.powerGNSS();
       rover.setMux(Rover::RadioToGNSS);
       rover.startFeatherTimer();
@@ -166,9 +173,14 @@ void loop() {
       // Power down GNSS and RADIO
       rover.powerDownGNSS();
       rover.powerDownRadio();
-      
-      // Schedule Alarm for 15 minutes from now
-      rover.scheduleSleepAlarm();
+
+      #if SIMULATION_MODE == true 
+        // Schedule Alarm 15 seconds from now
+        rover.scheduleAlarm(15);
+      #else
+        // Schedule Alarm for 15 minutes from now
+        rover.scheduleSleepAlarm();
+      #endif
 
       // Disable power light
       digitalWrite(LED_BUILTIN,LOW);
