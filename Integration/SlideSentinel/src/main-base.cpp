@@ -75,8 +75,8 @@ void loop(){
         case PREPOLL: MARK;
             Serial.println("[Main] Entering Prepoll, waiting for roughly 10 minutes before continuing...");
 
-            // Start listening for data 1 second before the rover should start transmitting
-            base.setFeatherTimerLength(1000*19);
+            // Start listening for data 1 second before the rover should start transmitting 9.75 mins=585000
+            base.setFeatherTimerLength(585000);
             base.setMux(Base::MuxFormat::RadioToGNSS);
             base.startFeatherTimer();
             state = POLL;

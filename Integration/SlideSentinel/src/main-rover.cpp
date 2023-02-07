@@ -120,8 +120,8 @@ void loop() {
       break;
     case PREPOLL:
       
-      // Set a timer for 20 seconds and power the GNSS on
-      rover.setFeatherTimerLength(1000*20);
+      // Set a timer for 20 seconds and power the GNSS on 10 minutes
+      rover.setFeatherTimerLength(1000*60*10);
       rover.powerGNSS();
       rover.setMux(Rover::RadioToGNSS);
       rover.startFeatherTimer();
@@ -168,7 +168,7 @@ void loop() {
       rover.powerDownRadio();
       
       // Schedule Alarm for 15 minutes from now
-      rover.scheduleAlarm(15);
+      rover.scheduleSleepAlarm();
 
       // Disable power light
       digitalWrite(LED_BUILTIN,LOW);

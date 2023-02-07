@@ -198,15 +198,11 @@ String SatComm::minifyJson(JsonObject json){
     String minifiedString = "";
 
     // Loop over the first 10 of the latitude cause we will just remove the period later
-    for(int i = 0; i < 10; i++){
-        minifiedString += json["Latitude"].as<String>()[i];
-    }
+    minifiedString += json["Latitude"].as<String>().substring(0, 10);
     minifiedString += ",";
     
     // Start at 1 to skip the negative sign
-    for(int i = 1; i < 11; i++){
-        minifiedString += json["Longitude"].as<String>()[i];
-    }
+    minifiedString += json["Longitude"].as<String>().substring(1,11);
     minifiedString += ",";
 
     // Replace the decimal place with nothing
@@ -225,13 +221,9 @@ String SatComm::minifyJson(JsonObject json){
     minifiedString += ",";
 
     // H Accuracy
-    for(int i = 0; i < 5; i++){
-        minifiedString += json["H Accuracy"].as<String>()[i];
-    }
+    minifiedString += json["H Accuracy"].as<String>().substring(0,5);
     minifiedString += ",";
 
     // V Accuracy
-    for(int i = 0; i < 4; i++){
-        minifiedString += json["V Accuracy"].as<String>()[i];
-    }
+    minifiedString += json["V Accuracy"].as<String>().substring(0,4);
 }

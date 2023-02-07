@@ -146,6 +146,10 @@ void GNSSController::populateGNSS() {
   lastPoll.numSatellites = m_gpsPos.n_sats;
   lastPoll.rtkMode = m_rtkMode;
 
+
+  // Clear the structs
+  m_resetStructs();
+  
   /*
     Stores every GNSS data points in their respective array
     using a dictionary/JSON.

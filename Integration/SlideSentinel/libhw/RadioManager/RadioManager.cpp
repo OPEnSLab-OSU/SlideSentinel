@@ -1,7 +1,12 @@
 #include "RadioManager.h"
-
-RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
+#if defined(BASE_BUILD)
+    RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
                                m_RHManager(m_RHSerialDriver, SERVER_ADDR){}
+#elif defined(ROVER_BUILD)
+    RadioManager::RadioManager() : m_RHSerialDriver(Serial1),
+                               m_RHManager(m_RHSerialDriver, CLIENT_ADDR){}
+#endif
+                            
 
 /**
  * Initialize the radio
