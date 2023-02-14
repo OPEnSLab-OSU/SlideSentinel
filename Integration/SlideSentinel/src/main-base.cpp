@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 /* If set to true shorten times to match that of a GNSS sim fix */
-#define SIMULATION_MODE true
+#define SIMULATION_MODE false
 
 /* When set to false we will not try to communicate via the SatComm*/
 #define SATCOMM_ENABLED false
@@ -85,7 +85,7 @@ void loop(){
             #if SIMULATION_MODE == true 
                 base.setFeatherTimerLength(9000);
             #else
-                base.setFeatherTimerLength(585000);
+                base.setFeatherTimerLength(1000*60*2);
             #endif
             base.setMux(Base::MuxFormat::RadioToGNSS);
             base.startFeatherTimer();

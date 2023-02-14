@@ -192,7 +192,7 @@ public:
      * QOL Feature waits a set timeout for the serial to be opened before just continuing as normal
      * @param timeout Maximum time to wait before continuing 
     */
-    void waitForSerial(int timeout = 10000);
+    void waitForSerial(int timeout = 20000);
 
 
     
@@ -218,6 +218,7 @@ private:
 
     /*RTK Variable*/
     String rtkMsg;
+    bool hasFix = false;
 
     /*  A message consists of an: ID, TYPE, MSG
         The definitions are as such:

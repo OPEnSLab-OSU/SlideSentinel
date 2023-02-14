@@ -51,6 +51,8 @@ class SDManager{
         SdFile m_sdRoot;        // Root of the SD card
         SdFile m_file;          // General purpose file object for creating the required file
 
+        int logCycle = 0;       // Track how many times we have logged here to differentiate
+
         int csPin;              // CS Pin where the SD card is attached
         int spiSpeed;           // SPI clock speed
 

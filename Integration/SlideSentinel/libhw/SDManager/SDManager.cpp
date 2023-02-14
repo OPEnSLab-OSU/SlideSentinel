@@ -40,7 +40,7 @@ bool SDManager::initSD(){
     // Check if the default log folder doesn't exists on the SD card
     if(!m_sd.exists(SD_LOG_FOLDER)){
 
-        Serial.println("[SD Manger] Default log folder was not found, attempt to create one.");
+        Serial.println("[SD Manager] Default log folder was not found, attempt to create one.");
         if(!m_sd.mkdir(SD_LOG_FOLDER)){
             Serial.println("[SD Manager] Failed to create the default log directory!");
             return false;
@@ -70,10 +70,19 @@ bool SDManager::createLogDirectory(int roverAddress){
 
     if(m_sd.chdir(logFolder.c_str(), true), true){
         Serial.println("[SD Manager] Successfully opened log folder!");
+        
 
         // Make and open the log folder
         m_sd.mkdir(roverInstance.c_str());
         m_sd.chdir(roverInstance.c_str(), true);
+
+        // Loop over all the folders in the current directory to increment the number to log else where
+        while(m_sd.exists(String(logCycle).c_str())){
+            logCycle++;
+        }
+
+        m_sd.mkdir(String(logCycle).c_str());
+        m_sd.chdir(String(logCycle).c_str(), true);
 
         createFile(PROPERTIES_FILE);
         createFile(DIAGNOSTIC_FILE);
@@ -98,7 +107,7 @@ bool SDManager::createLogDirectory(int roverAddress){
 bool SDManager::log(const int roverNum, const char* message, const char* file){
 
     // Rover instance to track data from an individual rover
-    String roverFolder = "ROVER" + String(roverNum);
+    String roverFolder = "ROVER" + String(roverNum) + "/" + String(logCycle);
 
     // If the log directory doesn't already exist then create a new one based on the rover address
     if(!directoryExists(roverFolder.c_str()))
@@ -142,7 +151,7 @@ bool SDManager::logRoverDiagnostics(int roverNum, Diagnostics diagnostics){
 
     // Finally attempt to log the diagnostic data to the corresponding file
     if(!log(roverNum, diagnosticJSON.c_str(), DIAGNOSTIC_FILE)){
-        Serial.println("[SD Manger] Failed to log diagnostic data to file!");
+        Serial.println("[SD Manager] Failed to log diagnostic data to file!");
         return false;
     }
 

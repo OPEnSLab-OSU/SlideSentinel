@@ -45,11 +45,14 @@ bool Rover::poll(){
     m_gnss.poll();
 
     // If we have a fix we don't need to continue polling
-    if(m_gnss.hasFix())
+    if(m_gnss.hasFix() || hasFix){
+        hasFix = true;
         return true;
+    }
+        
 
     // If not a fix check if we have new data and then set the current values to the values of lastPoll
-    if(m_gnss.isNewData()){
+    if(m_gnss.isNewData() && !hasFix){
         m_gnss.populateGNSS();
         Serial.println(m_gnss.getGNSSData());
     }
@@ -282,6 +285,7 @@ void Rover::powerGNSS(){
 
 void Rover::powerDownGNSS(){
     Serial.println("Powering GNSS down.");
+    hasFix = false;
     m_max4820.assertRail(3);
 }
 

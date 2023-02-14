@@ -119,7 +119,7 @@ bool GNSSController::isNewData(){
 bool GNSSController::hasFix(){
   // Check if the current mode is a fix before continuing
   if(m_getRTKMode() == 4){
-    return (lastPoll.numSatellites == m_gpsPos.n_sats && lastPoll.rtkMode == m_rtkMode);
+    return (lastPoll.numSatellites == m_gpsPos.n_sats && lastPoll.rtkMode == 4);
   }
   return false;
 }
@@ -145,7 +145,6 @@ void GNSSController::populateGNSS() {
   // Store the number of satellites and the current RTK mode in a struct representing the last cycle of data received
   lastPoll.numSatellites = m_gpsPos.n_sats;
   lastPoll.rtkMode = m_rtkMode;
-
 
   // Clear the structs
   m_resetStructs();

@@ -5,7 +5,7 @@
 #include "Rover.h"
 
 // If set to true shorten times to match that of a GNSS sim fix
-#define SIMULATION_MODE true
+#define SIMULATION_MODE false
 
 /* Initialize the Rover class to use Serial2 as its communication */
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -126,7 +126,7 @@ void loop() {
       #if SIMULATION_MODE == true 
       rover.setFeatherTimerLength(10000);
       #else
-      rover.setFeatherTimerLength(1000*60*10);
+      rover.setFeatherTimerLength(1000*60*3);
       #endif
       
       rover.powerGNSS();
