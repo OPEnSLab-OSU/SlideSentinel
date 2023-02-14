@@ -126,7 +126,7 @@ void loop() {
       #if SIMULATION_MODE == true 
       rover.setFeatherTimerLength(10000);
       #else
-      rover.setFeatherTimerLength(1000*60*3);
+      rover.setFeatherTimerLength(1000*60*5);
       #endif
       
       rover.powerGNSS();

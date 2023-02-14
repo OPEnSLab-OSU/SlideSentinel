@@ -44,9 +44,10 @@ bool Rover::poll(){
     // Poll data from the GNSS
     m_gnss.poll();
 
-    // If we have a fix we don't need to continue polling
+    // If we have a fix we don't need to continue polling, so turn off the gnss
     if(m_gnss.hasFix() || hasFix){
         hasFix = true;
+        powerDownGNSS();
         return true;
     }
         

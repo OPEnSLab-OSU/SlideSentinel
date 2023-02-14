@@ -82,10 +82,12 @@ void loop(){
             Serial.println("[Main] Entering Prepoll, waiting for roughly 10 minutes before continuing...");
 
             // Start listening for data 1 second before the rover should start transmitting 9.75 mins=585000
+
+            // We may not need to poll for as long 
             #if SIMULATION_MODE == true 
                 base.setFeatherTimerLength(9000);
             #else
-                base.setFeatherTimerLength(1000*60*2);
+                base.setFeatherTimerLength(1000*60*4);
             #endif
             base.setMux(Base::MuxFormat::RadioToGNSS);
             base.startFeatherTimer();
