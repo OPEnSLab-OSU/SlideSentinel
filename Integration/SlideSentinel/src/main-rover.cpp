@@ -15,11 +15,14 @@ Rover rover(Serial2);
                           
 void setup() {
 
+  //Show rover is on
+  digitalWrite(LED_BUILTIN,HIGH);
+
   /* Set serial to radio, enable RS232 level shifter and start user monitor*/
   rover.setMux(Rover::MuxFormat::RadioToFeather);
 
   Serial.begin(115200); 
-  rover.waitForSerial();
+ // rover.waitForSerial();
   Serial.println("1");
 
   SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();

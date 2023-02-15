@@ -46,8 +46,14 @@ bool Rover::poll(){
 
     // If we have a fix we don't need to continue polling, so turn off the gnss
     if(m_gnss.hasFix() || hasFix){
+        if(!hasFix){
+            Serial.println("!!! RTK FIX GOTTEN !!!");
+            powerDownGNSS();
+            m_gnss.populateGNSS();
+            Serial.println(m_gnss.getGNSSData());
+        }
         hasFix = true;
-        powerDownGNSS();
+        
         return true;
     }
         
