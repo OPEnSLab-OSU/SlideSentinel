@@ -252,7 +252,8 @@ bool SDManager::writeLine(const char* fileName, const char* message){
  * Check the current functional status of the SD card, returns true if we are okay false if something is broken
  */ 
 bool SDManager::checkSD(){
-    return m_sd.card()->errorCode() == 0;
+    // Check if the a directory exists which requires the SD card to access the SD card
+    return directoryExists("../rovers");
 }
 
 /**
