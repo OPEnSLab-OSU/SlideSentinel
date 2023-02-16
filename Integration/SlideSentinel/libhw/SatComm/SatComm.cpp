@@ -197,27 +197,27 @@ bool SatComm::updateSystemTime(){
 String SatComm::minifyJson(JsonObject json){
     String minifiedString = "";
 
+    minifiedString += json["RTK Mode"].as<String>();
+    minifiedString += ",";
+
     // Loop over the first 10 of the latitude cause we will just remove the period later
     minifiedString += json["Latitude"].as<String>().substring(0, 10);
     minifiedString += ",";
     
     // Start at 1 to skip the negative sign
-    minifiedString += json["Longitude"].as<String>().substring(1,11);
+    minifiedString += json["Longitude"].as<String>().substring(0,11);
     minifiedString += ",";
 
-    // Replace the decimal place with nothing
-    minifiedString.replace(".", "");
-
     // If there are less than 0 satellites we want to 0 pad so the packet is always the same length
-    minifiedString += String(json["Satellites"].as<int>());
+    minifiedString += json["Satellites"].as<String>();
     minifiedString += ",";
 
     // Weeks since epoch 
-    minifiedString += String(json["Week"].as<int>());
+    minifiedString += json["Week"].as<String>();
     minifiedString += ",";
 
-    // GPS Time
-    minifiedString += String(json["Time"].as<int>());
+    // GPS Seconds (Only need the first 6)
+    minifiedString += json["Seconds"].as<String>().substring(0,6);
     minifiedString += ",";
 
     // H Accuracy
