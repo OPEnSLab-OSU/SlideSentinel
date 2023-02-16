@@ -76,14 +76,6 @@ bool SDManager::createLogDirectory(int roverAddress){
         m_sd.mkdir(roverInstance.c_str());
         m_sd.chdir(roverInstance.c_str(), true);
 
-        // Loop over all the folders in the current directory to increment the number to log else where
-        while(m_sd.exists(String(logCycle).c_str())){
-            logCycle++;
-        }
-
-        m_sd.mkdir(String(logCycle).c_str());
-        m_sd.chdir(String(logCycle).c_str(), true);
-
         createFile(PROPERTIES_FILE);
         createFile(DIAGNOSTIC_FILE);
         createFile(DATA_FILE);
@@ -107,7 +99,7 @@ bool SDManager::createLogDirectory(int roverAddress){
 bool SDManager::log(const int roverNum, const char* message, const char* file){
 
     // Rover instance to track data from an individual rover
-    String roverFolder = "ROVER" + String(roverNum) + "/" + String(logCycle);
+    String roverFolder = "ROVER" + String(roverNum);
 
     // If the log directory doesn't already exist then create a new one based on the rover address
     if(!directoryExists(roverFolder.c_str()))
@@ -253,7 +245,7 @@ bool SDManager::writeLine(const char* fileName, const char* message){
  */ 
 bool SDManager::checkSD(){
     // Check if the a directory exists which requires the SD card to access the SD card
-    return directoryExists("../rovers");
+    return getErrorCode() == 0;
 }
 
 /**
