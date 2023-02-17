@@ -81,6 +81,11 @@ void loop() {
       /******* RTC *******/
       rover.setRTCTime(); // Turns on RTC for correct timestamp
 
+      #if SIMULATION_MODE == false
+        // Schedule Alarm for 15 minutes from now
+        rover.scheduleSleepAlarm();
+      #endif
+
       state = HANDSHAKE;
       break;
     
@@ -180,10 +185,7 @@ void loop() {
       #if SIMULATION_MODE == true 
         // Schedule Alarm 15 seconds from now
         rover.scheduleAlarm(15);
-      #else
-        // Schedule Alarm for 15 minutes from now
-        rover.scheduleSleepAlarm();
-      #endif
+      #endif      
 
       // Disable power light
       digitalWrite(LED_BUILTIN,LOW);
