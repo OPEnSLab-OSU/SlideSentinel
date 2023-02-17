@@ -75,11 +75,11 @@ bool SatComm::initSatComm(){
 }
 
 /**
- * Waits up to 15 seconds for a signal to be acquired
+ * Waits up to 10 seconds for a signal to be acquired
  */ 
 bool SatComm::waitForSignal(){
     int signalQuality = 0;
-    Serial.println("[SatComm] Waiting for signal, this may take up to 15 seconds...");
+    Serial.println("[SatComm] Waiting for signal, this may take up to 10 seconds...");
     int startTime = millis();
 
     // If the board thinks we have a signal it will output HIGH on this pin
@@ -115,10 +115,10 @@ String SatComm::getFirmwareVersion(){
     do{
         result = m_modem->getFirmwareVersion(firmwareVersion, sizeof(firmwareVersion));
         retry_count++;
-    } while(result != ISBD_SUCCESS && retry_count < 5);
+    } while(result != 0 && retry_count < 5);
 
     // Check if we failed to get the firmware version
-    if(result != ISBD_SUCCESS){
+    if(result != 0){
         Serial.println("[SatComm] Failed to get firmware version from SatComm! Error: " + initializationErrorCodes[result]);
         return "";
     }
@@ -149,7 +149,7 @@ bool SatComm::transmit(JsonObject json){
         // Upload the data!
         int result = m_modem->sendSBDBinary(data, packetSize);
 
-        if(result != ISBD_SUCCESS){
+        if(result != 0){
             Serial.println("[SatComm] Failed to transmit data! Error: " + initializationErrorCodes[result]);
             return false;
         }
@@ -178,10 +178,10 @@ bool SatComm::updateSystemTime(){
     do{
         result = m_modem->getSystemTime(currentTime);
         retry_count++;
-    } while(result != ISBD_SUCCESS && retry_count < 5);
+    } while(result != 0 && retry_count < 5);
 
     // Check if we failed to get the firmware version
-    if(result != ISBD_SUCCESS){
+    if(result != 0){
         Serial.println("[SatComm] Failed to get system time from SatComm! Error: " + initializationErrorCodes[result]);
         return false;
     }
@@ -197,33 +197,33 @@ bool SatComm::updateSystemTime(){
 String SatComm::minifyJson(JsonObject json){
     String minifiedString = "";
 
-    minifiedString += json["RTK Mode"].as<String>();
+    minifiedString += String(json["RTK Mode"].as<int>());
     minifiedString += ",";
 
     // Loop over the first 10 of the latitude cause we will just remove the period later
-    minifiedString += json["Latitude"].as<String>().substring(0, 10);
+    minifiedString += String(json["Latitude"].as<const char*>()).substring(0, 10);
     minifiedString += ",";
     
     // Start at 1 to skip the negative sign
-    minifiedString += json["Longitude"].as<String>().substring(0,11);
+    minifiedString += String(json["Longitude"].as<const char*>()).substring(0,11);
     minifiedString += ",";
 
     // If there are less than 0 satellites we want to 0 pad so the packet is always the same length
-    minifiedString += json["Satellites"].as<String>();
+    minifiedString += json["Satellites"].as<int>();
     minifiedString += ",";
 
     // Weeks since epoch 
-    minifiedString += json["Week"].as<String>();
+    minifiedString += json["Week"].as<int>();
     minifiedString += ",";
 
     // GPS Seconds (Only need the first 6)
-    minifiedString += json["Seconds"].as<String>().substring(0,6);
+    minifiedString += String(json["Seconds"].as<long>()).substring(0,6);
     minifiedString += ",";
 
     // H Accuracy
-    minifiedString += json["H Accuracy"].as<String>().substring(0,5);
+    minifiedString += String(json["H Accuracy"].as<const char*>()).substring(0,5);
     minifiedString += ",";
 
     // V Accuracy
-    minifiedString += json["V Accuracy"].as<String>().substring(0,4);
+    minifiedString += String(json["V Accuracy"].as<const char*>()).substring(0,4);
 }

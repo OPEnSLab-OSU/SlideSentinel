@@ -119,7 +119,7 @@ class GNSSController {
     /* Serial Communication */
     HardwareSerial& m_serial;             // Serial interface to communicate with the GNSS module
 
-    StaticJsonDocument<MAX_DATA_LEN> doc; // Doc to store the JSON GNSS data
+    StaticJsonDocument<500> doc; // Doc to store the JSON GNSS data
 
     uint32_t m_baudRate;                  // Serial baud rate to communicate at
     uint8_t m_rx;                         // RX Pin to communicate over

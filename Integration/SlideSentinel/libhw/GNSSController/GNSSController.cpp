@@ -153,14 +153,17 @@ void GNSSController::populateGNSS() {
     Stores every GNSS data points in their respective array
     using a dictionary/JSON.
 
-    "GNSS" = {
-      "Seconds" = 11,
-      "Latitude" = 11,
-      "Longitude" = 11, 
-      "Height" = 11,
-      .
-      .
-      .
+    {
+      "RTK Mode": 4,
+      "Week": 2249,
+      "Seconds": 260705400,
+      "Latitude": "44.56649590265672600",
+      "Longitude": "-123.29363539427779983",
+      "H Accuracy": "36",
+      "V Accuracy": "be",
+      "Height": "54.95959733837012351",
+      "Satellites": 11,
+      "PDOP": 332
     }
   */
 }
