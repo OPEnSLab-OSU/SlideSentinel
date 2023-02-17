@@ -25,7 +25,7 @@ for file in glob.glob("./*.json"):
                 timeStr += "Z"
 
                 # Craft the waypoint object and write it to the file
-                waypoint = "\t<wpt lat=\"{0}\" lon=\"{1}\"><time>{2}</time></wpt>\n".format(jsonPacket["Latitude"], jsonPacket["Longitude"], timeStr)
+                waypoint = "\t<wpt lat=\"{0}\" lon=\"{1}\">\n\t\t<name>{2}</name>\n\t\t<time>{2}</time>\n\t\t<sat>{3}</sat>\n\t\t<pdop>{4}</pdop>\n\t\t<geoidheight>{5}</geoidheight>\n\t</wpt>\n".format(jsonPacket["Latitude"], jsonPacket["Longitude"], timeStr, jsonPacket["Satellites"], jsonPacket["PDOP"], jsonPacket["Height"])
                 gpxFile.write(waypoint)
 
         # Close the GPX document
