@@ -115,6 +115,7 @@ void loop() {
           Serial.println("[Rover] No message received after rtk request... Transitioning to sleep");
           delay(1000);
           state = SLEEP;
+          break;
         }
           
       }
