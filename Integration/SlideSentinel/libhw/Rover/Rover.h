@@ -93,7 +93,7 @@ public:
     /* Tells the max4820 to disable the radio relay. */
     void powerDownRadio();
 
-    /* Tells the max4820 to enable the radio relay. */
+    /* Tells the max4820 to enable the radio relay. Wait 20 seconds for it to initialize*/
     void powerRadio();
 
     /* Tells the max4820 to enable the GNSS relay. */

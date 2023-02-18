@@ -70,10 +70,6 @@ void loop() {
       rover.powerRadio();
       rover.setMux(Rover::MuxFormat::RadioToFeather);
 
-      // Wait 20 seconds for the radio to warmup
-      rover.setFeatherTimerLength(20*1000);
-      rover.startFeatherTimer();
-      while(!rover.isFeatherTimerDone());
       Serial1.println("exit");  //ensure radio is out of programming mode
 
       Serial.println("[Rover] Radio warmup completed!");
@@ -159,7 +155,8 @@ void loop() {
       break;
     case UPLOAD: 
 
-      // Set the serial mux to direct communication to the Radio
+      // Set the serial mux to direct communication to the Radio, turn the radio back on before uploading
+      rover.powerRadio();
       rover.setMux(Rover::MuxFormat::RadioToFeather);
       delay(50);
 
@@ -209,11 +206,7 @@ void loop() {
 
       rover.setMux(Rover::MuxFormat::RadioToFeather);
       rover.packageData(Rover::DataType::UPLOAD);
-
       rover.transmit();
-
-      
-      // if(rover.sd)
       delay(500);
       break;
     

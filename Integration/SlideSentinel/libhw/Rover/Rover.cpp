@@ -48,9 +48,13 @@ bool Rover::poll(){
     if(m_gnss.hasFix() || hasFix){
         if(!hasFix){
             Serial.println("!!! RTK FIX GOTTEN !!!");
+
+            // Turn the radio and the GNSS off to conserve power
             powerDownGNSS();
+            powerDownRadio();
             m_gnss.populateGNSS();
             Serial.println(m_gnss.getGNSSData());
+            
         }
         hasFix = true;
         
@@ -276,8 +280,15 @@ void Rover::toSleep(){
 
 
 void Rover::powerRadio(){
-    Serial.println("Powering radio on.");
+    Serial.println("[Rover] Powering radio on.");
     m_max4820.assertRail(0);
+
+    // Wait for the radio to warmup
+    Serial.println("[Rover] Waiting for radio to warmup, this will take 20 seconds...");
+    setFeatherTimerLength(20*1000);
+    startFeatherTimer();
+    while(!isFeatherTimerDone());
+    Serial.println("[Rover] Radio warmup complete");
 }
 
 void Rover::powerDownRadio(){
