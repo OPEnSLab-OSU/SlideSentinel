@@ -5,13 +5,14 @@
 #include "Rover.h"
 
 // If set to true shorten times to match that of a GNSS sim fix
-#define SIMULATION_MODE false
+#define SIMULATION_MODE true
 
 /* Initialize the Rover class to use Serial2 as its communication */
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
 void SERCOM1_Handler() { Serial2.IrqHandler(); }
 
 Rover rover(Serial2);
+int rtkRequestCount = 0;
                           
 void setup() {
 
@@ -59,7 +60,6 @@ void loop() {
 
     /* Initialize / Wakeup */
     case WAKE:
-
       /* Turn power LED and print that the device is now awake*/
       digitalWrite(LED_BUILTIN,HIGH);
 
@@ -82,11 +82,16 @@ void loop() {
         rover.scheduleSleepAlarm();
       #endif
 
-      state = HANDSHAKE;
+      #if SIMULATION_MODE == false
+        state = HANDSHAKE;
+      #else
+        state = PREPOLL;
+      #endif
       break;
     
     /* Request a RTK transition from the base*/
     case HANDSHAKE:
+
 
       // Package a REQUEST message
       rover.packageData(Rover::DataType::REQUEST);
@@ -119,10 +124,16 @@ void loop() {
         }
           
       }
+      else if(rtkRequestCount == 3){
+        Serial.println("[Rover] After 5 retries the rover has failed to initiate a connection to the base and will now enter sleep");
+        rtkRequestCount = 0;
+        state = SLEEP;
+        break;
+      }
 
       //If we haven't already transitioned out of handshake we want to run it again
       Serial.println("[Rover] Transitioning to handshake");
-      
+      rtkRequestCount++;
       state = HANDSHAKE;
       break;
     case PREPOLL:
@@ -133,6 +144,8 @@ void loop() {
       #else
       rover.setFeatherTimerLength(1000*60*5);
       #endif
+
+      Serial.println("[Rover] Only fixed RTK values will be printed...");
       
       rover.powerGNSS();
       rover.setMux(Rover::RadioToGNSS);
@@ -157,7 +170,6 @@ void loop() {
     case UPLOAD: 
 
       // Set the serial mux to direct communication to the Radio, turn the radio back on before uploading
-      rover.powerRadio();
       rover.setMux(Rover::MuxFormat::RadioToFeather);
       delay(50);
 
