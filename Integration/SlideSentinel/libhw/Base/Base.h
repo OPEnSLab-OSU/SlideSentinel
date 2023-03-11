@@ -29,7 +29,8 @@ class Base {
         enum DataType{
             REQUEST,
             UPLOAD,
-            ALERT
+            ALERT,
+            INIT_RTK
         };
 
         Base();

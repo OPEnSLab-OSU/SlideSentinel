@@ -122,13 +122,14 @@ bool Rover::waitAndReceive(int milliseconds){
 
 /* Get the message type from the last received packet */
 String Rover::getMessageType(){
-    return m_RadioManager.getRoverPacket()["TYPE"];
+    return m_RadioManager.getRoverPacket()["TYPE"].as<String>();
 }
 
 /* Get the message body from the last received packet */
 String Rover::getMessageBody(){
-    return m_RadioManager.getRoverPacket()["MSG"];
+    return m_RadioManager.getRoverPacket()["MSG"].as<String>();
 }
+
 
 void Rover::setRTCTime(){
     // Initialize Wire and start communication with the RTC
@@ -141,6 +142,11 @@ void Rover::setRTCTime(){
     } else {
         Serial.println("[Rover] RTC time failed to set");
     }
+}
+
+/* Adjust the RTC time */
+void Rover::adjustRTCTime(const char* time){
+    m_RTC.adjust(DateTime(time));
 }
 
 /* ISR for handling the RTC interrupt*/

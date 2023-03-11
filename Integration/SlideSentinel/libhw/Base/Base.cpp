@@ -68,6 +68,16 @@ void Base::packageData(DataType packType){
     JsonObject RHJson = m_JSONData.to<JsonObject>();
 
     switch(packType){
+        case INIT_RTK:
+            RHJson["TYPE"] = "INIT_RTK_TYPE";
+            #if SATCOMM_ENABLED == true
+                m_satComm.updateSystemTime();
+                RHJson["MSG"] = m_satComm.getCurrentTimeString();
+            #else
+                RHJson["MSG"] = "";
+            #endif
+
+            break;
         case REQUEST: 
             RHJson["TYPE"] = "REQUEST";
             RHJson["MSG"] = "RTK_REQUEST";

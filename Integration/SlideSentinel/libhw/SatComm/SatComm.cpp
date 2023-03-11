@@ -130,9 +130,10 @@ String SatComm::getFirmwareVersion(){
 /**
  * Get the current time as a string
  */ 
-String SatComm::getCurrentTimeString(){
-    time_t time = mktime(&currentTime);
-    return String(asctime(gmtime(&time)));
+const char* SatComm::getCurrentTimeString(){
+    //2020-06-25T15:29:37
+    strftime(timeStr, sizeof(timeStr), "%FT%X", &currentTime);
+    return timeStr;
 }
 
 /**
@@ -186,7 +187,8 @@ bool SatComm::updateSystemTime(){
         return false;
     }
     else{
-        Serial.print("[SatComm] Retrieved system time from SatComm! Current Time: " + getCurrentTimeString());
+        Serial.print("[SatComm] Retrieved system time from SatComm! Current Time: ");
+        Serial.println(getCurrentTimeString());
         return true;
     }
 }

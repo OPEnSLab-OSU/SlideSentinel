@@ -63,7 +63,7 @@ void loop(){
                 // Print out the packet received by the base
                 base.printMostRecentPacket();
                 if(base.getMessageType() == "REQUEST"){
-                    base.packageData("INIT_RTK_TYPE", "");
+                    base.packageData(Base::DataType::INIT_RTK);
                     
                     if(base.transmit()){
                         Serial.println("[Main] Transmit successful! Polling RTK...");
@@ -143,7 +143,8 @@ void loop(){
                 // Wait for signal and once acquired update time
                 if(base.getSatComm().waitForSignal()){
                     base.getSatComm().updateSystemTime();
-                    Serial.println("Updated Time: " + base.getSatComm().getCurrentTimeString());
+                    Serial.print("Updated Time: ");
+                    Serial.println(base.getSatComm().getCurrentTimeString());
                 }
                 delay(1000);
             }

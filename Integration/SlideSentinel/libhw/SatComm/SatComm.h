@@ -54,7 +54,7 @@ class SatComm{
         tm getCurrentTime() { return currentTime; };
 
         /* Print the current time in UTC*/
-        String getCurrentTimeString();
+        const char* getCurrentTimeString();
 
         /**
          * Set the serial to be used by the satcomm
@@ -67,6 +67,7 @@ class SatComm{
 
         // Time received from the modem
         tm currentTime = {};
+        char timeStr[80];
 
         /* Get the current verison of the SatComm modem*/
         String getFirmwareVersion();

@@ -72,6 +72,9 @@ public:
     /* Set the RTC Time*/
     void setRTCTime();
 
+    /* Adjust the current time to the ISO standard formatted string given (2020-06-25T15:29:37)*/
+    void adjustRTCTime(const char* time);
+
     /* Serialize and send JSON packet to Base*/
     bool transmit();
 

@@ -104,6 +104,12 @@ void loop() {
 
           // If the response was a "INIT_RTK_TYPE" we know that we are in contact with the base
           if(rover.getMessageType() == "INIT_RTK_TYPE"){
+            // If the time was sent in the message then we should adjust the RTC to match
+            if(rover.getMessageBody().length() > 0){
+              Serial.println("[Rover] Matching RTC time with SatComm");
+              rover.adjustRTCTime(rover.getMessageBody().c_str());
+            }
+            
             Serial.println("[Rover] Successfully transitioning to RTK mode");
             state = PREPOLL;
             break;
