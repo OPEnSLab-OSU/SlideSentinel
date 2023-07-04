@@ -32,6 +32,13 @@ bool Rover::initRover(){
     return true;
 }
 
+/* Limited functionality for radio testing/debugging */
+bool Rover::initRoverRadioTest(){
+    setRS232(IS_RS232);
+    m_RadioManager.initRadio();
+    return true;
+}
+
 void Rover::wake(){
     powerRadio();
     for (int i = 0; i < 2; i++) {

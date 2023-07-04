@@ -11,3 +11,4 @@
 
 // Set if we need to level shift the serial for the RockBlock and the Radio
 #define IS_RS232 true
+

@@ -145,6 +145,9 @@ public:
     /* Initialize modules that the base uses*/
     bool initRover();
 
+    /* Only used in ping pong radio test*/
+    bool initRoverRadioTest();
+
     /* initialize rtc */
     void initRTC();
 

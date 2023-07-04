@@ -16,7 +16,8 @@ private:
 
 public:
   MAX4820(uint8_t cs, SPIClass *spi);
-  /* Sends a command to the MAX4820 to turn on the relays.*/
+
+  /* Sends a command to the MAX4820 to turn on/off the relays.*/
   void assertRail(uint8_t num);
   void clear();
 };

@@ -4,8 +4,23 @@
 #include "FeatherTrace.h"
 #include "Rover.h"
 
+/*
+    @brief The run mode dictates the fucntions that rover will use.
+
+    0: Live Deployment Mode
+    1: Radio 2 way communication mode
+    2: Radio 2 way reliable (RH) communication mode
+    3: Relay diagnostic mode
+    4: SD Mode
+*/
+#define RUN_MODE 1 
+
 // If set to true shorten times to match that of a GNSS sim fix
 #define SIMULATION_MODE false
+
+/* Define function signatures */
+void setInitialState();
+
 
 /* Initialize the Rover class to use Serial2 as its communication */
 Uart Serial2(&sercom1, GNSS_RX, GNSS_TX, SERCOM_RX_PAD_3, UART_TX_PAD_0);
@@ -15,26 +30,46 @@ Rover rover(Serial2);
 int rtkRequestCount = 0;
                           
 void setup() {
+  switch(RUN_MODE){
+    //Show rover is on
+    digitalWrite(LED_BUILTIN,HIGH);
+    case 0: //Field Deployment/Standard Mode
 
-  //Show rover is on
-  digitalWrite(LED_BUILTIN,HIGH);
+      /* Set serial to radio, enable RS232 level shifter and start user monitor*/
+      rover.setMux(Rover::MuxFormat::RadioToFeather);
 
-  /* Set serial to radio, enable RS232 level shifter and start user monitor*/
-  rover.setMux(Rover::MuxFormat::RadioToFeather);
+      Serial.begin(115200); 
+      // rover.waitForSerial();
+      Serial.println("1");
+      Serial.println("[SETUP] Entering default field deployment setup");
 
-  Serial.begin(115200); 
- // rover.waitForSerial();
-  Serial.println("1");
+      SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
 
-  SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
+      // Turn on the Radio and GNSS
+      rover.powerRadio();
+      rover.powerGNSS();
+      
+      // Initialize software rover components
+      rover.initRover();
 
-  // Turn on the Radio and GNSS
-  rover.powerRadio();
-  rover.powerGNSS();
-  
-  // Initialize software rover components
-  rover.initRover();
+      break;
 
+    case 1: //Radio initialization mode
+    case 2:
+
+      rover.setMux(Rover::MuxFormat::RadioToFeather);
+      Serial.begin(115200);
+      Serial.println("[SETUP] Entering Radio Debug Setup");
+
+      SPI.begin();
+      rover.powerDownRadio();
+      delay(500);
+      rover.powerDownGNSS(); //Turn off as we don't need this for radio test
+      rover.powerRadio();
+      rover.initRoverRadioTest();
+      break;
+  }
+  setInitialState();
 }
 
 /**
@@ -48,8 +83,24 @@ void setup() {
 */
 enum State { WAKE, HANDSHAKE, PREPOLL, POLL, UPLOAD, SLEEP, DEBUG, DEBUG_RADIO};        
 
-// Current state of the rover
-static State state = WAKE;
+// Current default state of the rover, depending on RUN_MODE
+static State state;
+void setInitialState(){
+  switch(RUN_MODE){
+    case 0:
+      state = WAKE;
+      Serial.println("[PRELOOP State Switch] Setting state to Wake");
+      break;
+    case 1:
+      state = DEBUG_RADIO;
+      Serial.println("[PRELOOP State Switch] Setting state to Radio Debug");
+      break;
+    default:
+      state = WAKE;
+      Serial.println("[PRELOOP State Switch] Default: Setting state to Wake");
+      break;
+  }
+}
 
 void loop() {
 
@@ -231,11 +282,18 @@ void loop() {
     
     /* Send data to radio if not receiving data*/
     case DEBUG_RADIO:
+      rover.setFeatherTimerLength(3*1000);
+      rover.startFeatherTimer(); 
+
+      // Print all available radio messages received, transmit ping ever 3 seconds
       while(true){
         if(Serial1.available()){
           Serial.print((char)Serial1.read());
         }else{
-          Serial1.println("Ping");
+          if(rover.isFeatherTimerDone()){
+            Serial1.println("Ping");
+            rover.startFeatherTimer();
+          }
         }
       }
       break;

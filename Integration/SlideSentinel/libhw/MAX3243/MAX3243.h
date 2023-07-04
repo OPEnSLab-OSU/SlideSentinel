@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+//Translator chip for rs-232 communication
+
 class MAX3243 {
 private:
   uint8_t m_forceoff;
