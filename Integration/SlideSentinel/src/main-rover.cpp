@@ -11,9 +11,11 @@
     1: Radio 2 way communication mode
     2: Radio 2 way reliable (RH) communication mode
     3: Relay diagnostic mode
-    4: SD Mode
+    4: SD diagnostic mode
+    5: GNSS diagnostic mode
+    6: VRM diagnostic mode
 */
-#define RUN_MODE 1 
+#define RUN_MODE 3 
 
 // If set to true shorten times to match that of a GNSS sim fix
 #define SIMULATION_MODE false
@@ -40,7 +42,7 @@ void setup() {
 
       Serial.begin(115200); 
       // rover.waitForSerial();
-      Serial.println("1");
+
       Serial.println("[SETUP] Entering default field deployment setup");
 
       SPI.begin(); //TODO line is critical for relay driver. should move to rover, like rover.spiBegin();
@@ -68,6 +70,17 @@ void setup() {
       rover.powerRadio();
       rover.initRoverRadioTest();
       break;
+    case 3:
+
+      Serial.begin(115200);
+      Serial.println("[SETUP] Entering Relay Diagnostic Mode");
+      SPI.begin();
+      delay(500);
+
+      rover.powerDownGNSS();
+      rover.powerDownRadio();
+      break;
+      
   }
   setInitialState();
 }
@@ -81,7 +94,7 @@ void setup() {
  * UPLOAD - Send the data collected to the base
  * SLEEP - Enter a low power state and wait for RTC wake
 */
-enum State { WAKE, HANDSHAKE, PREPOLL, POLL, UPLOAD, SLEEP, DEBUG, DEBUG_RADIO};        
+enum State { WAKE, HANDSHAKE, PREPOLL, POLL, UPLOAD, SLEEP, DEBUG, DEBUG_RADIO, DEBUG_RELAY};        
 
 // Current default state of the rover, depending on RUN_MODE
 static State state;
@@ -89,11 +102,15 @@ void setInitialState(){
   switch(RUN_MODE){
     case 0:
       state = WAKE;
-      Serial.println("[PRELOOP State Switch] Setting state to Wake");
+      Serial.println("[PRELOOP State Switch] Default: Setting state to Wake");
       break;
     case 1:
       state = DEBUG_RADIO;
       Serial.println("[PRELOOP State Switch] Setting state to Radio Debug");
+      break;
+    case 3:
+      state = DEBUG_RELAY;
+      Serial.println("[PRELOOP State Switch] Setting state to Relay Debug");
       break;
     default:
       state = WAKE;
@@ -297,5 +314,28 @@ void loop() {
         }
       }
       break;
+    case DEBUG_RELAY:
+      rover.setFeatherTimerLength(6*1000);
+      rover.startFeatherTimer();
+      int cur_count = 0;
+
+
+      while(true){
+        
+          Serial.println("Turning on Radio setion...");
+          rover.powerRadio();
+          delay(3000);
+          Serial.println("Turning on GNSS section...");
+          rover.powerGNSS();
+          delay(3000);
+          Serial.println("Turning off Radio section...");
+          rover.powerDownRadio();
+          delay(3000);
+          Serial.println("Turning off GNSS section...");
+          delay(3000);
+        
+      }
+      break;
+    
   }
 }
